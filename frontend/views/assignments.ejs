@@ -1,0 +1,486 @@
+<%- include("partials/adminHead", { pageTitle: "Phân ca nhân viên", activePage: "assignments", user: user }) %>
+
+<%- include("partials/alerts", { success: success, error: error }) %>
+
+<section class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+    <div class="flex flex-col gap-space-xs">
+        <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
+            <span class="flex h-2 w-2 rounded-full bg-primary-container"></span>
+            <span class="uppercase tracking-wider">Lịch làm việc &amp; phân ca</span>
+        </div>
+        <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Phân ca nhân viên</h2>
+        <p class="font-body-md text-body-md text-on-surface-variant">
+            Gán ca làm việc theo khoảng thời gian áp dụng cho từng nhân viên và theo dõi lịch phân ca hiện tại.
+        </p>
+    </div>
+
+    <% const canAssign = employees.length > 0 && activeShifts.length > 0; %>
+
+    <button
+        id="open-create-assignment"
+        class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm rounded-xl font-label-md text-label-md shadow-md transition-all self-start lg:self-auto <%= canAssign ? 'bg-primary hover:bg-primary-container text-on-primary' : 'bg-surface-container-high text-outline cursor-not-allowed' %>"
+        type="button"
+        <%= canAssign ? "" : "disabled" %>
+        title="<%= canAssign ? 'Phân ca cho nhân viên' : 'Cần có nhân viên và ca đang hoạt động để phân ca' %>"
+    >
+        <span class="material-symbols-outlined text-[20px]">person_add</span>
+        <span>Phân ca mới</span>
+    </button>
+</section>
+
+<% if (!canAssign) { %>
+    <div class="flex items-start gap-space-sm p-space-md rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-body-md">
+        <span class="material-symbols-outlined text-[20px]">info</span>
+        <span>
+            <% if (employees.length === 0 && activeShifts.length === 0) { %>
+                Chưa có nhân viên và ca làm việc đang hoạt động. Vui lòng thêm dữ liệu trước khi phân ca.
+            <% } else if (employees.length === 0) { %>
+                Chưa có nhân viên trong hệ thống. Vui lòng thêm nhân viên trước khi phân ca.
+            <% } else { %>
+                Không có ca làm việc đang hoạt động. Vui lòng kích hoạt hoặc thêm ca làm việc trước khi phân ca.
+            <% } %>
+        </span>
+    </div>
+<% } %>
+
+<section class="grid grid-cols-1 sm:grid-cols-3 gap-space-lg">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <div class="flex flex-col">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Phân ca đang áp dụng</span>
+            <span class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= stats.activeAssignments %></span>
+        </div>
+        <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined text-[24px]">assignment_ind</span>
+        </div>
+    </div>
+
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <div class="flex flex-col">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Nhân viên đã phân ca</span>
+            <span class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs"><%= stats.assignedEmployees %></span>
+        </div>
+        <div class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+            <span class="material-symbols-outlined text-[24px]">groups</span>
+        </div>
+    </div>
+
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <div class="flex flex-col">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Phân ca đã hủy</span>
+            <span class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs"><%= stats.cancelledAssignments %></span>
+        </div>
+        <div class="w-11 h-11 rounded-xl bg-surface-container-high text-on-surface-variant flex items-center justify-center">
+            <span class="material-symbols-outlined text-[24px]">cancel</span>
+        </div>
+    </div>
+</section>
+
+<section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+    <div class="p-space-lg border-b border-surface-container-high">
+        <form method="GET" action="/admin/shift-assignments" class="flex flex-col gap-space-md">
+            <div class="flex flex-col lg:flex-row gap-space-sm">
+                <div class="relative flex-1">
+                    <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                    <input
+                        class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-8 pr-space-md py-space-sm rounded-xl outline-none focus:bg-surface-container transition-all"
+                        name="search"
+                        value="<%= filters.search %>"
+                        placeholder="Tìm theo tên nhân viên, mã nhân viên hoặc tên ca..."
+                        type="text"
+                    >
+                </div>
+
+                <select class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm px-space-md py-space-sm rounded-xl outline-none cursor-pointer" name="department">
+                    <option value="">Tất cả phòng ban</option>
+                    <% departments.forEach((department) => { %>
+                        <option value="<%= department %>" <%= filters.department === department ? "selected" : "" %>><%= department %></option>
+                    <% }) %>
+                </select>
+
+                <select class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm px-space-md py-space-sm rounded-xl outline-none cursor-pointer" name="shift_id">
+                    <option value="">Tất cả ca làm việc</option>
+                    <% activeShifts.forEach((shift) => { %>
+                        <option value="<%= shift.id %>" <%= filters.shiftId === String(shift.id) ? "selected" : "" %>><%= shift.shift_code %> - <%= shift.shift_name %></option>
+                    <% }) %>
+                </select>
+
+                <select class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm px-space-md py-space-sm rounded-xl outline-none cursor-pointer" name="status">
+                    <option value="" <%= filters.status === "" ? "selected" : "" %>>Tất cả trạng thái</option>
+                    <option value="active" <%= filters.status === "active" ? "selected" : "" %>>Đang áp dụng</option>
+                    <option value="cancelled" <%= filters.status === "cancelled" ? "selected" : "" %>>Đã hủy</option>
+                </select>
+
+                <button class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors" type="submit">
+                    <span class="material-symbols-outlined text-[18px]">filter_alt</span>
+                    <span>Lọc</span>
+                </button>
+
+                <a class="flex items-center justify-center gap-space-xs bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors" href="/admin/shift-assignments">
+                    <span class="material-symbols-outlined text-[18px]">restart_alt</span>
+                    <span>Đặt lại</span>
+                </a>
+            </div>
+
+            <div class="flex items-center justify-between gap-space-sm">
+                <span class="font-body-sm text-body-sm text-on-surface-variant">
+                    Hiển thị <strong class="text-on-surface"><%= assignments.length %></strong> phân ca
+                </span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">
+                    <strong class="text-on-surface"><%= activeShifts.length %></strong> ca đang hoạt động
+                </span>
+            </div>
+        </form>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[1050px]">
+            <thead>
+                <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                    <th class="py-space-md px-space-lg font-semibold">Nhân viên</th>
+                    <th class="py-space-md px-space-md font-semibold">Phòng ban</th>
+                    <th class="py-space-md px-space-md font-semibold">Ca làm việc</th>
+                    <th class="py-space-md px-space-md font-semibold">Thời gian áp dụng</th>
+                    <th class="py-space-md px-space-md font-semibold">Ngày làm việc</th>
+                    <th class="py-space-md px-space-md font-semibold">Trạng thái</th>
+                    <th class="py-space-md px-space-lg font-semibold text-right">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-surface-container-low text-body-sm text-on-surface">
+                <% if (assignments.length === 0) { %>
+                    <tr>
+                        <td colspan="7" class="py-space-2xl px-space-lg text-center">
+                            <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
+                                <span class="material-symbols-outlined text-[40px] text-outline">event_busy</span>
+                                <span class="font-label-md text-label-md">Chưa có phân ca phù hợp</span>
+                                <span class="font-body-sm text-body-sm">Thử thay đổi bộ lọc hoặc tạo phân ca mới.</span>
+                            </div>
+                        </td>
+                    </tr>
+                <% } else { %>
+                    <% assignments.forEach((assignment) => { %>
+                        <tr class="hover:bg-surface-container-low/70 transition-colors align-top">
+                            <td class="py-space-md px-space-lg">
+                                <div class="flex items-center gap-space-md">
+                                    <div class="w-9 h-9 rounded-full bg-primary-fixed text-primary font-semibold flex items-center justify-center text-sm shrink-0">
+                                        <%= assignment.full_name.slice(0, 2).toUpperCase() %>
+                                    </div>
+                                    <div class="flex flex-col min-w-0">
+                                        <span class="font-label-md text-label-md text-on-surface font-semibold truncate"><%= assignment.full_name %></span>
+                                        <span class="font-data-mono text-[11px] text-on-surface-variant"><%= assignment.employee_code %></span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-space-md px-space-md text-on-surface-variant">
+                                <%= assignment.department || "—" %>
+                            </td>
+                            <td class="py-space-md px-space-md">
+                                <div class="flex flex-col">
+                                    <span class="font-label-md text-label-md text-on-surface font-semibold"><%= assignment.shift_name %></span>
+                                    <span class="font-data-mono text-[11px] text-on-surface-variant">
+                                        <%= assignment.morning_start %> - <%= assignment.morning_end %> |
+                                        <%= assignment.afternoon_start %> - <%= assignment.afternoon_end %>
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="py-space-md px-space-md">
+                                <div class="flex flex-col font-data-mono text-data-mono">
+                                    <span><%= assignment.start_date %></span>
+                                    <span class="text-on-surface-variant">đến <%= assignment.end_date %></span>
+                                </div>
+                            </td>
+                            <td class="py-space-md px-space-md">
+                                <div class="flex flex-wrap gap-1 max-w-[190px]">
+                                    <% if (assignment.workdays.length === 0) { %>
+                                        <span class="text-on-surface-variant">—</span>
+                                    <% } else { %>
+                                        <% assignment.workdays.forEach((day) => { %>
+                                            <span class="px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-semibold">
+                                                <%= weekdayLabels[day] %>
+                                            </span>
+                                        <% }) %>
+                                    <% } %>
+                                </div>
+                            </td>
+                            <td class="py-space-md px-space-md">
+                                <% if (assignment.status === "active") { %>
+                                    <span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-green-50 text-green-700 text-[11px] font-semibold">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                        Đang áp dụng
+                                    </span>
+                                <% } else { %>
+                                    <span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-semibold">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+                                        Đã hủy
+                                    </span>
+                                <% } %>
+                            </td>
+                            <td class="py-space-md px-space-lg">
+                                <div class="flex items-center justify-end gap-space-xs">
+                                    <button
+                                        class="flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
+                                        data-edit-assignment
+                                        data-id="<%= assignment.id %>"
+                                        data-employee="<%= assignment.employee_id %>"
+                                        data-shift="<%= assignment.shift_id %>"
+                                        data-start="<%= assignment.start_date %>"
+                                        data-end="<%= assignment.end_date %>"
+                                        data-note="<%= assignment.note || '' %>"
+                                        title="Chỉnh sửa phân ca"
+                                        type="button"
+                                    >
+                                        <span class="material-symbols-outlined text-[16px]">edit</span>
+                                        <span>Sửa</span>
+                                    </button>
+
+                                    <% if (assignment.status === "active") { %>
+                                        <form action="/admin/shift-assignments/<%= assignment.id %>/cancel" method="POST" onsubmit="return confirm('Bạn có chắc muốn hủy phân ca này?');">
+                                            <button class="flex items-center gap-1 px-space-sm py-1 bg-error-container/50 hover:bg-error-container text-error font-label-sm text-label-sm rounded-lg transition-colors" type="submit" title="Hủy phân ca">
+                                                <span class="material-symbols-outlined text-[16px]">cancel</span>
+                                                <span>Hủy</span>
+                                            </button>
+                                        </form>
+                                    <% } %>
+                                </div>
+                            </td>
+                        </tr>
+                    <% }) %>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Modal thêm / chỉnh sửa phân ca -->
+<div id="assignment-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40" data-close-assignment-modal></div>
+
+    <div class="relative min-h-full flex items-center justify-center p-space-lg">
+        <div class="w-full max-w-2xl bg-surface-container-lowest rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.18)] overflow-hidden">
+            <div class="flex items-center justify-between px-space-xl py-space-lg border-b border-surface-container-high">
+                <div class="flex flex-col">
+                    <h3 id="assignment-modal-title" class="font-headline-md text-headline-md text-primary font-semibold">Phân ca nhân viên</h3>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant">Chọn nhân viên, ca làm việc và khoảng thời gian áp dụng.</p>
+                </div>
+                <button class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-assignment-modal type="button" aria-label="Đóng">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <form id="assignment-form" action="/admin/shift-assignments/create" method="POST" class="p-space-xl flex flex-col gap-space-lg">
+                <div id="assignment-form-error" class="hidden items-start gap-space-sm p-space-md rounded-xl bg-error-container/60 border border-error/30 text-on-error-container text-body-md">
+                    <span class="material-symbols-outlined text-[20px]">error</span>
+                    <span id="assignment-form-error-text"></span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
+                    <div class="flex flex-col gap-space-xs">
+                        <label class="font-label-sm text-label-sm text-on-surface" for="assignment_department_filter">Lọc theo phòng ban</label>
+                        <select class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="assignment_department_filter">
+                            <option value="">Tất cả phòng ban</option>
+                            <% departments.forEach((department) => { %>
+                                <option value="<%= department %>"><%= department %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+
+                    <div class="flex flex-col gap-space-xs">
+                        <label class="font-label-sm text-label-sm text-on-surface" for="assignment_employee">Nhân viên <span class="text-error">*</span></label>
+                        <select class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="assignment_employee" name="employee_id" required>
+                            <option value="">-- Chọn nhân viên --</option>
+                            <% employees.forEach((employee) => { %>
+                                <option value="<%= employee.id %>" data-department="<%= employee.department || '' %>">
+                                    <%= employee.employee_code %> - <%= employee.full_name %><%= employee.department ? ` (${employee.department})` : "" %>
+                                </option>
+                            <% }) %>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface" for="assignment_shift">Ca làm việc <span class="text-error">*</span></label>
+                    <select class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="assignment_shift" name="shift_id" required>
+                        <option value="">-- Chọn ca làm việc --</option>
+                        <% activeShifts.forEach((shift) => { %>
+                            <option
+                                value="<%= shift.id %>"
+                                data-time="<%= shift.morning_start %> - <%= shift.morning_end %> | <%= shift.afternoon_start %> - <%= shift.afternoon_end %>"
+                                data-workdays="<%= shift.workdays.map((day) => weekdayLabels[day]).join(', ') %>"
+                            >
+                                <%= shift.shift_code %> - <%= shift.shift_name %>
+                            </option>
+                        <% }) %>
+                    </select>
+                    <span id="assignment-shift-hint" class="font-body-sm text-body-sm text-on-surface-variant"></span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
+                    <div class="flex flex-col gap-space-xs">
+                        <label class="font-label-sm text-label-sm text-on-surface" for="assignment_start">Ngày bắt đầu <span class="text-error">*</span></label>
+                        <input class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="assignment_start" name="start_date" required type="date">
+                    </div>
+
+                    <div class="flex flex-col gap-space-xs">
+                        <label class="font-label-sm text-label-sm text-on-surface" for="assignment_end">Ngày kết thúc <span class="text-error">*</span></label>
+                        <input class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="assignment_end" name="end_date" required type="date">
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface" for="assignment_note">Ghi chú</label>
+                    <textarea class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container resize-none" id="assignment_note" name="note" maxlength="255" rows="2" placeholder="Ghi chú thêm về phân ca (không bắt buộc)"></textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-space-sm pt-space-md border-t border-surface-container-high">
+                    <button class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md rounded-xl transition-colors" data-close-assignment-modal type="button">
+                        Hủy
+                    </button>
+                    <button class="flex items-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl shadow-md transition-colors" type="submit">
+                        <span class="material-symbols-outlined text-[18px]">save</span>
+                        <span>Lưu phân ca</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const modal = document.getElementById('assignment-modal');
+        const form = document.getElementById('assignment-form');
+        const modalTitle = document.getElementById('assignment-modal-title');
+        const errorBox = document.getElementById('assignment-form-error');
+        const errorText = document.getElementById('assignment-form-error-text');
+        const departmentFilter = document.getElementById('assignment_department_filter');
+        const employeeSelect = document.getElementById('assignment_employee');
+        const shiftSelect = document.getElementById('assignment_shift');
+        const shiftHint = document.getElementById('assignment-shift-hint');
+        const startInput = document.getElementById('assignment_start');
+        const endInput = document.getElementById('assignment_end');
+
+        const showError = (message) => {
+            errorText.textContent = message;
+            errorBox.classList.remove('hidden');
+            errorBox.classList.add('flex');
+        };
+
+        const clearError = () => {
+            errorText.textContent = '';
+            errorBox.classList.add('hidden');
+            errorBox.classList.remove('flex');
+        };
+
+        const updateShiftHint = () => {
+            const option = shiftSelect.selectedOptions[0];
+
+            if (!option || !option.value) {
+                shiftHint.textContent = '';
+                return;
+            }
+
+            const time = option.dataset.time || '';
+            const workdays = option.dataset.workdays || '';
+            shiftHint.textContent = `${time}${workdays ? ` • ${workdays}` : ''}`;
+        };
+
+        const filterEmployees = () => {
+            const department = departmentFilter.value;
+
+            Array.from(employeeSelect.options).forEach((option) => {
+                if (!option.value) return;
+
+                const match = !department || option.dataset.department === department;
+                option.hidden = !match;
+                option.disabled = !match;
+            });
+
+            if (employeeSelect.selectedOptions[0] && employeeSelect.selectedOptions[0].disabled) {
+                employeeSelect.value = '';
+            }
+        };
+
+        const openModal = () => {
+            modal.classList.remove('hidden');
+            document.body.classList.add('shift-modal-open');
+        };
+
+        const closeModal = () => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('shift-modal-open');
+            clearError();
+        };
+
+        const resetForm = () => {
+            form.reset();
+            form.action = '/admin/shift-assignments/create';
+            modalTitle.textContent = 'Phân ca nhân viên';
+            departmentFilter.value = '';
+            filterEmployees();
+            updateShiftHint();
+            clearError();
+        };
+
+        const openCreateButton = document.getElementById('open-create-assignment');
+
+        if (openCreateButton) {
+            openCreateButton.addEventListener('click', () => {
+                if (openCreateButton.disabled) return;
+                resetForm();
+                openModal();
+            });
+        }
+
+        document.querySelectorAll('[data-close-assignment-modal]').forEach((button) => {
+            button.addEventListener('click', closeModal);
+        });
+
+        document.querySelectorAll('[data-edit-assignment]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const data = button.dataset;
+
+                form.action = `/admin/shift-assignments/${data.id}/update`;
+                modalTitle.textContent = 'Chỉnh sửa phân ca';
+
+                departmentFilter.value = '';
+                filterEmployees();
+
+                employeeSelect.value = data.employee;
+                shiftSelect.value = data.shift;
+                startInput.value = data.start;
+                endInput.value = data.end;
+                form.note.value = data.note;
+
+                updateShiftHint();
+                clearError();
+                openModal();
+            });
+        });
+
+        departmentFilter.addEventListener('change', filterEmployees);
+        shiftSelect.addEventListener('change', updateShiftHint);
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+                closeModal();
+            }
+        });
+
+        form.addEventListener('submit', (event) => {
+            clearError();
+
+            if (startInput.value && endInput.value && endInput.value < startInput.value) {
+                event.preventDefault();
+                endInput.setCustomValidity('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.');
+                endInput.reportValidity();
+                showError('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.');
+                return;
+            }
+
+            endInput.setCustomValidity('');
+        });
+
+        endInput.addEventListener('input', () => endInput.setCustomValidity(''));
+    });
+</script>
+
+<%- include("partials/adminFoot") %>

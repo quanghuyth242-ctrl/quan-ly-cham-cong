@@ -58,7 +58,15 @@ export const login = async (req, res) => {
 
 // Xử lý đăng xuất
 export const logout = (req, res) => {
-    req.session.destroy(() => {
-        res.redirect("/login");
+    req.session.destroy((error) => {
+        if (error) {
+            console.log(error);
+            return res.redirect("/");
+        }
+
+        // Xóa cookie session trên trình duyệt
+        res.clearCookie("connect.sid");
+
+        res.redirect("/login?loggedOut=1");
     });
 };
