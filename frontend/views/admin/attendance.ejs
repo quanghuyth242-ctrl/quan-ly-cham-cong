@@ -1,0 +1,204 @@
+
+<%- include("../partials/adminHead", { title: "Bảng chấm công" }) %>
+
+<div class="container-fluid py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1">Bảng chấm công</h3>
+            <p class="text-muted mb-0">
+                Theo dõi tình hình chấm công của nhân viên
+            </p>
+        </div>
+    </div>
+
+    <!-- Thống kê -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3">
+                <div class="text-muted">Tổng nhân viên</div>
+                <h3 class="fw-bold mb-0"><%= stats.total_employees || 0 %></h3>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3">
+                <div class="text-muted">Có mặt hôm nay</div>
+                <h3 class="fw-bold text-success mb-0">
+                    <%= stats.present || 0 %>
+                </h3>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3">
+                <div class="text-muted">Đi muộn</div>
+                <h3 class="fw-bold text-warning mb-0">
+                    <%= stats.late || 0 %>
+                </h3>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3">
+                <div class="text-muted">Vắng mặt</div>
+                <h3 class="fw-bold text-danger mb-0">
+                    <%= stats.absent || 0 %>
+                </h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bộ lọc -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form action="/admin/attendance" method="GET"
+                  class="row g-3 align-items-end">
+
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">
+                        Tìm nhân viên
+                    </label>
+                    <input type="text"
+                           name="keyword"
+                           class="form-control"
+                           placeholder="Mã hoặc tên nhân viên"
+                           value="<%= filters.keyword || '' %>">
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">
+                        Ngày chấm công
+                    </label>
+                    <input type="date"
+                           name="date"
+                           class="form-control"
+                           value="<%= filters.date || '' %>">
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">
+                        Trạng thái
+                    </label>
+                    <select name="status" class="form-select">
+                        <option value="">Tất cả</option>
+                        <option value="present"
+                            <%= filters.status === "present" ? "selected" : "" %>>
+                            Có mặt
+                        </option>
+                        <option value="late"
+                            <%= filters.status === "late" ? "selected" : "" %>>
+                            Đi muộn
+                        </option>
+                        <option value="absent"
+                            <%= filters.status === "absent" ? "selected" : "" %>>
+                            Vắng mặt
+                        </option>
+                    </select>
+                </div>
+
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Tìm kiếm
+                    </button>
+                    <a href="/admin/attendance"
+                       class="btn btn-outline-secondary">
+                        Làm mới
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bảng chấm công -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0">Danh sách chấm công</h5>
+                <span class="text-muted small">
+                    Ngày: <%= filters.date || "Tất cả" %>
+                </span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>STT</th>
+                            <th>Mã nhân viên</th>
+                            <th>Họ và tên</th>
+                            <th>Ngày</th>
+                            <th>Giờ vào</th>
+                            <th>Giờ ra</th>
+                            <th>Tổng giờ</th>
+                            <th>Trạng thái</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <% if (!records || records.length === 0) { %>
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">
+                                    Không có dữ liệu chấm công
+                                </td>
+                            </tr>
+                        <% } else { %>
+
+                            <% records.forEach((record, index) => { %>
+                                <tr>
+                                    <td><%= index + 1 %></td>
+
+                                    <td>
+                                        <%= record.employee_id %>
+                                    </td>
+
+                                    <td>
+                                        <%= record.employee_name || "Chưa cập nhật" %>
+                                    </td>
+
+                                    <td>
+                                        <%= record.work_date || "" %>
+                                    </td>
+
+                                    <td>
+                                        <%= record.check_in || "--:--" %>
+                                    </td>
+
+                                    <td>
+                                        <%= record.check_out || "--:--" %>
+                                    </td>
+
+                                    <td>
+                                        <%= record.total_hours || "0" %> giờ
+                                    </td>
+
+                                    <td>
+                                        <% if (record.status === "present") { %>
+                                            <span class="badge bg-success">
+                                                Có mặt
+                                            </span>
+                                        <% } else if (record.status === "late") { %>
+                                            <span class="badge bg-warning text-dark">
+                                                Đi muộn
+                                            </span>
+                                        <% } else { %>
+                                            <span class="badge bg-danger">
+                                                Vắng mặt
+                                            </span>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                            <% }) %>
+
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<%- include("../partials/adminFoot") %>
