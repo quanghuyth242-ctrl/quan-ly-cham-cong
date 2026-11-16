@@ -1,0 +1,542 @@
+<%- include("../partials/adminHead", { pageTitle: "Đơn nghỉ & Giải trình", activePage: "leave", user: user }) %>
+
+<%- include("../partials/alerts", { success: success, error: error }) %>
+
+<section class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+    <div class="flex flex-col gap-space-xs">
+        <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
+            <span class="flex h-2 w-2 rounded-full bg-primary-container"></span>
+            <span class="uppercase tracking-wider">Nhân sự &amp; chấm công</span>
+        </div>
+        <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Đơn nghỉ &amp; Giải trình</h2>
+        <p class="font-body-md text-body-md text-on-surface-variant">
+            Tạo và quản lý đơn xin nghỉ, nghỉ việc và đơn giải trình chấm công trong một nơi tập trung.
+        </p>
+    </div>
+
+    <div class="flex flex-wrap gap-space-sm self-start lg:self-auto">
+        <a href="/admin/requests?tab=leave" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors <%= activeTab === 'leave' ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high' %>">
+            <span class="material-symbols-outlined text-[18px]">event_busy</span>
+            <span>Tạo đơn nghỉ</span>
+        </a>
+        <a href="/admin/requests?tab=explanation" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors <%= activeTab === 'explanation' ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high' %>">
+            <span class="material-symbols-outlined text-[18px]">edit_document</span>
+            <span>Tạo giải trình</span>
+        </a>
+        <a href="/admin/requests?tab=list" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors <%= activeTab === 'list' ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high' %>">
+            <span class="material-symbols-outlined text-[18px]">fact_check</span>
+            <span>Danh sách đơn</span>
+        </a>
+    </div>
+</section>
+
+<section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-lg">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <div class="flex flex-col">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng số đơn</span>
+            <span class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= stats.total %></span>
+        </div>
+        <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined text-[24px]">description</span>
+        </div>
+    </div>
+
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <div class="flex flex-col">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Chờ duyệt</span>
+            <span class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs"><%= stats.pending %></span>
+        </div>
+        <div class="w-11 h-11 rounded-xl bg-secondary-fixed text-secondary flex items-center justify-center">
+            <span class="material-symbols-outlined text-[24px]">hourglass_top</span>
+        </div>
+    </div>
+
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <div class="flex flex-col">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đã duyệt</span>
+            <span class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs"><%= stats.approved %></span>
+        </div>
+        <div class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+            <span class="material-symbols-outlined text-[24px]">check_circle</span>
+        </div>
+    </div>
+
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <div class="flex flex-col">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Từ chối</span>
+            <span class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs"><%= stats.rejected %></span>
+        </div>
+        <div class="w-11 h-11 rounded-xl bg-error-container text-error flex items-center justify-center">
+            <span class="material-symbols-outlined text-[24px]">cancel</span>
+        </div>
+    </div>
+</section>
+
+<% if (activeTab === "leave") { %>
+<section class="grid grid-cols-1 xl:grid-cols-3 gap-space-xl items-start">
+    <div class="xl:col-span-2 bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <div class="p-space-xl border-b border-surface-container-high flex items-center justify-between gap-space-md">
+            <div>
+                <h3 class="font-headline-md text-headline-md text-primary font-semibold">Tạo đơn xin nghỉ / nghỉ việc</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Điền đầy đủ thông tin để gửi đơn cho quản lý phê duyệt.</p>
+            </div>
+            <span class="hidden sm:inline-flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm">
+                <span class="material-symbols-outlined text-[16px]">info</span>
+                Giao diện demo
+            </span>
+        </div>
+
+        <form id="leave-form" action="/admin/requests/leave" method="POST" class="p-space-xl flex flex-col gap-space-lg">
+            <div id="leave-form-error" class="hidden items-start gap-space-sm p-space-md rounded-xl bg-error-container/60 border border-error/30 text-on-error-container text-body-md">
+                <span class="material-symbols-outlined text-[20px]">error</span>
+                <span id="leave-form-error-text"></span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface" for="leave_type">Loại đơn <span class="text-error">*</span></label>
+                    <div class="relative">
+                        <select id="leave_type" name="leave_type" required class="w-full appearance-none bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+                            <option value="">-- Chọn loại đơn --</option>
+                            <option value="annual">Nghỉ phép năm</option>
+                            <option value="sick">Nghỉ ốm</option>
+                            <option value="unpaid">Nghỉ không lương</option>
+                            <option value="personal">Nghỉ việc riêng</option>
+                            <option value="resignation">Nghỉ việc (thôi việc)</option>
+                        </select>
+                        <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface" for="leave_shift">Ca / bộ phận áp dụng</label>
+                    <input id="leave_shift" name="shift" type="text" placeholder="VD: Hành chính, Ca sáng..." class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface" for="leave_from">Từ ngày <span class="text-error">*</span></label>
+                    <input id="leave_from" name="from_date" required type="date" class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+                </div>
+
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface" for="leave_to">Đến ngày <span class="text-error">*</span></label>
+                    <input id="leave_to" name="to_date" required type="date" class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface" for="leave_contact">Số điện thoại liên hệ</label>
+                    <input id="leave_contact" name="contact_phone" type="tel" placeholder="VD: 0912 345 678" class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+                </div>
+
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface" for="leave_handover">Người bàn giao công việc</label>
+                    <input id="leave_handover" name="handover_to" type="text" placeholder="Họ tên / mã nhân viên" class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-space-xs">
+                <label class="font-label-sm text-label-sm text-on-surface" for="leave_reason">Lý do nghỉ <span class="text-error">*</span></label>
+                <textarea id="leave_reason" name="reason" required rows="5" placeholder="Mô tả rõ lý do xin nghỉ, thời gian bàn giao và ghi chú cần thiết..." class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container resize-y"></textarea>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Tối thiểu 10 ký tự. Với đơn nghỉ việc, vui lòng nêu ngày làm việc cuối cùng và kế hoạch bàn giao.</span>
+            </div>
+
+            <div class="flex flex-col gap-space-xs">
+                <label class="font-label-sm text-label-sm text-on-surface" for="leave_attachment">Tệp đính kèm (nếu có)</label>
+                <input id="leave_attachment" name="attachment" type="file" class="block w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm px-space-md py-space-sm rounded-xl file:mr-space-md file:py-1 file:px-space-sm file:rounded-lg file:border-0 file:bg-primary-fixed file:text-primary file:font-label-sm">
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Hỗ trợ minh chứng như giấy khám bệnh, đơn đề nghị, biên bản bàn giao...</span>
+            </div>
+
+            <div class="flex items-center justify-end gap-space-sm pt-space-md border-t border-surface-container-high">
+                <button type="reset" class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md rounded-xl transition-colors">Làm mới</button>
+                <button type="submit" class="flex items-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl shadow-md transition-colors">
+                    <span class="material-symbols-outlined text-[18px]">send</span>
+                    <span>Gửi đơn nghỉ</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <aside class="flex flex-col gap-space-lg">
+        <div class="bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+            <h4 class="font-headline-sm text-headline-sm text-primary font-semibold mb-space-md">Hướng dẫn nhanh</h4>
+            <ul class="flex flex-col gap-space-sm text-body-sm text-on-surface-variant">
+                <li class="flex gap-space-sm"><span class="material-symbols-outlined text-secondary text-[18px] mt-0.5">check_circle</span><span><strong>Nghỉ phép:</strong> gửi trước ít nhất 1 ngày làm việc (trừ trường hợp khẩn cấp).</span></li>
+                <li class="flex gap-space-sm"><span class="material-symbols-outlined text-secondary text-[18px] mt-0.5">check_circle</span><span><strong>Nghỉ ốm:</strong> đính kèm giấy xác nhận y tế nếu nghỉ từ 2 ngày trở lên.</span></li>
+                <li class="flex gap-space-sm"><span class="material-symbols-outlined text-secondary text-[18px] mt-0.5">check_circle</span><span><strong>Nghỉ việc:</strong> ghi rõ ngày làm việc cuối cùng, lý do và người nhận bàn giao.</span></li>
+            </ul>
+        </div>
+        <div class="bg-surface-container-low p-space-lg rounded-xl">
+            <div class="flex items-start gap-space-sm">
+                <span class="material-symbols-outlined text-primary text-[20px]">shield_person</span>
+                <div class="flex flex-col gap-space-xs">
+                    <span class="font-label-md text-label-md text-on-surface">Lưu ý phê duyệt</span>
+                    <span class="font-body-sm text-body-sm text-on-surface-variant">Đơn sau khi gửi sẽ ở trạng thái <strong>Chờ duyệt</strong>. Quản lý có thể yêu cầu bổ sung thông tin trước khi phê duyệt.</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+</section>
+<% } %>
+
+<% if (activeTab === "explanation") { %>
+<section class="grid grid-cols-1 xl:grid-cols-3 gap-space-xl items-start">
+    <div class="xl:col-span-2 bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <div class="p-space-xl border-b border-surface-container-high flex items-center justify-between gap-space-md">
+            <div>
+                <h3 class="font-headline-md text-headline-md text-primary font-semibold">Tạo đơn giải trình</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Giải trình đi muộn, về sớm, quên chấm công hoặc sai lệch dữ liệu chấm công.</p>
+            </div>
+            <span class="hidden sm:inline-flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm">
+                <span class="material-symbols-outlined text-[16px]">info</span>
+                Giao diện demo
+            </span>
+        </div>
+
+        <form id="explanation-form" action="/admin/requests/explanation" method="POST" class="p-space-xl flex flex-col gap-space-lg">
+            <div id="explanation-form-error" class="hidden items-start gap-space-sm p-space-md rounded-xl bg-error-container/60 border border-error/30 text-on-error-container text-body-md">
+                <span class="material-symbols-outlined text-[20px]">error</span>
+                <span id="explanation-form-error-text"></span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface" for="exp_type">Loại giải trình <span class="text-error">*</span></label>
+                    <div class="relative">
+                        <select id="exp_type" name="explanation_type" required class="w-full appearance-none bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+                            <option value="">-- Chọn loại giải trình --</option>
+                            <option value="late">Đi muộn</option>
+                            <option value="early_leave">Về sớm</option>
+                            <option value="missing_checkin">Quên check-in</option>
+                            <option value="missing_checkout">Quên check-out</option>
+                            <option value="wrong_record">Sai dữ liệu chấm công</option>
+                            <option value="other">Khác</option>
+                        </select>
+                        <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface" for="exp_date">Ngày phát sinh <span class="text-error">*</span></label>
+                    <input id="exp_date" name="incident_date" required type="date" class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface" for="exp_from_time">Thời gian liên quan (từ)</label>
+                    <input id="exp_from_time" name="from_time" type="time" class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+                </div>
+
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface" for="exp_to_time">Thời gian liên quan (đến)</label>
+                    <input id="exp_to_time" name="to_time" type="time" class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-space-xs">
+                <label class="font-label-sm text-label-sm text-on-surface" for="exp_subject">Tiêu đề giải trình <span class="text-error">*</span></label>
+                <input id="exp_subject" name="subject" required type="text" maxlength="120" placeholder="VD: Giải trình đi muộn ngày 15/11/2026" class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+            </div>
+
+            <div class="flex flex-col gap-space-xs">
+                <label class="font-label-sm text-label-sm text-on-surface" for="exp_reason">Nội dung giải trình <span class="text-error">*</span></label>
+                <textarea id="exp_reason" name="reason" required rows="6" placeholder="Trình bày rõ nguyên nhân, thời điểm xảy ra, ảnh hưởng (nếu có) và đề xuất điều chỉnh/cam kết..." class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container resize-y"></textarea>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Tối thiểu 20 ký tự để đảm bảo thông tin rõ ràng cho người phê duyệt.</span>
+            </div>
+
+            <div class="flex flex-col gap-space-xs">
+                <label class="font-label-sm text-label-sm text-on-surface" for="exp_attachment">Minh chứng đính kèm</label>
+                <input id="exp_attachment" name="attachment" type="file" class="block w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm px-space-md py-space-sm rounded-xl file:mr-space-md file:py-1 file:px-space-sm file:rounded-lg file:border-0 file:bg-primary-fixed file:text-primary file:font-label-sm">
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Ảnh chụp màn hình, biên bản, xác nhận của quản lý trực tiếp, v.v.</span>
+            </div>
+
+            <div class="flex items-center justify-end gap-space-sm pt-space-md border-t border-surface-container-high">
+                <button type="reset" class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md rounded-xl transition-colors">Làm mới</button>
+                <button type="submit" class="flex items-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl shadow-md transition-colors">
+                    <span class="material-symbols-outlined text-[18px]">send</span>
+                    <span>Gửi giải trình</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <aside class="flex flex-col gap-space-lg">
+        <div class="bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+            <h4 class="font-headline-sm text-headline-sm text-primary font-semibold mb-space-md">Khi nào cần giải trình?</h4>
+            <ul class="flex flex-col gap-space-sm text-body-sm text-on-surface-variant">
+                <li class="flex gap-space-sm"><span class="material-symbols-outlined text-secondary text-[18px] mt-0.5">schedule</span><span>Đi muộn hoặc về sớm so với ca làm việc đã đăng ký.</span></li>
+                <li class="flex gap-space-sm"><span class="material-symbols-outlined text-secondary text-[18px] mt-0.5">fingerprint</span><span>Quên check-in/check-out hoặc chấm công không thành công.</span></li>
+                <li class="flex gap-space-sm"><span class="material-symbols-outlined text-secondary text-[18px] mt-0.5">fact_check</span><span>Dữ liệu chấm công không đúng thực tế và cần điều chỉnh.</span></li>
+            </ul>
+        </div>
+        <div class="bg-surface-container-low p-space-lg rounded-xl">
+            <div class="flex items-start gap-space-sm">
+                <span class="material-symbols-outlined text-primary text-[20px]">tips_and_updates</span>
+                <div class="flex flex-col gap-space-xs">
+                    <span class="font-label-md text-label-md text-on-surface">Mẹo viết giải trình</span>
+                    <span class="font-body-sm text-body-sm text-on-surface-variant">Nêu rõ sự thật, thời gian cụ thể, nguyên nhân khách quan/chủ quan và giải pháp để tránh lặp lại.</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+</section>
+<% } %>
+
+<% if (activeTab === "list") { %>
+<section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+    <div class="p-space-lg border-b border-surface-container-high flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
+        <div class="flex flex-col sm:flex-row gap-space-sm flex-1">
+            <div class="relative flex-1 sm:max-w-xs">
+                <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                <input id="request-search" type="text" placeholder="Tìm theo mã đơn, tên, loại..." class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-8 pr-space-md py-space-sm rounded-xl outline-none focus:bg-surface-container transition-all">
+            </div>
+            <div class="relative sm:w-48">
+                <select id="request-status-filter" class="w-full appearance-none bg-surface-container-low text-on-surface font-label-sm text-label-sm py-space-sm pl-space-md pr-space-xl rounded-xl outline-none cursor-pointer">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="pending">Chờ duyệt</option>
+                    <option value="approved">Đã duyệt</option>
+                    <option value="rejected">Từ chối</option>
+                </select>
+                <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
+            </div>
+            <div class="relative sm:w-48">
+                <select id="request-type-filter" class="w-full appearance-none bg-surface-container-low text-on-surface font-label-sm text-label-sm py-space-sm pl-space-md pr-space-xl rounded-xl outline-none cursor-pointer">
+                    <option value="">Tất cả loại đơn</option>
+                    <option value="leave">Nghỉ phép</option>
+                    <option value="resignation">Nghỉ việc</option>
+                    <option value="explanation">Giải trình</option>
+                </select>
+                <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
+            </div>
+        </div>
+        <span class="font-body-sm text-body-sm text-on-surface-variant">
+            Hiển thị <strong id="request-visible-count" class="text-on-surface"><%= requests.length %></strong> / <strong class="text-on-surface"><%= requests.length %></strong> đơn
+        </span>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[980px]">
+            <thead>
+                <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                    <th class="py-space-md px-space-lg font-semibold">Mã đơn</th>
+                    <th class="py-space-md px-space-md font-semibold">Loại đơn</th>
+                    <th class="py-space-md px-space-md font-semibold">Nhân viên</th>
+                    <th class="py-space-md px-space-md font-semibold">Thời gian</th>
+                    <th class="py-space-md px-space-md font-semibold">Lý do / nội dung</th>
+                    <th class="py-space-md px-space-md font-semibold">Trạng thái</th>
+                    <th class="py-space-md px-space-lg font-semibold text-right">Ngày tạo</th>
+                </tr>
+            </thead>
+            <tbody id="request-table-body" class="divide-y divide-surface-container-low text-body-sm text-on-surface">
+                <% if (requests.length === 0) { %>
+                    <tr>
+                        <td colspan="7" class="py-space-2xl px-space-lg text-center">
+                            <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
+                                <span class="material-symbols-outlined text-[40px] text-outline">inbox</span>
+                                <span class="font-label-md text-label-md">Chưa có đơn nào</span>
+                                <span class="font-body-sm text-body-sm">Tạo đơn nghỉ hoặc đơn giải trình để bắt đầu theo dõi.</span>
+                            </div>
+                        </td>
+                    </tr>
+                <% } else { %>
+                    <% requests.forEach((item) => { %>
+                        <tr class="request-row hover:bg-surface-container-low/70 transition-colors align-top"
+                            data-status="<%= item.status %>"
+                            data-type="<%= item.type %>"
+                            data-search="<%= [item.code, item.typeLabel, item.employeeName, item.employeeId, item.reason, item.department].join(' ').toLowerCase() %>">
+                            <td class="py-space-md px-space-lg">
+                                <span class="inline-flex px-space-sm py-1 rounded-lg bg-primary-fixed text-primary font-data-mono text-data-mono font-semibold"><%= item.code %></span>
+                            </td>
+                            <td class="py-space-md px-space-md">
+                                <div class="flex items-center gap-space-xs">
+                                    <% if (item.type === 'explanation') { %>
+                                        <span class="material-symbols-outlined text-secondary text-[18px]">edit_document</span>
+                                    <% } else if (item.type === 'resignation') { %>
+                                        <span class="material-symbols-outlined text-error text-[18px]">person_remove</span>
+                                    <% } else { %>
+                                        <span class="material-symbols-outlined text-secondary text-[18px]">event_busy</span>
+                                    <% } %>
+                                    <span class="font-label-md text-label-md text-on-surface"><%= item.typeLabel %></span>
+                                </div>
+                            </td>
+                            <td class="py-space-md px-space-md">
+                                <div class="flex flex-col">
+                                    <span class="font-label-md text-label-md text-on-surface font-semibold"><%= item.employeeName %></span>
+                                    <span class="font-data-mono text-[11px] text-on-surface-variant"><%= item.employeeId %> • <%= item.department %></span>
+                                </div>
+                            </td>
+                            <td class="py-space-md px-space-md">
+                                <div class="flex flex-col gap-0.5">
+                                    <span class="font-data-mono text-data-mono text-on-surface"><%= item.fromDate %></span>
+                                    <% if (item.toDate && item.toDate !== item.fromDate) { %>
+                                        <span class="font-body-sm text-body-sm text-on-surface-variant">đến <span class="font-data-mono"><%= item.toDate %></span></span>
+                                    <% } %>
+                                </div>
+                            </td>
+                            <td class="py-space-md px-space-md max-w-[360px]">
+                                <p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2" title="<%= item.reason %>"><%= item.reason %></p>
+                            </td>
+                            <td class="py-space-md px-space-md">
+                                <% if (item.status === 'approved') { %>
+                                    <span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-green-50 text-green-700 text-[11px] font-semibold">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                        <%= item.statusLabel %>
+                                    </span>
+                                <% } else if (item.status === 'rejected') { %>
+                                    <span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-error-container text-on-error-container text-[11px] font-semibold">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                                        <%= item.statusLabel %>
+                                    </span>
+                                <% } else { %>
+                                    <span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[11px] font-semibold">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                                        <%= item.statusLabel %>
+                                    </span>
+                                <% } %>
+                            </td>
+                            <td class="py-space-md px-space-lg text-right">
+                                <span class="font-data-mono text-[11px] text-on-surface-variant whitespace-nowrap"><%= item.createdAt %></span>
+                            </td>
+                        </tr>
+                    <% }) %>
+                    <tr id="request-empty-filter" class="hidden">
+                        <td colspan="7" class="py-space-2xl px-space-lg text-center">
+                            <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
+                                <span class="material-symbols-outlined text-[40px] text-outline">search_off</span>
+                                <span class="font-label-md text-label-md">Không tìm thấy đơn phù hợp</span>
+                                <span class="font-body-sm text-body-sm">Thử thay đổi từ khóa hoặc bộ lọc.</span>
+                            </div>
+                        </td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+</section>
+<% } %>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const showInlineError = (boxId, textId, message) => {
+            const box = document.getElementById(boxId);
+            const text = document.getElementById(textId);
+            if (!box || !text) return;
+            text.textContent = message;
+            box.classList.remove('hidden');
+            box.classList.add('flex');
+        };
+
+        const clearInlineError = (boxId, textId) => {
+            const box = document.getElementById(boxId);
+            const text = document.getElementById(textId);
+            if (!box || !text) return;
+            text.textContent = '';
+            box.classList.add('hidden');
+            box.classList.remove('flex');
+        };
+
+        const leaveForm = document.getElementById('leave-form');
+        if (leaveForm) {
+            leaveForm.addEventListener('submit', (event) => {
+                clearInlineError('leave-form-error', 'leave-form-error-text');
+
+                const type = leaveForm.leave_type.value;
+                const from = leaveForm.from_date.value;
+                const to = leaveForm.to_date.value;
+                const reason = (leaveForm.reason.value || '').trim();
+
+                if (!type) {
+                    event.preventDefault();
+                    showInlineError('leave-form-error', 'leave-form-error-text', 'Vui lòng chọn loại đơn nghỉ.');
+                    return;
+                }
+
+                if (from && to && to < from) {
+                    event.preventDefault();
+                    showInlineError('leave-form-error', 'leave-form-error-text', 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.');
+                    return;
+                }
+
+                if (reason.length < 10) {
+                    event.preventDefault();
+                    showInlineError('leave-form-error', 'leave-form-error-text', 'Lý do nghỉ cần tối thiểu 10 ký tự để mô tả rõ nội dung.');
+                }
+            });
+        }
+
+        const explanationForm = document.getElementById('explanation-form');
+        if (explanationForm) {
+            explanationForm.addEventListener('submit', (event) => {
+                clearInlineError('explanation-form-error', 'explanation-form-error-text');
+
+                const type = explanationForm.explanation_type.value;
+                const subject = (explanationForm.subject.value || '').trim();
+                const reason = (explanationForm.reason.value || '').trim();
+                const fromTime = explanationForm.from_time.value;
+                const toTime = explanationForm.to_time.value;
+
+                if (!type) {
+                    event.preventDefault();
+                    showInlineError('explanation-form-error', 'explanation-form-error-text', 'Vui lòng chọn loại giải trình.');
+                    return;
+                }
+
+                if (subject.length < 5) {
+                    event.preventDefault();
+                    showInlineError('explanation-form-error', 'explanation-form-error-text', 'Tiêu đề giải trình cần tối thiểu 5 ký tự.');
+                    return;
+                }
+
+                if (reason.length < 20) {
+                    event.preventDefault();
+                    showInlineError('explanation-form-error', 'explanation-form-error-text', 'Nội dung giải trình cần tối thiểu 20 ký tự để đảm bảo rõ ràng.');
+                    return;
+                }
+
+                if (fromTime && toTime && toTime <= fromTime) {
+                    event.preventDefault();
+                    showInlineError('explanation-form-error', 'explanation-form-error-text', 'Thời gian "đến" phải sau thời gian "từ" (nếu cùng ngày).');
+                }
+            });
+        }
+
+        const searchInput = document.getElementById('request-search');
+        const statusFilter = document.getElementById('request-status-filter');
+        const typeFilter = document.getElementById('request-type-filter');
+        const rows = Array.from(document.querySelectorAll('.request-row'));
+        const emptyFilterRow = document.getElementById('request-empty-filter');
+        const visibleCount = document.getElementById('request-visible-count');
+
+        const applyFilters = () => {
+            const query = (searchInput?.value || '').trim().toLowerCase();
+            const status = statusFilter?.value || '';
+            const type = typeFilter?.value || '';
+            let count = 0;
+
+            rows.forEach((row) => {
+                const matchSearch = !query || (row.dataset.search || '').includes(query);
+                const matchStatus = !status || row.dataset.status === status;
+                const matchType = !type || row.dataset.type === type;
+                const visible = matchSearch && matchStatus && matchType;
+
+                row.classList.toggle('hidden', !visible);
+                if (visible) count += 1;
+            });
+
+            if (visibleCount) visibleCount.textContent = String(count);
+            if (emptyFilterRow) emptyFilterRow.classList.toggle('hidden', count !== 0 || rows.length === 0);
+        };
+
+        [searchInput, statusFilter, typeFilter].forEach((el) => {
+            if (!el) return;
+            const eventName = el.tagName === 'INPUT' ? 'input' : 'change';
+            el.addEventListener(eventName, applyFilters);
+        });
+    });
+</script>
+
+<%- include("../partials/adminFoot") %>
