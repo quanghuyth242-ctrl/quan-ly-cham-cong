@@ -130,6 +130,27 @@ export const getEmployees = async () => {
     return rows;
 };
 
+export const getScheduledAttendanceStatus = async (employeeId, workDate, checkIn) => {
+    const [rows] = await db.execute(
+        `SELECT TIME_FORMAT(ws.morning_start, '%H:%i') AS scheduled_start
+           FROM employee_shift_assignments sa
+           INNER JOIN work_shifts ws
+             ON ws.id = sa.shift_id
+            AND ws.status = 1
+           INNER JOIN shift_workdays sw
+             ON sw.shift_id = ws.id
+            AND sw.weekday = WEEKDAY(?) + 1
+          WHERE sa.employee_id = ?
+            AND sa.status = 'active'
+            AND ? BETWEEN sa.start_date AND sa.end_date
+          ORDER BY sa.start_date DESC
+          LIMIT 1`,
+        [workDate, employeeId, workDate]
+    );
+
+    return rows[0] && checkIn > rows[0].scheduled_start ? "late" : "present";
+};
+
 export const getReportSummary = async (fromDate, toDate) => {
     const [rows] = await db.execute(
         `SELECT COUNT(*) AS total_records,

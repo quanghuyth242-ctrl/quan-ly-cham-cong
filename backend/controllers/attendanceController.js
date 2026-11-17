@@ -64,7 +64,8 @@ const validateRecord = async (body, excludeId = null) => {
         }
     }
 
-    if (!VALID_STATUSES.has(data.status)) {
+    const automaticStatus = data.status === "auto";
+    if (!automaticStatus && !VALID_STATUSES.has(data.status)) {
         errors.push("Vui lòng chọn trạng thái chấm công hợp lệ.");
     }
 
@@ -96,6 +97,14 @@ const validateRecord = async (body, excludeId = null) => {
         if (duplicate) {
             errors.push("Nhân viên đã có dữ liệu chấm công trong ngày này.");
         }
+    }
+
+    if (errors.length === 0 && automaticStatus) {
+        data.status = await AttendanceModel.getScheduledAttendanceStatus(
+            data.employee_id,
+            data.work_date,
+            data.check_in
+        );
     }
 
     return { data, errors };

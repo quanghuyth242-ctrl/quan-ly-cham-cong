@@ -313,6 +313,7 @@
                     <div class="flex flex-col gap-space-xs">
                         <label class="font-label-sm text-label-sm text-on-surface" for="attendance-status">Trạng thái <span class="text-error">*</span></label>
                         <select id="attendance-status" name="status" class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" required>
+                            <option value="auto">Tự xác định theo ca</option>
                             <option value="present">Đúng giờ</option>
                             <option value="late">Đi muộn</option>
                             <option value="absent">Vắng mặt</option>
@@ -332,7 +333,8 @@
                 </div>
 
                 <p class="font-body-sm text-on-surface-variant">
-                    Với trạng thái vắng mặt, để trống cả giờ vào và giờ ra.
+                    Trạng thái tự xác định theo giờ bắt đầu ca được phân, không áp dụng thời gian ân hạn.
+                    Chọn trạng thái thủ công nếu cần ghi đè; vắng mặt thì để trống giờ vào và giờ ra.
                 </p>
 
                 <div class="flex items-center justify-end gap-space-sm pt-space-md border-t border-surface-container-high">
@@ -401,7 +403,7 @@ document.addEventListener("DOMContentLoaded", () => {
         form.reset();
         form.action = "/admin/attendance/create";
         modalTitle.textContent = "Điều chỉnh chấm công";
-        statusSelect.value = "present";
+        statusSelect.value = "auto";
 
         const today = new Date();
         dateInput.value = [
