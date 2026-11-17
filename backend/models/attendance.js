@@ -87,7 +87,7 @@ const mapRecord = (row) => {
 
 export const findAll = async () => {
     const [rows] = await db.execute(
-        `${BASE_SELECT} ORDER BY a.work_date DESC, e.full_name ASC, a.id DESC`
+        `${BASE_SELECT} ORDER BY e.employee_code DESC, a.work_date DESC, a.id DESC`
     );
     return rows.map(mapRecord);
 };

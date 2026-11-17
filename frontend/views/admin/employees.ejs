@@ -5,7 +5,7 @@
 }) %>
 
 <section class="flex flex-col gap-space-xl">
-    <%- include("../partials/alerts", { success: null, error: error }) %>
+    <%- include("../partials/alerts", { success: success, error: error }) %>
 
     <section class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
         <div class="flex flex-col gap-space-xs">
@@ -19,6 +19,14 @@
             </p>
         </div>
         <div class="flex flex-col sm:flex-row gap-space-sm">
+            <button
+                id="open-create-employee"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md shadow-md transition-colors"
+                type="button"
+            >
+                <span class="material-symbols-outlined text-[20px]">person_add</span>
+                <span>Thêm nhân viên</span>
+            </button>
             <a
                 href="/admin/shift-assignments"
                 class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md shadow-md transition-colors"
@@ -218,7 +226,170 @@
     </section>
 </section>
 
+<div
+    id="employee-modal"
+    class="fixed inset-0 z-50 <%= openCreateModal ? '' : 'hidden' %>"
+    data-available-codes="<%= JSON.stringify(availableEmployeeCodes) %>"
+>
+    <div class="absolute inset-0 bg-black/40" data-close-employee-modal></div>
+    <div class="relative min-h-full flex items-center justify-center p-space-lg">
+        <section
+            class="w-full max-w-xl bg-surface-container-lowest rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.18)] overflow-hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="employee-modal-title"
+        >
+            <div class="flex items-center justify-between px-space-xl py-space-lg border-b border-surface-container-high">
+                <div>
+                    <h3 id="employee-modal-title" class="font-headline-md text-headline-md text-primary font-semibold">Thêm nhân viên</h3>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Nhập thông tin hồ sơ nhân viên mới.</p>
+                </div>
+                <button class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-employee-modal type="button" aria-label="Đóng">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <form action="/admin/employees" method="POST" class="p-space-xl flex flex-col gap-space-lg">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
+                    <label class="flex flex-col gap-space-xs">
+                        <span class="font-label-sm text-label-sm text-on-surface">Mã nhân viên tự động</span>
+                        <input
+                            id="employee-code"
+                            name="employee_code"
+                            value="<%= formValues.employee_code || '' %>"
+                            type="text"
+                            maxlength="50"
+                            readonly
+                            required
+                            aria-live="polite"
+                            placeholder="Nhập họ tên để tự chọn mã"
+                            class="w-full bg-surface-container-low text-on-surface-variant font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none"
+                        >
+                        <span id="employee-code-help" class="font-body-sm text-body-sm text-on-surface-variant">Mã sẽ được tự động chọn từ danh sách mã chưa sử dụng.</span>
+                    </label>
+                    <label class="flex flex-col gap-space-xs">
+                        <span class="font-label-sm text-label-sm text-on-surface">Họ và tên <span class="text-error">*</span></span>
+                        <input
+                            name="full_name"
+                            value="<%= formValues.full_name || '' %>"
+                            type="text"
+                            maxlength="150"
+                            autocomplete="name"
+                            required
+                            class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                        >
+                    </label>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
+                    <label class="flex flex-col gap-space-xs">
+                        <span class="font-label-sm text-label-sm text-on-surface">Email</span>
+                        <input
+                            name="email"
+                            value="<%= formValues.email || '' %>"
+                            type="email"
+                            maxlength="150"
+                            autocomplete="email"
+                            class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                        >
+                    </label>
+                    <label class="flex flex-col gap-space-xs">
+                        <span class="font-label-sm text-label-sm text-on-surface">Số điện thoại</span>
+                        <input
+                            name="phone"
+                            value="<%= formValues.phone || '' %>"
+                            type="tel"
+                            maxlength="20"
+                            autocomplete="tel"
+                            class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                        >
+                    </label>
+                </div>
+
+                <label class="flex flex-col gap-space-xs">
+                    <span class="font-label-sm text-label-sm text-on-surface">Phòng ban</span>
+                    <input
+                        name="department"
+                        value="<%= formValues.department || '' %>"
+                        type="text"
+                        maxlength="100"
+                        list="employee-departments"
+                        autocomplete="organization-title"
+                        placeholder="Chọn hoặc nhập phòng ban mới"
+                        class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                    >
+                    <datalist id="employee-departments">
+                        <% departments.forEach((department) => { %>
+                            <option value="<%= department %>"></option>
+                        <% }); %>
+                    </datalist>
+                </label>
+
+                <div class="flex items-center justify-end gap-space-sm pt-space-md border-t border-surface-container-high">
+                    <button class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md rounded-xl transition-colors" data-close-employee-modal type="button">
+                        Hủy
+                    </button>
+                    <button class="flex items-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl shadow-md transition-colors" type="submit">
+                        <span class="material-symbols-outlined text-[18px]">person_add</span>
+                        <span>Lưu nhân viên</span>
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>
+
 <script>
+document.addEventListener("DOMContentLoaded", () => {
+    const modal = document.getElementById("employee-modal");
+    const openButton = document.getElementById("open-create-employee");
+    const fullNameField = modal.querySelector('[name="full_name"]');
+    const employeeCodeField = document.getElementById("employee-code");
+    const employeeCodeHelp = document.getElementById("employee-code-help");
+    const availableCodes = JSON.parse(modal.dataset.availableCodes || "[]");
+
+    const assignEmployeeCode = () => {
+        if (!fullNameField.value.trim()) {
+            employeeCodeField.value = "";
+            employeeCodeHelp.textContent = "Nhập họ tên để tự chọn mã nhân viên còn trống.";
+            return;
+        }
+
+        if (!availableCodes.includes(employeeCodeField.value)) {
+            employeeCodeField.value = availableCodes[0] || "";
+        }
+        employeeCodeHelp.textContent = employeeCodeField.value
+            ? "Mã chưa sử dụng đã được tự động chọn."
+            : "Không còn mã nhân viên trống. Vui lòng liên hệ quản trị hệ thống.";
+    };
+
+    const openModal = () => {
+        modal.classList.remove("hidden");
+        document.body.classList.add("shift-modal-open");
+        fullNameField.focus();
+    };
+    const closeModal = () => {
+        modal.classList.add("hidden");
+        document.body.classList.remove("shift-modal-open");
+    };
+
+    fullNameField.addEventListener("input", assignEmployeeCode);
+    openButton.addEventListener("click", openModal);
+    modal.querySelectorAll("[data-close-employee-modal]").forEach((button) => {
+        button.addEventListener("click", closeModal);
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !modal.classList.contains("hidden")) {
+            closeModal();
+        }
+    });
+
+    if (!modal.classList.contains("hidden")) {
+        assignEmployeeCode();
+        fullNameField.focus();
+    }
+});
+
 function exportEmployeesCSV() {
     const rows = [...document.querySelectorAll(".employee-row")];
     if (rows.length === 0) return;

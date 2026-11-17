@@ -1,36 +1,151 @@
 import * as EmployeeModel from "../models/EmployeeModel.js";
 
-export const index = async (req, res) => {
-    const filters = {
-        search: String(req.query.search || "").trim().slice(0, 100),
-        department: String(req.query.department || "").trim().slice(0, 100)
-    };
+const EMPTY_STATS = { total: 0, departments: 0, unassignedDepartment: 0 };
+const EMPLOYEE_CODE_PATTERN = /^[A-Za-z0-9._-]{1,50}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_PATTERN = /^[+\d().\-\s]+$/;
 
+const getFilters = (query = {}) => ({
+    search: String(query.search || "").trim().slice(0, 100),
+    department: String(query.department || "").trim().slice(0, 100)
+});
+
+const getPageData = async (filters) => {
+    const [employees, departments, stats, availableEmployeeCodes] = await Promise.all([
+        EmployeeModel.findAll(filters),
+        EmployeeModel.getDepartments(),
+        EmployeeModel.getStats(),
+        EmployeeModel.getAvailableEmployeeCodes()
+    ]);
+
+    return { employees, departments, stats, availableEmployeeCodes };
+};
+
+const renderPage = async (req, res, {
+    filters = getFilters(req.query),
+    error = null,
+    success = null,
+    formValues = {},
+    openCreateModal = false,
+    statusCode = 200
+} = {}) => {
     try {
-        const [employees, departments, stats] = await Promise.all([
-            EmployeeModel.findAll(filters),
-            EmployeeModel.getDepartments(),
-            EmployeeModel.getStats()
-        ]);
-
-        return res.render("admin/employees", {
+        const pageData = await getPageData(filters);
+        return res.status(statusCode).render("admin/employees", {
             user: req.session.user,
-            employees,
-            departments,
-            stats,
+            ...pageData,
             filters,
-            error: null
+            formValues,
+            openCreateModal,
+            success,
+            error
         });
-    } catch (error) {
-        console.error("Lỗi tải danh sách nhân sự:", error);
-
+    } catch (loadError) {
+        console.error("Lỗi tải danh sách nhân sự:", loadError);
         return res.status(500).render("admin/employees", {
             user: req.session.user,
             employees: [],
             departments: [],
-            stats: { total: 0, departments: 0, unassignedDepartment: 0 },
+            availableEmployeeCodes: [],
+            stats: EMPTY_STATS,
             filters,
+            formValues,
+            openCreateModal,
+            success: null,
             error: "Không thể tải danh sách nhân sự. Vui lòng thử lại."
+        });
+    }
+};
+
+const validateEmployee = (body = {}) => {
+    const employee = {
+        employee_code: String(body.employee_code || "").trim().toUpperCase(),
+        full_name: String(body.full_name || "").trim(),
+        email: String(body.email || "").trim().toLowerCase(),
+        phone: String(body.phone || "").trim(),
+        department: String(body.department || "").trim()
+    };
+    const errors = [];
+
+    if (!EMPLOYEE_CODE_PATTERN.test(employee.employee_code)) {
+        errors.push("Mã nhân viên được chọn không hợp lệ.");
+    }
+    if (!employee.full_name || employee.full_name.length > 150) {
+        errors.push("Họ và tên là bắt buộc và không vượt quá 150 ký tự.");
+    }
+    if (employee.email.length > 150 || (employee.email && !EMAIL_PATTERN.test(employee.email))) {
+        errors.push("Email không hợp lệ hoặc vượt quá 150 ký tự.");
+    }
+    if (employee.phone.length > 20 || (employee.phone && !PHONE_PATTERN.test(employee.phone))) {
+        errors.push("Số điện thoại không hợp lệ hoặc vượt quá 20 ký tự.");
+    }
+    if (employee.department.length > 100) {
+        errors.push("Tên phòng ban không vượt quá 100 ký tự.");
+    }
+
+    return {
+        employee: {
+            ...employee,
+            email: employee.email || null,
+            phone: employee.phone || null,
+            department: employee.department || null
+        },
+        errors
+    };
+};
+
+export const index = async (req, res) => renderPage(req, res, {
+    success: req.query.success === "created" ? "Đã thêm nhân viên mới." : null
+});
+
+export const create = async (req, res) => {
+    const { employee, errors } = validateEmployee(req.body);
+
+    if (errors.length === 0) {
+        try {
+            const availableCodes = await EmployeeModel.getAvailableEmployeeCodes();
+            if (!availableCodes.includes(employee.employee_code)) {
+                errors.push("Vui lòng chọn một mã nhân viên còn trống trong danh sách.");
+            }
+        } catch (error) {
+            console.error("Lỗi kiểm tra mã nhân viên còn trống:", error);
+            return renderPage(req, res, {
+                filters: getFilters(),
+                formValues: employee,
+                openCreateModal: true,
+                error: "Không thể kiểm tra mã nhân viên. Vui lòng thử lại.",
+                statusCode: 500
+            });
+        }
+    }
+
+    if (errors.length > 0) {
+        return renderPage(req, res, {
+            filters: getFilters(),
+            formValues: employee,
+            openCreateModal: true,
+            error: errors.join(" "),
+            statusCode: 400
+        });
+    }
+
+    try {
+        await EmployeeModel.create(employee);
+        return res.redirect("/admin/employees?success=created");
+    } catch (error) {
+        const isDuplicateCode = error.code === "ER_DUP_ENTRY";
+        if (!isDuplicateCode) {
+            console.error("Lỗi thêm nhân viên:", error);
+        }
+
+        return renderPage(req, res, {
+            filters: getFilters(),
+            formValues: employee,
+            openCreateModal: true,
+            error: isDuplicateCode
+                ? "Mã nhân viên vừa được sử dụng. Vui lòng chọn mã khác."
+                : "Không thể thêm nhân viên. Vui lòng thử lại.",
+            statusCode: isDuplicateCode ? 409 : 500
         });
     }
 };
