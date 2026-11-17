@@ -1,9 +1,135 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import * as AttendanceModel from "../models/attendance.js";
 import * as AttendanceDeviceModel from "../models/attendanceDevice.js";
 
 const DEVICE_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{1,63}$/;
+const EMPLOYEE_CODE_PATTERN = /^[A-Za-z0-9._-]{1,50}$/;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DEVICE_TYPES = new Set(["biometric", "camera", "network", "other"]);
 const EMPTY_STATS = { total: 0, online: 0, offline: 0 };
+const SYNC_STATUS_VALUES = {
+    present: "present",
+    on_time: "present",
+    "đúng giờ": "present",
+    late: "late",
+    "đi muộn": "late",
+    absent: "absent",
+    "vắng mặt": "absent"
+};
+
+const isValidDate = (value) => {
+    if (!DATE_PATTERN.test(value)) return false;
+    const date = new Date(`${value}T00:00:00Z`);
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+
+const authenticateDevice = async (req) => {
+    const deviceCode = String(req.params.deviceCode || "").trim().toUpperCase();
+    const token = req.get("x-device-token");
+
+    if (!DEVICE_CODE_PATTERN.test(deviceCode) || typeof token !== "string" || token.length === 0 || token.length > 256) {
+        return null;
+    }
+
+    const device = await AttendanceDeviceModel.findByCode(deviceCode);
+    if (!device || !device.is_active || !/^[a-f\d]{64}$/i.test(device.token_hash)) {
+        return null;
+    }
+
+    const expectedHash = Buffer.from(device.token_hash, "hex");
+    const providedHash = createHash("sha256").update(token).digest();
+    if (expectedHash.length !== providedHash.length || !timingSafeEqual(expectedHash, providedHash)) {
+        return null;
+    }
+
+    return device;
+};
+
+const validateSyncPayload = (body) => {
+    const errors = [];
+    const records = [];
+    const seenRecords = new Set();
+
+    if (!body || !Array.isArray(body.records)) {
+        return { records, errors: ["Dữ liệu đồng bộ phải có mảng records."] };
+    }
+    if (body.records.length === 0 || body.records.length > 500) {
+        return { records, errors: ["Mỗi lần đồng bộ cần từ 1 đến 500 bản ghi."] };
+    }
+
+    body.records.forEach((record, index) => {
+        const rowLabel = `Bản ghi ${index + 1}: `;
+        if (!record || typeof record !== "object" || Array.isArray(record)) {
+            errors.push(`${rowLabel}định dạng không hợp lệ.`);
+            return;
+        }
+
+        const employeeCode = typeof record.employee_code === "string"
+            ? record.employee_code.trim().toUpperCase()
+            : "";
+        const workDate = typeof record.work_date === "string"
+            ? record.work_date.trim()
+            : "";
+        const checkIn = record.check_in === undefined || record.check_in === null || record.check_in === ""
+            ? ""
+            : typeof record.check_in === "string" ? record.check_in.trim() : null;
+        const checkOut = record.check_out === undefined || record.check_out === null || record.check_out === ""
+            ? ""
+            : typeof record.check_out === "string" ? record.check_out.trim() : null;
+        const rawStatus = typeof record.status === "string"
+            ? record.status.trim().toLocaleLowerCase()
+            : "";
+        const status = SYNC_STATUS_VALUES[rawStatus];
+        const rowErrors = [];
+
+        if (!EMPLOYEE_CODE_PATTERN.test(employeeCode)) {
+            rowErrors.push("mã nhân viên không hợp lệ");
+        }
+        if (!isValidDate(workDate)) {
+            rowErrors.push("ngày làm việc không hợp lệ");
+        }
+        if (checkIn === null || (checkIn && !TIME_PATTERN.test(checkIn))) {
+            rowErrors.push("giờ vào phải theo định dạng HH:mm");
+        }
+        if (checkOut === null || (checkOut && !TIME_PATTERN.test(checkOut))) {
+            rowErrors.push("giờ ra phải theo định dạng HH:mm");
+        }
+        if (!status) {
+            rowErrors.push("trạng thái phải là present, late hoặc absent");
+        } else if (status === "absent" && (checkIn || checkOut)) {
+            rowErrors.push("bản ghi vắng mặt không được có giờ vào hoặc giờ ra");
+        } else if (status !== "absent" && !checkIn) {
+            rowErrors.push("bản ghi có mặt cần có giờ vào");
+        }
+        if (checkOut && !checkIn) {
+            rowErrors.push("cần có giờ vào trước khi nhập giờ ra");
+        } else if (checkIn && checkOut && checkOut <= checkIn) {
+            rowErrors.push("giờ ra phải sau giờ vào");
+        }
+
+        if (rowErrors.length > 0) {
+            errors.push(`${rowLabel}${rowErrors.join("; ")}.`);
+            return;
+        }
+
+        const duplicateKey = `${employeeCode}:${workDate}`;
+        if (seenRecords.has(duplicateKey)) {
+            errors.push(`${rowLabel}nhân viên đã xuất hiện trong ngày này ở cùng lô đồng bộ.`);
+            return;
+        }
+        seenRecords.add(duplicateKey);
+        records.push({
+            employee_code: employeeCode,
+            work_date: workDate,
+            check_in: checkIn,
+            check_out: checkOut,
+            status
+        });
+    });
+
+    return { records, errors };
+};
 
 const renderDevicePage = async (req, res, {
     error = null,
@@ -122,22 +248,9 @@ export const create = async (req, res) => {
 };
 
 export const heartbeat = async (req, res) => {
-    const deviceCode = String(req.params.deviceCode || "").trim().toUpperCase();
-    const token = req.get("x-device-token");
-
-    if (!DEVICE_CODE_PATTERN.test(deviceCode) || typeof token !== "string" || token.length === 0 || token.length > 256) {
-        return res.status(401).json({ error: "Mã thiết bị hoặc khóa kết nối không hợp lệ." });
-    }
-
     try {
-        const device = await AttendanceDeviceModel.findByCode(deviceCode);
-        if (!device || !device.is_active || !/^[a-f\d]{64}$/i.test(device.token_hash)) {
-            return res.status(401).json({ error: "Mã thiết bị hoặc khóa kết nối không hợp lệ." });
-        }
-
-        const expectedHash = Buffer.from(device.token_hash, "hex");
-        const providedHash = createHash("sha256").update(token).digest();
-        if (expectedHash.length !== providedHash.length || !timingSafeEqual(expectedHash, providedHash)) {
+        const device = await authenticateDevice(req);
+        if (!device) {
             return res.status(401).json({ error: "Mã thiết bị hoặc khóa kết nối không hợp lệ." });
         }
 
@@ -149,5 +262,40 @@ export const heartbeat = async (req, res) => {
     } catch (error) {
         console.error("Lỗi nhận heartbeat từ thiết bị:", error);
         return res.status(500).json({ error: "Không thể cập nhật trạng thái thiết bị." });
+    }
+};
+
+export const sync = async (req, res) => {
+    try {
+        const device = await authenticateDevice(req);
+        if (!device) {
+            return res.status(401).json({ error: "Mã thiết bị hoặc khóa kết nối không hợp lệ." });
+        }
+
+        const { records, errors } = validateSyncPayload(req.body);
+        if (errors.length > 0) {
+            return res.status(400).json({
+                error: "Lô dữ liệu đồng bộ không hợp lệ.",
+                details: errors
+            });
+        }
+
+        const result = await AttendanceModel.syncDeviceRecords(device.id, records);
+        return res.json({
+            success: true,
+            device_code: device.device_code,
+            synced_at: new Date().toISOString(),
+            ...result
+        });
+    } catch (error) {
+        if (error.code === "UNKNOWN_EMPLOYEES") {
+            return res.status(422).json({
+                error: error.message,
+                employee_codes: error.employeeCodes
+            });
+        }
+
+        console.error("Lỗi đồng bộ dữ liệu từ thiết bị:", error);
+        return res.status(500).json({ error: "Không thể đồng bộ dữ liệu chấm công." });
     }
 };

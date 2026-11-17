@@ -1,13 +1,14 @@
 import { db } from "../config/db.js";
 
-const hasSampleFlag = async () => {
+const columnExists = async (table, column) => {
     const [rows] = await db.execute(
         `SELECT 1
            FROM information_schema.COLUMNS
           WHERE TABLE_SCHEMA = DATABASE()
-            AND TABLE_NAME = 'attendance_devices'
-            AND COLUMN_NAME = 'is_sample'
-          LIMIT 1`
+            AND TABLE_NAME = ?
+            AND COLUMN_NAME = ?
+          LIMIT 1`,
+        [table, column]
     );
 
     return rows.length > 0;
@@ -23,6 +24,8 @@ const main = async () => {
             device_type VARCHAR(24) NOT NULL,
             token_hash CHAR(64) NOT NULL,
             last_seen_at DATETIME(6) NULL,
+            last_sync_at DATETIME(6) NULL,
+            last_sync_count INT UNSIGNED NOT NULL DEFAULT 0,
             is_active TINYINT(1) NOT NULL DEFAULT 1,
             is_sample TINYINT(1) NOT NULL DEFAULT 0,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -33,9 +36,27 @@ const main = async () => {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     `);
 
-    if (!(await hasSampleFlag())) {
+    if (!(await columnExists("attendance_devices", "is_sample"))) {
         await db.execute(
             "ALTER TABLE attendance_devices ADD COLUMN is_sample TINYINT(1) NOT NULL DEFAULT 0 AFTER is_active"
+        );
+    }
+
+    if (!(await columnExists("attendance_devices", "last_sync_at"))) {
+        await db.execute(
+            "ALTER TABLE attendance_devices ADD COLUMN last_sync_at DATETIME(6) NULL AFTER last_seen_at"
+        );
+    }
+
+    if (!(await columnExists("attendance_devices", "last_sync_count"))) {
+        await db.execute(
+            "ALTER TABLE attendance_devices ADD COLUMN last_sync_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER last_sync_at"
+        );
+    }
+
+    if (!(await columnExists("attendance", "record_source"))) {
+        await db.execute(
+            "ALTER TABLE attendance ADD COLUMN record_source ENUM('manual', 'device') NOT NULL DEFAULT 'manual' AFTER status"
         );
     }
 

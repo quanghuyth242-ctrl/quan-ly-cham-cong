@@ -4,5 +4,6 @@ import * as AttendanceDeviceController from "../controllers/attendanceDeviceCont
 const router = express.Router();
 
 router.post("/:deviceCode/heartbeat", AttendanceDeviceController.heartbeat);
+router.post("/:deviceCode/sync", AttendanceDeviceController.sync);
 
 export default router;
