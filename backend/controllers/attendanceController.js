@@ -108,12 +108,18 @@ export const index = async (req, res) => {
             AttendanceModel.getEmployees(),
             AttendanceModel.getStats()
         ]);
+        const overview = {
+            late: records.filter((record) => record.status === "late" || record.late_minutes > 0).length,
+            early: records.filter((record) => record.early_leave_minutes > 0).length,
+            unassigned: records.filter((record) => record.status !== "absent" && !record.has_schedule).length
+        };
 
         res.render("admin/attendance", {
             user: req.session.user,
             records,
             employees,
             stats,
+            overview,
             success: req.query.success || null,
             error: req.query.error || null
         });
@@ -124,6 +130,7 @@ export const index = async (req, res) => {
             records: [],
             employees: [],
             stats: { total_employees: 0, present: 0, late: 0, absent: 0 },
+            overview: { late: 0, early: 0, unassigned: 0 },
             success: null,
             error: "Không thể tải dữ liệu chấm công. Vui lòng thử lại."
         });
