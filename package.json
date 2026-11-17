@@ -7,6 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon backend/app.js",
     "start": "node backend/app.js",
+    "init:attendance-indexes": "node backend/scripts/initAttendanceIndexes.js",
     "init:shift-module": "node backend/scripts/initShiftModule.js",
     "init:device-module": "node backend/scripts/initDeviceModule.js",
     "seed:devices": "node backend/scripts/seedSampleDevices.js"

@@ -6,6 +6,7 @@ const DEVICE_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{1,63}$/;
 const EMPLOYEE_CODE_PATTERN = /^[A-Za-z0-9._-]{1,50}$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+const EVENT_TIMESTAMP_PATTERN = /^(\d{4}-\d{2}-\d{2})[ T]([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
 const DEVICE_TYPES = new Set(["biometric", "camera", "network", "other"]);
 const EMPTY_STATS = { total: 0, online: 0, offline: 0 };
 const SYNC_STATUS_VALUES = {
@@ -129,6 +130,75 @@ const validateSyncPayload = (body) => {
     });
 
     return { records, errors };
+};
+
+const validateEventPayload = (body) => {
+    const errors = [];
+    const events = [];
+    const directions = {
+        in: "in",
+        check_in: "in",
+        out: "out",
+        check_out: "out"
+    };
+
+    if (!body || !Array.isArray(body.events)) {
+        return { events, errors: ["Dữ liệu sự kiện phải có mảng events."] };
+    }
+    if (body.events.length === 0 || body.events.length > 500) {
+        return { events, errors: ["Mỗi lần gửi cần từ 1 đến 500 sự kiện."] };
+    }
+
+    body.events.forEach((event, index) => {
+        const rowLabel = `Sự kiện ${index + 1}: `;
+        if (!event || typeof event !== "object" || Array.isArray(event)) {
+            errors.push(`${rowLabel}định dạng không hợp lệ.`);
+            return;
+        }
+
+        const employeeCode = typeof event.employee_code === "string"
+            ? event.employee_code.trim().toUpperCase()
+            : "";
+        const occurredAt = typeof event.occurred_at === "string"
+            ? event.occurred_at.trim().replace("T", " ")
+            : "";
+        const directionValue = typeof event.direction === "string"
+            ? event.direction.trim().toLocaleLowerCase()
+            : "";
+        const direction = directions[directionValue];
+        const eventId = event.event_id === undefined || event.event_id === null
+            ? ""
+            : typeof event.event_id === "string" ? event.event_id.trim() : null;
+        const rowErrors = [];
+        const timestampMatch = occurredAt.match(EVENT_TIMESTAMP_PATTERN);
+
+        if (!EMPLOYEE_CODE_PATTERN.test(employeeCode)) {
+            rowErrors.push("mã nhân viên không hợp lệ");
+        }
+        if (!timestampMatch || !isValidDate(timestampMatch[1])) {
+            rowErrors.push("thời điểm phải theo định dạng YYYY-MM-DD HH:mm:ss");
+        }
+        if (!direction) {
+            rowErrors.push("direction phải là in hoặc out");
+        }
+        if (eventId === null || (eventId && eventId.length > 128)) {
+            rowErrors.push("event_id phải là chuỗi không vượt quá 128 ký tự");
+        }
+
+        if (rowErrors.length > 0) {
+            errors.push(`${rowLabel}${rowErrors.join("; ")}.`);
+            return;
+        }
+
+        events.push({
+            employee_code: employeeCode,
+            occurred_at: occurredAt,
+            direction,
+            event_id: eventId || null
+        });
+    });
+
+    return { events, errors };
 };
 
 const renderDevicePage = async (req, res, {
@@ -297,5 +367,40 @@ export const sync = async (req, res) => {
 
         console.error("Lỗi đồng bộ dữ liệu từ thiết bị:", error);
         return res.status(500).json({ error: "Không thể đồng bộ dữ liệu chấm công." });
+    }
+};
+
+export const syncEvents = async (req, res) => {
+    try {
+        const device = await authenticateDevice(req);
+        if (!device) {
+            return res.status(401).json({ error: "Mã thiết bị hoặc khóa kết nối không hợp lệ." });
+        }
+
+        const { events, errors } = validateEventPayload(req.body);
+        if (errors.length > 0) {
+            return res.status(400).json({
+                error: "Lô sự kiện chấm công không hợp lệ.",
+                details: errors
+            });
+        }
+
+        const result = await AttendanceModel.syncDeviceEvents(device.id, events);
+        return res.json({
+            success: true,
+            device_code: device.device_code,
+            synced_at: new Date().toISOString(),
+            ...result
+        });
+    } catch (error) {
+        if (error.code === "UNKNOWN_EMPLOYEES") {
+            return res.status(422).json({
+                error: error.message,
+                employee_codes: error.employeeCodes
+            });
+        }
+
+        console.error("Lỗi đồng bộ sự kiện từ thiết bị:", error);
+        return res.status(500).json({ error: "Không thể đồng bộ sự kiện chấm công." });
     }
 };
