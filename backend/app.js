@@ -8,6 +8,8 @@ import ShiftAssignmentRouter from "./routers/ShiftAssignmentRouter.js";
 import LeaveRequestRouter from "./routers/LeaveRequestRouter.js";
 import { requireAdmin } from "./middlewares/authMiddleware.js";
 import adminAttendanceRoutes from "./routers/adminAttendanceRoutes.js";
+import adminDeviceRoutes from "./routers/adminDeviceRoutes.js";
+import deviceApiRoutes from "./routers/deviceApiRoutes.js";
 const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -45,6 +47,8 @@ app.use("/admin/requests", requireAdmin, LeaveRequestRouter);
 
 // Quản lý chấm công
 app.use("/admin/attendance", requireAdmin, adminAttendanceRoutes);
+app.use("/admin/devices", requireAdmin, adminDeviceRoutes);
+app.use("/api/devices", deviceApiRoutes);
 
 app.get("/", (req, res) => {
     if (!req.session.user) {
