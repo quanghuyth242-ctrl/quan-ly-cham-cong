@@ -108,10 +108,17 @@ export const index = async (req, res) => {
             AttendanceModel.getEmployees(),
             AttendanceModel.getStats()
         ]);
+        const attendedRecords = records.filter(
+            (record) => record.status === "present" || record.status === "late"
+        ).length;
         const overview = {
             late: records.filter((record) => record.status === "late" || record.late_minutes > 0).length,
             early: records.filter((record) => record.early_leave_minutes > 0).length,
-            unassigned: records.filter((record) => record.status !== "absent" && !record.has_schedule).length
+            unassigned: records.filter((record) => record.status !== "absent" && !record.has_schedule).length,
+            attended: attendedRecords,
+            attendanceRate: records.length > 0
+                ? Math.round((attendedRecords / records.length) * 100)
+                : 0
         };
 
         res.render("admin/attendance", {
@@ -130,7 +137,7 @@ export const index = async (req, res) => {
             records: [],
             employees: [],
             stats: { total_employees: 0, present: 0, late: 0, absent: 0 },
-            overview: { late: 0, early: 0, unassigned: 0 },
+            overview: { late: 0, early: 0, unassigned: 0, attended: 0, attendanceRate: 0 },
             success: null,
             error: "Không thể tải dữ liệu chấm công. Vui lòng thử lại."
         });
