@@ -88,14 +88,14 @@
         </article>
     </section>
 
-    <section class="flex flex-col gap-space-md" aria-label="Tổng quan đi muộn và về sớm">
+    <section class="flex flex-col gap-space-md" aria-label="Tổng quan chấm công">
         <div>
-            <h3 class="font-headline-sm text-headline-sm text-primary">Theo dõi đi muộn / về sớm</h3>
+            <h3 class="font-headline-sm text-headline-sm text-primary">Tổng quan chấm công</h3>
             <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
-                So sánh giờ chấm công với ca và ngày làm việc đã phân công; chưa áp dụng thời gian ân hạn. Các chỉ số thay đổi theo bộ lọc bên dưới.
+                Tỷ lệ chuyên cần tính số lượt đúng giờ và đi muộn trên tổng lượt ghi nhận; các chỉ số thay đổi theo bộ lọc bên dưới.
             </p>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-space-lg">
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-lg">
         <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đi muộn</span>
@@ -126,6 +126,20 @@
             </div>
             <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
                 <span class="material-symbols-outlined text-[24px]">event_busy</span>
+            </div>
+        </article>
+
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tỷ lệ chuyên cần</span>
+                <span class="mt-space-xs">
+                    <span id="attendanceRateCount" class="font-headline-xl text-headline-xl text-green-600 font-bold"><%= overview.attendanceRate %></span>
+                    <span class="font-headline-md text-headline-md text-green-600">%</span>
+                </span>
+                <span id="attendanceRateDetail" class="font-body-sm text-body-sm text-on-surface-variant"><%= overview.attended %> / <%= records.length %> lượt đi làm</span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">percent</span>
             </div>
         </article>
         </div>
@@ -565,6 +579,16 @@ function filterRecords() {
     });
 
     const visibleRows = rows.filter((row) => !row.classList.contains("hidden"));
+    const attendedRows = visibleRows.filter((row) =>
+        row.dataset.status === "present" || row.dataset.status === "late"
+    ).length;
+    const attendanceRate = visibleRows.length > 0
+        ? Math.round((attendedRows / visibleRows.length) * 100)
+        : 0;
+
+    document.getElementById("attendanceRateCount").textContent = attendanceRate;
+    document.getElementById("attendanceRateDetail").textContent =
+        `${attendedRows} / ${visibleRows.length} lượt đi làm`;
     document.getElementById("lateOverviewCount").textContent = visibleRows
         .filter((row) => row.dataset.isLate === "true").length;
     document.getElementById("earlyOverviewCount").textContent = visibleRows
