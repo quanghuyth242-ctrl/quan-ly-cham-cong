@@ -5,6 +5,11 @@ const EMPLOYEE_CODE_PATTERN = /^[A-Za-z0-9._-]{1,50}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_PATTERN = /^[+\d().\-\s]+$/;
 
+const parseId = (value) => {
+    const id = Number(value);
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
+};
+
 const getFilters = (query = {}) => ({
     search: String(query.search || "").trim().slice(0, 100),
     department: String(query.department || "").trim().slice(0, 100)
@@ -26,7 +31,9 @@ const renderPage = async (req, res, {
     error = null,
     success = null,
     formValues = {},
-    openCreateModal = false,
+    employeeModalOpen = false,
+    formMode = "create",
+    formEmployeeId = null,
     statusCode = 200
 } = {}) => {
     try {
@@ -36,7 +43,9 @@ const renderPage = async (req, res, {
             ...pageData,
             filters,
             formValues,
-            openCreateModal,
+            employeeModalOpen,
+            formMode,
+            formEmployeeId,
             success,
             error
         });
@@ -50,16 +59,20 @@ const renderPage = async (req, res, {
             stats: EMPTY_STATS,
             filters,
             formValues,
-            openCreateModal,
+            employeeModalOpen,
+            formMode,
+            formEmployeeId,
             success: null,
             error: "Không thể tải danh sách nhân sự. Vui lòng thử lại."
         });
     }
 };
 
-const validateEmployee = (body = {}) => {
+const validateEmployee = (body = {}, employeeCode = null) => {
     const employee = {
-        employee_code: String(body.employee_code || "").trim().toUpperCase(),
+        employee_code: String(employeeCode === null ? body.employee_code || "" : employeeCode)
+            .trim()
+            .toUpperCase(),
         full_name: String(body.full_name || "").trim(),
         email: String(body.email || "").trim().toLowerCase(),
         phone: String(body.phone || "").trim(),
@@ -95,7 +108,9 @@ const validateEmployee = (body = {}) => {
 };
 
 export const index = async (req, res) => renderPage(req, res, {
-    success: req.query.success === "created" ? "Đã thêm nhân viên mới." : null
+    success: req.query.success === "created"
+        ? "Đã thêm nhân viên mới."
+        : req.query.success === "updated" ? "Đã cập nhật thông tin nhân viên." : null
 });
 
 export const create = async (req, res) => {
@@ -112,7 +127,8 @@ export const create = async (req, res) => {
             return renderPage(req, res, {
                 filters: getFilters(),
                 formValues: employee,
-                openCreateModal: true,
+                employeeModalOpen: true,
+                formMode: "create",
                 error: "Không thể kiểm tra mã nhân viên. Vui lòng thử lại.",
                 statusCode: 500
             });
@@ -123,7 +139,8 @@ export const create = async (req, res) => {
         return renderPage(req, res, {
             filters: getFilters(),
             formValues: employee,
-            openCreateModal: true,
+            employeeModalOpen: true,
+            formMode: "create",
             error: errors.join(" "),
             statusCode: 400
         });
@@ -141,11 +158,66 @@ export const create = async (req, res) => {
         return renderPage(req, res, {
             filters: getFilters(),
             formValues: employee,
-            openCreateModal: true,
+            employeeModalOpen: true,
+            formMode: "create",
             error: isDuplicateCode
                 ? "Mã nhân viên vừa được sử dụng. Vui lòng chọn mã khác."
                 : "Không thể thêm nhân viên. Vui lòng thử lại.",
             statusCode: isDuplicateCode ? 409 : 500
+        });
+    }
+};
+
+export const update = async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) {
+        return renderPage(req, res, {
+            error: "Mã nhân viên không hợp lệ.",
+            statusCode: 400
+        });
+    }
+
+    try {
+        const existingEmployee = await EmployeeModel.findById(id);
+        if (!existingEmployee) {
+            return renderPage(req, res, {
+                error: "Không tìm thấy nhân viên cần cập nhật.",
+                statusCode: 404
+            });
+        }
+
+        const { employee, errors } = validateEmployee(req.body, existingEmployee.employee_code);
+        if (errors.length > 0) {
+            return renderPage(req, res, {
+                filters: getFilters(),
+                formValues: employee,
+                employeeModalOpen: true,
+                formMode: "edit",
+                formEmployeeId: id,
+                error: errors.join(" "),
+                statusCode: 400
+            });
+        }
+
+        await EmployeeModel.update(id, employee);
+        return res.redirect("/admin/employees?success=updated");
+    } catch (error) {
+        console.error("Lỗi cập nhật thông tin nhân viên:", error);
+        const existingEmployee = await EmployeeModel.findById(id).catch((loadError) => {
+            console.error("Lỗi tải lại hồ sơ nhân viên sau khi cập nhật thất bại:", loadError);
+            return null;
+        });
+
+        return renderPage(req, res, {
+            filters: getFilters(),
+            formValues: existingEmployee
+                ? { ...existingEmployee, ...req.body, employee_code: existingEmployee.employee_code }
+                : {},
+            employeeModalOpen: Boolean(existingEmployee),
+            formMode: "edit",
+            formEmployeeId: existingEmployee ? id : null,
+            error: "Không thể cập nhật thông tin nhân viên. Vui lòng thử lại.",
+            statusCode: 500
         });
     }
 };

@@ -150,7 +150,7 @@
                         <th class="py-space-md px-space-lg font-semibold text-right">Thao tác</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-surface-container-low text-body-sm text-on-surface">
+                <tbody id="employees-table-body" class="divide-y divide-surface-container-low text-body-sm text-on-surface">
                     <% if (employees.length === 0) { %>
                         <tr>
                             <td colspan="6" class="py-space-2xl px-space-lg text-center">
@@ -206,7 +206,22 @@
                                 </td>
                                 <td class="py-space-md px-space-md font-data-mono text-data-mono"><%= employee.created_date || "—" %></td>
                                 <td class="py-space-md px-space-lg">
-                                    <div class="flex justify-end">
+                                    <div class="flex justify-end gap-space-xs">
+                                        <button
+                                            class="inline-flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
+                                            data-edit-employee
+                                            data-id="<%= employee.id %>"
+                                            data-code="<%= employee.employee_code %>"
+                                            data-name="<%= employee.full_name %>"
+                                            data-email="<%= employee.email || '' %>"
+                                            data-phone="<%= employee.phone || '' %>"
+                                            data-department="<%= employee.department || '' %>"
+                                            type="button"
+                                            title="Cập nhật thông tin nhân viên"
+                                        >
+                                            <span class="material-symbols-outlined text-[16px]">edit</span>
+                                            <span>Cập nhật</span>
+                                        </button>
                                         <a
                                             class="inline-flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
                                             href="/admin/shift-assignments?search=<%= encodeURIComponent(employee.employee_code) %>"
@@ -228,7 +243,7 @@
 
 <div
     id="employee-modal"
-    class="fixed inset-0 z-50 <%= openCreateModal ? '' : 'hidden' %>"
+    class="fixed inset-0 z-50 <%= employeeModalOpen ? '' : 'hidden' %>"
     data-available-codes="<%= JSON.stringify(availableEmployeeCodes) %>"
 >
     <div class="absolute inset-0 bg-black/40" data-close-employee-modal></div>
@@ -241,15 +256,21 @@
         >
             <div class="flex items-center justify-between px-space-xl py-space-lg border-b border-surface-container-high">
                 <div>
-                    <h3 id="employee-modal-title" class="font-headline-md text-headline-md text-primary font-semibold">Thêm nhân viên</h3>
-                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Nhập thông tin hồ sơ nhân viên mới.</p>
+                    <h3 id="employee-modal-title" class="font-headline-md text-headline-md text-primary font-semibold"><%= formMode === "edit" ? "Cập nhật nhân viên" : "Thêm nhân viên" %></h3>
+                    <p id="employee-modal-description" class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs"><%= formMode === "edit" ? "Cập nhật thông tin liên hệ và phòng ban." : "Nhập thông tin hồ sơ nhân viên mới." %></p>
                 </div>
                 <button class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-employee-modal type="button" aria-label="Đóng">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
 
-            <form action="/admin/employees" method="POST" class="p-space-xl flex flex-col gap-space-lg">
+            <form
+                id="employee-form"
+                data-mode="<%= formMode %>"
+                action="<%= formMode === 'edit' && formEmployeeId ? `/admin/employees/${formEmployeeId}/update` : '/admin/employees' %>"
+                method="POST"
+                class="p-space-xl flex flex-col gap-space-lg"
+            >
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
                     <label class="flex flex-col gap-space-xs">
                         <span class="font-label-sm text-label-sm text-on-surface">Mã nhân viên tự động</span>
@@ -265,7 +286,7 @@
                             placeholder="Nhập họ tên để tự chọn mã"
                             class="w-full bg-surface-container-low text-on-surface-variant font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none"
                         >
-                        <span id="employee-code-help" class="font-body-sm text-body-sm text-on-surface-variant">Mã sẽ được tự động chọn từ danh sách mã chưa sử dụng.</span>
+                        <span id="employee-code-help" class="font-body-sm text-body-sm text-on-surface-variant"><%= formMode === "edit" ? "Mã nhân viên được giữ cố định để bảo toàn dữ liệu chấm công." : "Mã sẽ được tự động chọn từ danh sách mã chưa sử dụng." %></span>
                     </label>
                     <label class="flex flex-col gap-space-xs">
                         <span class="font-label-sm text-label-sm text-on-surface">Họ và tên <span class="text-error">*</span></span>
@@ -330,8 +351,8 @@
                         Hủy
                     </button>
                     <button class="flex items-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl shadow-md transition-colors" type="submit">
-                        <span class="material-symbols-outlined text-[18px]">person_add</span>
-                        <span>Lưu nhân viên</span>
+                        <span id="employee-submit-icon" class="material-symbols-outlined text-[18px]"><%= formMode === "edit" ? "save" : "person_add" %></span>
+                        <span id="employee-submit-label"><%= formMode === "edit" ? "Lưu thay đổi" : "Lưu nhân viên" %></span>
                     </button>
                 </div>
             </form>
@@ -343,12 +364,19 @@
 document.addEventListener("DOMContentLoaded", () => {
     const modal = document.getElementById("employee-modal");
     const openButton = document.getElementById("open-create-employee");
+    const form = document.getElementById("employee-form");
+    const modalTitle = document.getElementById("employee-modal-title");
+    const modalDescription = document.getElementById("employee-modal-description");
+    const submitIcon = document.getElementById("employee-submit-icon");
+    const submitLabel = document.getElementById("employee-submit-label");
     const fullNameField = modal.querySelector('[name="full_name"]');
     const employeeCodeField = document.getElementById("employee-code");
     const employeeCodeHelp = document.getElementById("employee-code-help");
     const availableCodes = JSON.parse(modal.dataset.availableCodes || "[]");
 
     const assignEmployeeCode = () => {
+        if (form.dataset.mode === "edit") return;
+
         if (!fullNameField.value.trim()) {
             employeeCodeField.value = "";
             employeeCodeHelp.textContent = "Nhập họ tên để tự chọn mã nhân viên còn trống.";
@@ -368,13 +396,48 @@ document.addEventListener("DOMContentLoaded", () => {
         document.body.classList.add("shift-modal-open");
         fullNameField.focus();
     };
+    const openCreateModal = () => {
+        form.reset();
+        form.action = "/admin/employees";
+        form.dataset.mode = "create";
+        modalTitle.textContent = "Thêm nhân viên";
+        modalDescription.textContent = "Nhập thông tin hồ sơ nhân viên mới.";
+        submitIcon.textContent = "person_add";
+        submitLabel.textContent = "Lưu nhân viên";
+        employeeCodeField.value = "";
+        fullNameField.value = "";
+        form.elements.email.value = "";
+        form.elements.phone.value = "";
+        form.elements.department.value = "";
+        employeeCodeHelp.textContent = "Mã sẽ được tự động chọn từ danh sách mã chưa sử dụng.";
+        openModal();
+    };
+    const openEditModal = (button) => {
+        form.action = `/admin/employees/${button.dataset.id}/update`;
+        form.dataset.mode = "edit";
+        modalTitle.textContent = "Cập nhật nhân viên";
+        modalDescription.textContent = "Cập nhật thông tin liên hệ và phòng ban.";
+        submitIcon.textContent = "save";
+        submitLabel.textContent = "Lưu thay đổi";
+        employeeCodeField.value = button.dataset.code;
+        fullNameField.value = button.dataset.name;
+        form.elements.email.value = button.dataset.email;
+        form.elements.phone.value = button.dataset.phone;
+        form.elements.department.value = button.dataset.department;
+        employeeCodeHelp.textContent = "Mã nhân viên được giữ cố định để bảo toàn dữ liệu chấm công.";
+        openModal();
+    };
     const closeModal = () => {
         modal.classList.add("hidden");
         document.body.classList.remove("shift-modal-open");
     };
 
     fullNameField.addEventListener("input", assignEmployeeCode);
-    openButton.addEventListener("click", openModal);
+    openButton.addEventListener("click", openCreateModal);
+    document.getElementById("employees-table-body").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-edit-employee]");
+        if (button) openEditModal(button);
+    });
     modal.querySelectorAll("[data-close-employee-modal]").forEach((button) => {
         button.addEventListener("click", closeModal);
     });
