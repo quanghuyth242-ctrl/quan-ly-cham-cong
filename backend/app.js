@@ -9,6 +9,7 @@ import LeaveRequestRouter from "./routers/LeaveRequestRouter.js";
 import { requireAdmin } from "./middlewares/authMiddleware.js";
 import adminAttendanceRoutes from "./routers/adminAttendanceRoutes.js";
 import adminDeviceRoutes from "./routers/adminDeviceRoutes.js";
+import adminEmployeeRoutes from "./routers/adminEmployeeRoutes.js";
 import deviceApiRoutes from "./routers/deviceApiRoutes.js";
 const app = express();
 
@@ -48,6 +49,7 @@ app.use("/admin/requests", requireAdmin, LeaveRequestRouter);
 // Quản lý chấm công
 app.use("/admin/attendance", requireAdmin, adminAttendanceRoutes);
 app.use("/admin/devices", requireAdmin, adminDeviceRoutes);
+app.use("/admin/employees", requireAdmin, adminEmployeeRoutes);
 app.use("/api/devices", deviceApiRoutes);
 
 app.get("/", (req, res) => {
