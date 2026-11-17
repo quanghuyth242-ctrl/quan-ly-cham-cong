@@ -15,6 +15,23 @@ const isValidDate = (value) => {
     return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 };
 
+const getToday = () => {
+    const date = new Date();
+    return [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, "0"),
+        String(date.getDate()).padStart(2, "0")
+    ].join("-");
+};
+
+const getEmptyReportStats = () => ({
+    total_records: 0,
+    present: 0,
+    late: 0,
+    absent: 0,
+    total_hours: 0
+});
+
 const redirectWith = (res, { success = null, error = null } = {}) => {
     const params = new URLSearchParams();
     if (success) params.set("success", success);
@@ -109,6 +126,59 @@ export const index = async (req, res) => {
             stats: { total_employees: 0, present: 0, late: 0, absent: 0 },
             success: null,
             error: "Không thể tải dữ liệu chấm công. Vui lòng thử lại."
+        });
+    }
+};
+
+export const report = async (req, res) => {
+    const today = getToday();
+    const defaultFromDate = `${today.slice(0, 7)}-01`;
+    const fromDate = String(req.query.from_date || defaultFromDate).trim();
+    const toDate = String(req.query.to_date || today).trim();
+    const rangeValid = isValidDate(fromDate)
+        && isValidDate(toDate)
+        && fromDate <= toDate;
+
+    if (!rangeValid) {
+        return res.status(400).render("admin/attendance-report", {
+            user: req.session.user,
+            filters: { fromDate, toDate },
+            stats: getEmptyReportStats(),
+            employees: [],
+            attendanceRate: 0,
+            success: null,
+            error: "Khoảng ngày báo cáo không hợp lệ."
+        });
+    }
+
+    try {
+        const [stats, employees] = await Promise.all([
+            AttendanceModel.getReportSummary(fromDate, toDate),
+            AttendanceModel.getEmployeeReport(fromDate, toDate)
+        ]);
+        const attendanceRate = stats.total_records > 0
+            ? Math.round(((stats.present + stats.late) / stats.total_records) * 100)
+            : 0;
+
+        return res.render("admin/attendance-report", {
+            user: req.session.user,
+            filters: { fromDate, toDate },
+            stats,
+            employees,
+            attendanceRate,
+            success: null,
+            error: null
+        });
+    } catch (error) {
+        console.error("Lỗi tải báo cáo chấm công:", error);
+        return res.status(500).render("admin/attendance-report", {
+            user: req.session.user,
+            filters: { fromDate, toDate },
+            stats: getEmptyReportStats(),
+            employees: [],
+            attendanceRate: 0,
+            success: null,
+            error: "Không thể tải báo cáo chấm công. Vui lòng thử lại."
         });
     }
 };
