@@ -1,0 +1,251 @@
+<%- include("../partials/adminHead", {
+    pageTitle: "Quản lý nhân sự",
+    activePage: "employees",
+    user: user
+}) %>
+
+<section class="flex flex-col gap-space-xl">
+    <%- include("../partials/alerts", { success: null, error: error }) %>
+
+    <section class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+        <div class="flex flex-col gap-space-xs">
+            <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
+                <span class="flex h-2 w-2 rounded-full bg-primary-container"></span>
+                <span class="uppercase tracking-wider">Hồ sơ nhân viên</span>
+            </div>
+            <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Quản lý nhân sự</h2>
+            <p class="font-body-md text-body-md text-on-surface-variant">
+                Tra cứu thông tin nhân viên và phân bố nhân sự theo phòng ban.
+            </p>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-space-sm">
+            <a
+                href="/admin/shift-assignments"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md shadow-md transition-colors"
+            >
+                <span class="material-symbols-outlined text-[20px]">assignment_ind</span>
+                <span>Phân ca nhân viên</span>
+            </a>
+            <button
+                id="export-employees"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+                onclick="exportEmployeesCSV()"
+                <%= employees.length === 0 ? "disabled" : "" %>
+            >
+                <span class="material-symbols-outlined text-[20px]">download</span>
+                <span>Xuất CSV</span>
+            </button>
+        </div>
+    </section>
+
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-space-lg" aria-label="Thống kê nhân sự">
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng nhân viên</span>
+                <span class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= stats.total %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">groups</span>
+            </div>
+        </article>
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Phòng ban</span>
+                <span class="font-headline-xl text-headline-xl text-secondary font-bold mt-space-xs"><%= stats.departments %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-secondary-fixed text-secondary flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">domain</span>
+            </div>
+        </article>
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Chưa phân phòng ban</span>
+                <span class="font-headline-xl text-headline-xl text-orange-600 font-bold mt-space-xs"><%= stats.unassignedDepartment %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">person_search</span>
+            </div>
+        </article>
+    </section>
+
+    <section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <div class="p-space-lg md:p-space-xl border-b border-surface-container-high">
+            <form method="GET" action="/admin/employees" class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md flex-1">
+                    <label class="flex flex-col gap-space-xs">
+                        <span class="font-label-sm text-label-sm text-on-surface-variant">Tìm nhân viên</span>
+                        <span class="relative">
+                            <span class="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">search</span>
+                            <input
+                                name="search"
+                                value="<%= filters.search %>"
+                                type="search"
+                                maxlength="100"
+                                placeholder="Tên, mã, email hoặc số điện thoại..."
+                                class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md pl-11 pr-space-md py-space-md rounded-xl outline-none focus:ring-2 focus:ring-primary-container transition-shadow"
+                            >
+                        </span>
+                    </label>
+                    <label class="flex flex-col gap-space-xs">
+                        <span class="font-label-sm text-label-sm text-on-surface-variant">Phòng ban</span>
+                        <select
+                            name="department"
+                            class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-md rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                        >
+                            <option value="">Tất cả phòng ban</option>
+                            <% departments.forEach((department) => { %>
+                                <option value="<%= department %>" <%= filters.department === department ? "selected" : "" %>><%= department %></option>
+                            <% }); %>
+                        </select>
+                    </label>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-space-sm">
+                    <button
+                        type="submit"
+                        class="flex items-center justify-center gap-space-xs px-space-lg py-space-md bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md transition-colors"
+                    >
+                        <span class="material-symbols-outlined text-[18px]">filter_alt</span>
+                        <span>Lọc danh sách</span>
+                    </button>
+                    <a
+                        href="/admin/employees"
+                        class="flex items-center justify-center gap-space-xs px-space-lg py-space-md bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors"
+                    >
+                        <span class="material-symbols-outlined text-[18px]">restart_alt</span>
+                        <span>Xóa bộ lọc</span>
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm p-space-lg md:px-space-xl border-b border-surface-container-low">
+            <div>
+                <h3 class="font-headline-sm text-headline-sm text-on-surface">Danh sách nhân viên</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Thông tin liên hệ và phòng ban của nhân sự.</p>
+            </div>
+            <span class="font-body-sm text-body-sm text-on-surface-variant" aria-live="polite">
+                Hiển thị <strong class="text-on-surface"><%= employees.length %></strong> / <%= stats.total %> nhân viên
+            </span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[980px]">
+                <caption class="sr-only">Danh sách nhân sự</caption>
+                <thead>
+                    <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                        <th class="py-space-md px-space-lg font-semibold">Mã nhân viên</th>
+                        <th class="py-space-md px-space-md font-semibold">Họ và tên</th>
+                        <th class="py-space-md px-space-md font-semibold">Phòng ban</th>
+                        <th class="py-space-md px-space-md font-semibold">Thông tin liên hệ</th>
+                        <th class="py-space-md px-space-md font-semibold">Ngày tạo hồ sơ</th>
+                        <th class="py-space-md px-space-lg font-semibold text-right">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-surface-container-low text-body-sm text-on-surface">
+                    <% if (employees.length === 0) { %>
+                        <tr>
+                            <td colspan="6" class="py-space-2xl px-space-lg text-center">
+                                <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
+                                    <span class="material-symbols-outlined text-[40px] text-outline">group_off</span>
+                                    <span class="font-label-md text-label-md">Không tìm thấy nhân viên phù hợp</span>
+                                    <span class="font-body-sm text-body-sm">Thử thay đổi từ khóa hoặc phòng ban đang chọn.</span>
+                                </div>
+                            </td>
+                        </tr>
+                    <% } else { %>
+                        <% employees.forEach((employee) => { %>
+                            <tr
+                                class="employee-row align-middle hover:bg-surface-container-low/70 transition-colors"
+                                data-code="<%= employee.employee_code %>"
+                                data-name="<%= employee.full_name %>"
+                                data-department="<%= employee.department || '' %>"
+                                data-email="<%= employee.email || '' %>"
+                                data-phone="<%= employee.phone || '' %>"
+                                data-created-date="<%= employee.created_date || '' %>"
+                            >
+                                <td class="py-space-md px-space-lg">
+                                    <span class="inline-flex px-space-sm py-1 rounded-lg bg-primary-fixed text-primary font-data-mono text-data-mono font-semibold"><%= employee.employee_code %></span>
+                                </td>
+                                <td class="py-space-md px-space-md">
+                                    <div class="flex items-center gap-space-sm">
+                                        <div class="w-9 h-9 rounded-full bg-primary-fixed text-primary font-semibold flex items-center justify-center text-xs shrink-0">
+                                            <%= String(employee.full_name || "?").trim().slice(0, 2).toUpperCase() %>
+                                        </div>
+                                        <span class="font-label-md text-label-md text-on-surface font-semibold"><%= employee.full_name %></span>
+                                    </div>
+                                </td>
+                                <td class="py-space-md px-space-md">
+                                    <% if (employee.department) { %>
+                                        <span class="inline-flex px-space-sm py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm"><%= employee.department %></span>
+                                    <% } else { %>
+                                        <span class="text-outline">Chưa phân phòng ban</span>
+                                    <% } %>
+                                </td>
+                                <td class="py-space-md px-space-md">
+                                    <div class="flex flex-col gap-1">
+                                        <% if (employee.email) { %>
+                                            <a class="text-primary hover:underline" href="mailto:<%= employee.email %>"><%= employee.email %></a>
+                                        <% } else { %>
+                                            <span class="text-outline">Chưa cập nhật email</span>
+                                        <% } %>
+                                        <% if (employee.phone) { %>
+                                            <a class="font-data-mono text-data-mono text-on-surface-variant hover:text-primary" href="tel:<%= employee.phone %>"><%= employee.phone %></a>
+                                        <% } else { %>
+                                            <span class="text-outline">Chưa cập nhật số điện thoại</span>
+                                        <% } %>
+                                    </div>
+                                </td>
+                                <td class="py-space-md px-space-md font-data-mono text-data-mono"><%= employee.created_date || "—" %></td>
+                                <td class="py-space-md px-space-lg">
+                                    <div class="flex justify-end">
+                                        <a
+                                            class="inline-flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
+                                            href="/admin/shift-assignments?search=<%= encodeURIComponent(employee.employee_code) %>"
+                                            title="Mở phân ca cho nhân viên này"
+                                        >
+                                            <span class="material-symbols-outlined text-[16px]">event_repeat</span>
+                                            <span>Phân ca</span>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+
+<script>
+function exportEmployeesCSV() {
+    const rows = [...document.querySelectorAll(".employee-row")];
+    if (rows.length === 0) return;
+
+    const data = [
+        ["Mã nhân viên", "Họ và tên", "Phòng ban", "Email", "Số điện thoại", "Ngày tạo hồ sơ"],
+        ...rows.map((row) => [
+            row.dataset.code,
+            row.dataset.name,
+            row.dataset.department,
+            row.dataset.email,
+            row.dataset.phone,
+            row.dataset.createdDate
+        ])
+    ];
+    const csv = "\uFEFF" + data.map((row) =>
+        row.map((value) => `"${value.replace(/"/g, '""')}"`).join(",")
+    ).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "danh-sach-nhan-su.csv";
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+</script>
+
+<%- include("../partials/adminFoot") %>
