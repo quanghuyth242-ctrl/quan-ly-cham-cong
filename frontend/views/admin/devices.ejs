@@ -36,9 +36,10 @@
                         <code class="font-data-mono text-data-mono text-on-surface break-all"><%= newDevice.token %></code>
                     </div>
                     <div class="font-body-sm text-body-sm text-green-800">
-                        Gửi <strong>POST</strong> đến
+                        Dùng khóa này cho cả tín hiệu heartbeat và đồng bộ dữ liệu:
                         <code>/api/devices/<%= newDevice.deviceCode %>/heartbeat</code>
-                        với header <code>X-Device-Token</code> chứa khóa phía trên.
+                        hoặc <code>/api/devices/<%= newDevice.deviceCode %>/sync</code>,
+                        kèm header <code>X-Device-Token</code>.
                     </div>
                 </div>
             </div>
@@ -108,19 +109,20 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[760px] text-left">
+                <table class="w-full min-w-[980px] text-left">
                     <thead class="bg-surface-container-low">
                         <tr class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
                             <th class="px-space-lg py-space-md font-medium">Thiết bị</th>
                             <th class="px-space-md py-space-md font-medium">Vị trí</th>
                             <th class="px-space-md py-space-md font-medium">Trạng thái</th>
-                            <th class="px-space-lg py-space-md font-medium">Heartbeat gần nhất</th>
+                            <th class="px-space-md py-space-md font-medium">Heartbeat gần nhất</th>
+                            <th class="px-space-lg py-space-md font-medium">Đồng bộ gần nhất</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-outline-variant">
                         <% if (devices.length === 0) { %>
                             <tr>
-                                <td colspan="4" class="px-space-lg py-space-2xl text-center">
+                                <td colspan="5" class="px-space-lg py-space-2xl text-center">
                                     <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
                                         <span class="material-symbols-outlined text-[40px]">devices_other</span>
                                         <span class="font-label-md text-label-md">Chưa có thiết bị nào được đăng ký.</span>
@@ -162,6 +164,14 @@
                                 </td>
                                 <td class="px-space-lg py-space-md font-body-sm text-body-sm text-on-surface-variant">
                                     <%= device.last_seen_at || "Chưa gửi tín hiệu" %>
+                                </td>
+                                <td class="px-space-lg py-space-md font-body-sm text-body-sm text-on-surface-variant">
+                                    <div class="flex flex-col">
+                                        <span><%= device.last_sync_at || "Chưa đồng bộ" %></span>
+                                        <% if (device.last_sync_count > 0) { %>
+                                            <span class="text-[11px]"><%= device.last_sync_count %> bản ghi gần nhất</span>
+                                        <% } %>
+                                    </div>
                                 </td>
                             </tr>
                         <% }); %>
@@ -245,6 +255,31 @@
                 <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
                     Thiết bị gửi POST đến <code>/api/devices/{mã-thiết-bị}/heartbeat</code> kèm header
                     <code>X-Device-Token</code>. Nếu không nhận tín hiệu trong <%= onlineWindowMinutes %> phút, thiết bị sẽ hiện ngoại tuyến.
+                </p>
+            </div>
+
+            <div class="p-space-md bg-surface-container-low rounded-xl">
+                <div class="flex items-center gap-space-xs text-primary">
+                    <span class="material-symbols-outlined text-[18px]">sync</span>
+                    <span class="font-label-md text-label-md">Đồng bộ chấm công tự động</span>
+                </div>
+                <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
+                    Thiết bị gửi POST đến <code>/api/devices/{mã-thiết-bị}/sync</code> với cùng header
+                    <code>X-Device-Token</code>. Gửi tối đa 500 bản ghi trong mỗi lô:
+                </p>
+                <pre class="mt-space-sm p-space-sm bg-surface-container-high rounded-lg overflow-x-auto text-[11px] text-on-surface"><code>{
+  "records": [
+    {
+      "employee_code": "NV001",
+      "work_date": "2026-11-17",
+      "check_in": "07:30",
+      "check_out": "17:00",
+      "status": "present"
+    }
+  ]
+}</code></pre>
+                <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-sm">
+                    Chỉ bản ghi do thiết bị tạo mới hoặc đồng bộ trước đó mới được cập nhật; dữ liệu đã điều chỉnh thủ công được giữ nguyên.
                 </p>
             </div>
         </aside>

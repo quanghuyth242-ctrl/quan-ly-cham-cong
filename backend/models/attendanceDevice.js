@@ -10,6 +10,8 @@ export const findAll = async () => {
                 location,
                 device_type,
                 DATE_FORMAT(last_seen_at, '%Y-%m-%d %H:%i:%s') AS last_seen_at,
+                DATE_FORMAT(last_sync_at, '%Y-%m-%d %H:%i:%s') AS last_sync_at,
+                last_sync_count,
                 is_active,
                 is_sample,
                 CASE
@@ -26,7 +28,8 @@ export const findAll = async () => {
         ...row,
         is_active: Boolean(Number(row.is_active)),
         is_sample: Boolean(Number(row.is_sample)),
-        is_online: Boolean(Number(row.is_online))
+        is_online: Boolean(Number(row.is_online)),
+        last_sync_count: Number(row.last_sync_count || 0)
     }));
 };
 
@@ -43,7 +46,7 @@ export const create = async (data) => {
 
 export const findByCode = async (deviceCode) => {
     const [rows] = await db.execute(
-        `SELECT id, token_hash, is_active
+        `SELECT id, device_code, token_hash, is_active
            FROM attendance_devices
           WHERE device_code = ?
           LIMIT 1`,

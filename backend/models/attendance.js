@@ -185,8 +185,8 @@ const toDateTime = (workDate, time) => time ? `${workDate} ${time}:00` : null;
 
 export const create = async (data) => {
     const [result] = await db.execute(
-        `INSERT INTO attendance (employee_id, work_date, check_in, check_out, status)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO attendance (employee_id, work_date, check_in, check_out, status, record_source)
+         VALUES (?, ?, ?, ?, ?, 'manual')`,
         [
             data.employee_id,
             data.work_date,
@@ -205,7 +205,8 @@ export const update = async (id, data) => {
                 work_date = ?,
                 check_in = ?,
                 check_out = ?,
-                status = ?
+                status = ?,
+                record_source = 'manual'
           WHERE id = ?`,
         [
             data.employee_id,
@@ -216,4 +217,127 @@ export const update = async (id, data) => {
             id
         ]
     );
+};
+
+export const syncDeviceRecords = async (deviceId, records) => {
+    const connection = await db.getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        const employeeCodes = [...new Set(records.map((record) => record.employee_code))];
+        const placeholders = employeeCodes.map(() => "?").join(", ");
+        const [employeeRows] = await connection.execute(
+            `SELECT id, employee_code
+               FROM employees
+              WHERE employee_code IN (${placeholders})`,
+            employeeCodes
+        );
+        const employeeIds = new Map(
+            employeeRows.map((employee) => [String(employee.employee_code).toUpperCase(), employee.id])
+        );
+        const unknownEmployeeCodes = employeeCodes.filter(
+            (code) => !employeeIds.has(code.toUpperCase())
+        );
+
+        if (unknownEmployeeCodes.length > 0) {
+            const error = new Error("Một hoặc nhiều mã nhân viên không tồn tại.");
+            error.code = "UNKNOWN_EMPLOYEES";
+            error.employeeCodes = unknownEmployeeCodes;
+            throw error;
+        }
+
+        const mappedRecords = records
+            .map((record) => ({
+                ...record,
+                employee_id: employeeIds.get(record.employee_code.toUpperCase())
+            }))
+            .sort((left, right) => left.employee_id - right.employee_id
+                || left.work_date.localeCompare(right.work_date));
+        const result = {
+            received: records.length,
+            inserted: 0,
+            updated: 0,
+            unchanged: 0,
+            preserved_manual: 0
+        };
+
+        for (const record of mappedRecords) {
+            const [existingRows] = await connection.execute(
+                `SELECT id,
+                        TIME_FORMAT(check_in, '%H:%i') AS check_in,
+                        TIME_FORMAT(check_out, '%H:%i') AS check_out,
+                        status,
+                        record_source
+                   FROM attendance
+                  WHERE employee_id = ? AND work_date = ?
+                  LIMIT 1
+                  FOR UPDATE`,
+                [record.employee_id, record.work_date]
+            );
+            const existing = existingRows[0];
+            const checkIn = record.check_in
+                ? `${record.work_date} ${record.check_in}:00`
+                : null;
+            const checkOut = record.check_out
+                ? `${record.work_date} ${record.check_out}:00`
+                : null;
+
+            if (!existing) {
+                await connection.execute(
+                    `INSERT INTO attendance
+                        (employee_id, work_date, check_in, check_out, status, record_source)
+                     VALUES (?, ?, ?, ?, ?, 'device')`,
+                    [
+                        record.employee_id,
+                        record.work_date,
+                        checkIn,
+                        checkOut,
+                        record.status
+                    ]
+                );
+                result.inserted += 1;
+                continue;
+            }
+
+            if (existing.record_source !== "device") {
+                result.preserved_manual += 1;
+                continue;
+            }
+
+            const unchanged = existing.check_in === (record.check_in || null)
+                && existing.check_out === (record.check_out || null)
+                && String(existing.status || "").toLowerCase() === record.status;
+
+            if (unchanged) {
+                result.unchanged += 1;
+                continue;
+            }
+
+            await connection.execute(
+                `UPDATE attendance
+                    SET check_in = ?, check_out = ?, status = ?
+                  WHERE id = ?`,
+                [checkIn, checkOut, record.status, existing.id]
+            );
+            result.updated += 1;
+        }
+
+        await connection.execute(
+            `UPDATE attendance_devices
+                SET last_seen_at = NOW(6),
+                    last_sync_at = NOW(6),
+                    last_sync_count = ?
+              WHERE id = ? AND is_active = 1`,
+            [records.length, deviceId]
+        );
+
+        await connection.commit();
+        return result;
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
 };
