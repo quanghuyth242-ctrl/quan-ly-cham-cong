@@ -1,4 +1,4 @@
-<%- include("partials/adminHead", { pageTitle: "Quản lý ca làm việc", activePage: "shifts", user: user }) %>
+<%- include("partials/adminHead", { pageTitle: "Quản lý ca & lịch trực", activePage: "shifts", user: user }) %>
 
 <%- include("partials/alerts", { success: success, error: error }) %>
 
@@ -8,16 +8,22 @@
             <span class="flex h-2 w-2 rounded-full bg-primary-container"></span>
             <span class="uppercase tracking-wider">Ca làm việc &amp; lịch trực</span>
         </div>
-        <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Quản lý ca làm việc</h2>
+        <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Quản lý ca &amp; lịch trực</h2>
         <p class="font-body-md text-body-md text-on-surface-variant">
-            Thiết lập khung giờ làm việc, các ngày làm việc trong tuần và trạng thái áp dụng của từng ca.
+            Thiết lập khung giờ, ngày làm việc và trạng thái của từng ca; phân ca cho nhân viên để tạo lịch trực.
         </p>
     </div>
 
-    <button id="open-create-shift" class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md shadow-md transition-all self-start lg:self-auto" type="button">
-        <span class="material-symbols-outlined text-[20px]">add</span>
-        <span>Thêm ca làm việc</span>
-    </button>
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-space-sm self-start lg:self-auto">
+        <a href="/admin/shift-assignments" class="flex items-center justify-center gap-space-xs bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors">
+            <span class="material-symbols-outlined text-[20px]">event_repeat</span>
+            <span>Phân ca nhân viên</span>
+        </a>
+        <button id="open-create-shift" class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md shadow-md transition-all" type="button">
+            <span class="material-symbols-outlined text-[20px]">add</span>
+            <span>Thêm ca làm việc</span>
+        </button>
+    </div>
 </section>
 
 <section class="grid grid-cols-1 sm:grid-cols-3 gap-space-lg">
