@@ -109,9 +109,9 @@
 
 <div id="sidebar-overlay" class="fixed inset-0 bg-black/40 z-40 hidden md:hidden"></div>
 
-<aside id="admin-sidebar" class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 hidden md:flex flex-col justify-between">
+<aside id="admin-sidebar" class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest border-r border-surface-container-high shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 hidden md:flex flex-col justify-between">
     <div class="flex flex-col">
-        <div class="h-16 px-space-lg flex items-center gap-space-sm bg-surface-container-lowest">
+        <div class="h-16 px-space-lg flex items-center gap-space-sm bg-surface-container-lowest border-b border-surface-container-low">
             <div class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shrink-0">
                 <span class="material-symbols-outlined text-on-primary text-[20px]">schedule</span>
             </div>
@@ -121,14 +121,10 @@
             </div>
         </div>
 
-        <div class="px-space-md py-space-sm">
-            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider px-space-sm">Chức năng chính</span>
-        </div>
-
-        <nav class="flex flex-col gap-space-xs px-space-md">
+        <nav aria-label="Điều hướng chính" class="flex flex-col gap-1.5 px-space-md pt-space-lg">
             <% navItems.forEach((item) => { %>
-                <a href="<%= item.href %>" class="flex items-center gap-space-md px-space-md py-space-sm whitespace-nowrap rounded-xl transition-colors font-label-md text-label-md <%= activePageKey === item.key ? 'bg-primary-container text-on-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' %>">
-                    <span class="material-symbols-outlined shrink-0 text-[20px]"><%= item.icon %></span>
+                <a href="<%= item.href %>" <%= activePageKey === item.key ? 'aria-current="page"' : '' %> class="group flex items-center gap-space-md px-space-md py-2.5 whitespace-nowrap rounded-xl transition-all duration-200 font-label-md text-label-md <%= activePageKey === item.key ? 'bg-primary-container text-on-primary shadow-[0_6px_14px_rgba(30,64,175,0.18)]' : 'text-on-surface-variant hover:bg-primary-fixed/60 hover:text-primary' %>">
+                    <span class="material-symbols-outlined shrink-0 text-[20px] transition-transform duration-200 group-hover:scale-105"><%= item.icon %></span>
                     <span><%= item.label %></span>
                 </a>
             <% }) %>
