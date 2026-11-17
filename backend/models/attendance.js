@@ -108,6 +108,79 @@ export const getStats = async () => {
     };
 };
 
+export const getReportSummary = async (fromDate, toDate) => {
+    const [rows] = await db.execute(
+        `SELECT COUNT(*) AS total_records,
+                COALESCE(SUM(LOWER(COALESCE(status, '')) IN ('present', 'on_time', 'đúng giờ')), 0) AS present,
+                COALESCE(SUM(LOWER(COALESCE(status, '')) IN ('late', 'đi muộn')), 0) AS late,
+                COALESCE(SUM(LOWER(COALESCE(status, '')) IN ('absent', 'vắng mặt')), 0) AS absent,
+                COALESCE(ROUND(SUM(
+                    CASE
+                        WHEN check_in IS NOT NULL AND check_out IS NOT NULL
+                        THEN GREATEST(0, TIMESTAMPDIFF(MINUTE, check_in, check_out)) / 60
+                        ELSE 0
+                    END
+                ), 2), 0) AS total_hours
+           FROM attendance
+          WHERE work_date BETWEEN ? AND ?`,
+        [fromDate, toDate]
+    );
+
+    return {
+        total_records: Number(rows[0].total_records),
+        present: Number(rows[0].present),
+        late: Number(rows[0].late),
+        absent: Number(rows[0].absent),
+        total_hours: Number(rows[0].total_hours)
+    };
+};
+
+export const getEmployeeReport = async (fromDate, toDate) => {
+    const [rows] = await db.execute(
+        `SELECT e.id,
+                e.employee_code,
+                e.full_name,
+                e.department,
+                COUNT(a.id) AS total_records,
+                COALESCE(SUM(LOWER(COALESCE(a.status, '')) IN ('present', 'on_time', 'đúng giờ')), 0) AS present,
+                COALESCE(SUM(LOWER(COALESCE(a.status, '')) IN ('late', 'đi muộn')), 0) AS late,
+                COALESCE(SUM(LOWER(COALESCE(a.status, '')) IN ('absent', 'vắng mặt')), 0) AS absent,
+                COALESCE(ROUND(SUM(
+                    CASE
+                        WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL
+                        THEN GREATEST(0, TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out)) / 60
+                        ELSE 0
+                    END
+                ), 2), 0) AS total_hours
+           FROM employees e
+           LEFT JOIN attendance a
+             ON a.employee_id = e.id
+            AND a.work_date BETWEEN ? AND ?
+          GROUP BY e.id, e.employee_code, e.full_name, e.department
+         HAVING COUNT(a.id) > 0
+          ORDER BY absent DESC, late DESC, e.full_name ASC`,
+        [fromDate, toDate]
+    );
+
+    return rows.map((row) => {
+        const totalRecords = Number(row.total_records);
+        const present = Number(row.present);
+        const late = Number(row.late);
+
+        return {
+            ...row,
+            total_records: totalRecords,
+            present,
+            late,
+            absent: Number(row.absent),
+            total_hours: Number(row.total_hours),
+            attendance_rate: totalRecords > 0
+                ? Math.round(((present + late) / totalRecords) * 100)
+                : 0
+        };
+    });
+};
+
 const toDateTime = (workDate, time) => time ? `${workDate} ${time}:00` : null;
 
 export const create = async (data) => {
