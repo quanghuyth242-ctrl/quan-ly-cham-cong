@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { db } from "../config/db.js";
 
 const STATUS_VALUES = {
@@ -127,24 +128,6 @@ export const getEmployees = async () => {
          ORDER BY full_name ASC
     `);
     return rows;
-};
-
-export const getStats = async () => {
-    const [rows] = await db.execute(`
-        SELECT
-            (SELECT COUNT(*) FROM employees) AS total_employees,
-            COALESCE(SUM(LOWER(COALESCE(status, '')) IN ('present', 'on_time', 'đúng giờ')), 0) AS present,
-            COALESCE(SUM(LOWER(COALESCE(status, '')) IN ('late', 'đi muộn')), 0) AS late,
-            COALESCE(SUM(LOWER(COALESCE(status, '')) IN ('absent', 'vắng mặt')), 0) AS absent
-          FROM attendance
-    `);
-
-    return {
-        total_employees: Number(rows[0].total_employees),
-        present: Number(rows[0].present),
-        late: Number(rows[0].late),
-        absent: Number(rows[0].absent)
-    };
 };
 
 export const getReportSummary = async (fromDate, toDate) => {
@@ -300,21 +283,33 @@ export const syncDeviceRecords = async (deviceId, records) => {
             unchanged: 0,
             preserved_manual: 0
         };
+        const recordPlaceholders = mappedRecords.map(() => "(?, ?)").join(", ");
+        const recordParams = mappedRecords.flatMap((record) => [
+            record.employee_id,
+            record.work_date
+        ]);
+        const [existingRows] = await connection.execute(
+            `SELECT id,
+                    employee_id,
+                    DATE_FORMAT(work_date, '%Y-%m-%d') AS work_date,
+                    TIME_FORMAT(check_in, '%H:%i') AS check_in,
+                    TIME_FORMAT(check_out, '%H:%i') AS check_out,
+                    status,
+                    record_source
+               FROM attendance
+              WHERE (employee_id, work_date) IN (${recordPlaceholders})
+              ORDER BY employee_id, work_date
+              FOR UPDATE`,
+            recordParams
+        );
+        const existingByKey = new Map(
+            existingRows.map((row) => [`${row.employee_id}:${row.work_date}`, row])
+        );
+        const pendingInserts = [];
+        const pendingUpdates = [];
 
         for (const record of mappedRecords) {
-            const [existingRows] = await connection.execute(
-                `SELECT id,
-                        TIME_FORMAT(check_in, '%H:%i') AS check_in,
-                        TIME_FORMAT(check_out, '%H:%i') AS check_out,
-                        status,
-                        record_source
-                   FROM attendance
-                  WHERE employee_id = ? AND work_date = ?
-                  LIMIT 1
-                  FOR UPDATE`,
-                [record.employee_id, record.work_date]
-            );
-            const existing = existingRows[0];
+            const existing = existingByKey.get(`${record.employee_id}:${record.work_date}`);
             const checkIn = record.check_in
                 ? `${record.work_date} ${record.check_in}:00`
                 : null;
@@ -323,18 +318,13 @@ export const syncDeviceRecords = async (deviceId, records) => {
                 : null;
 
             if (!existing) {
-                await connection.execute(
-                    `INSERT INTO attendance
-                        (employee_id, work_date, check_in, check_out, status, record_source)
-                     VALUES (?, ?, ?, ?, ?, 'device')`,
-                    [
-                        record.employee_id,
-                        record.work_date,
-                        checkIn,
-                        checkOut,
-                        record.status
-                    ]
-                );
+                pendingInserts.push({
+                    employee_id: record.employee_id,
+                    work_date: record.work_date,
+                    check_in: checkIn,
+                    check_out: checkOut,
+                    status: record.status
+                });
                 result.inserted += 1;
                 continue;
             }
@@ -353,13 +343,49 @@ export const syncDeviceRecords = async (deviceId, records) => {
                 continue;
             }
 
+            pendingUpdates.push({
+                id: existing.id,
+                check_in: checkIn,
+                check_out: checkOut,
+                status: record.status
+            });
+            result.updated += 1;
+        }
+
+        if (pendingInserts.length > 0) {
+            const insertPlaceholders = pendingInserts
+                .map(() => "(?, ?, ?, ?, ?, 'device')")
+                .join(", ");
+            const insertParams = pendingInserts.flatMap((record) => [
+                record.employee_id,
+                record.work_date,
+                record.check_in,
+                record.check_out,
+                record.status
+            ]);
+            await connection.execute(
+                `INSERT INTO attendance
+                    (employee_id, work_date, check_in, check_out, status, record_source)
+                 VALUES ${insertPlaceholders}`,
+                insertParams
+            );
+        }
+
+        if (pendingUpdates.length > 0) {
+            const updateCases = (column) =>
+                `${column} = CASE id ${pendingUpdates.map(() => "WHEN ? THEN ?").join(" ")} ELSE ${column} END`;
+            const updateParams = ["check_in", "check_out", "status"].flatMap((field) =>
+                pendingUpdates.flatMap((record) => [record.id, record[field]])
+            );
+            updateParams.push(...pendingUpdates.map((record) => record.id));
             await connection.execute(
                 `UPDATE attendance
-                    SET check_in = ?, check_out = ?, status = ?
-                  WHERE id = ?`,
-                [checkIn, checkOut, record.status, existing.id]
+                    SET ${updateCases("check_in")},
+                        ${updateCases("check_out")},
+                        ${updateCases("status")}
+                  WHERE id IN (${pendingUpdates.map(() => "?").join(", ")})`,
+                updateParams
             );
-            result.updated += 1;
         }
 
         await connection.execute(
@@ -369,6 +395,215 @@ export const syncDeviceRecords = async (deviceId, records) => {
                     last_sync_count = ?
               WHERE id = ? AND is_active = 1`,
             [records.length, deviceId]
+        );
+
+        await connection.commit();
+        return result;
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
+};
+
+export const syncDeviceEvents = async (deviceId, events) => {
+    const connection = await db.getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        const employeeCodes = [...new Set(events.map((event) => event.employee_code))];
+        const employeePlaceholders = employeeCodes.map(() => "?").join(", ");
+        const [employeeRows] = await connection.execute(
+            `SELECT id, employee_code
+               FROM employees
+              WHERE employee_code IN (${employeePlaceholders})`,
+            employeeCodes
+        );
+        const employeeIds = new Map(
+            employeeRows.map((employee) => [String(employee.employee_code).toUpperCase(), employee.id])
+        );
+        const unknownEmployeeCodes = employeeCodes.filter(
+            (code) => !employeeIds.has(code.toUpperCase())
+        );
+
+        if (unknownEmployeeCodes.length > 0) {
+            const error = new Error("Một hoặc nhiều mã nhân viên không tồn tại.");
+            error.code = "UNKNOWN_EMPLOYEES";
+            error.employeeCodes = unknownEmployeeCodes;
+            throw error;
+        }
+
+        const mappedEvents = events
+            .map((event) => {
+                const employeeId = employeeIds.get(event.employee_code.toUpperCase());
+                const fingerprintSource = event.event_id
+                    ? `event:${event.event_id}`
+                    : `punch:${employeeId}:${event.occurred_at}:${event.direction}`;
+
+                return {
+                    ...event,
+                    employee_id: employeeId,
+                    work_date: event.occurred_at.slice(0, 10),
+                    event_fingerprint: createHash("sha256")
+                        .update(`${deviceId}:${fingerprintSource}`)
+                        .digest("hex")
+                };
+            })
+            .sort((left, right) => left.employee_id - right.employee_id
+                || left.work_date.localeCompare(right.work_date)
+                || left.occurred_at.localeCompare(right.occurred_at));
+        const eventPlaceholders = mappedEvents.map(() => "(?, ?, ?, ?, ?, ?)").join(", ");
+        const eventParams = mappedEvents.flatMap((event) => [
+            deviceId,
+            event.employee_id,
+            event.work_date,
+            event.occurred_at,
+            event.direction,
+            event.event_fingerprint
+        ]);
+        const [insertResult] = await connection.execute(
+            `INSERT IGNORE INTO attendance_device_events
+                (device_id, employee_id, work_date, punched_at, direction, event_fingerprint)
+             VALUES ${eventPlaceholders}`,
+            eventParams
+        );
+        const affectedDays = [...new Map(mappedEvents.map((event) => [
+            `${event.employee_id}:${event.work_date}`,
+            { employee_id: event.employee_id, work_date: event.work_date }
+        ])).values()];
+        const dayPlaceholders = affectedDays.map(() => "(?, ?)").join(", ");
+        const dayParams = affectedDays.flatMap((day) => [day.employee_id, day.work_date]);
+        const [dailyRows] = await connection.execute(
+            `SELECT daily.employee_id,
+                    DATE_FORMAT(daily.work_date, '%Y-%m-%d') AS work_date,
+                    DATE_FORMAT(daily.check_in, '%Y-%m-%d %H:%i:%s') AS check_in,
+                    DATE_FORMAT(daily.check_out, '%Y-%m-%d %H:%i:%s') AS check_out,
+                    CASE
+                        WHEN daily.check_in > (
+                            SELECT TIMESTAMP(daily.work_date, ws.morning_start)
+                              FROM employee_shift_assignments sa
+                              INNER JOIN work_shifts ws
+                                ON ws.id = sa.shift_id
+                               AND ws.status = 1
+                              INNER JOIN shift_workdays sw
+                                ON sw.shift_id = ws.id
+                               AND sw.weekday = WEEKDAY(daily.work_date) + 1
+                             WHERE sa.employee_id = daily.employee_id
+                               AND sa.status = 'active'
+                               AND daily.work_date BETWEEN sa.start_date AND sa.end_date
+                             ORDER BY sa.start_date DESC
+                             LIMIT 1
+                        ) THEN 'late'
+                        ELSE 'present'
+                    END AS status
+               FROM (
+                    SELECT employee_id,
+                           work_date,
+                           MIN(CASE WHEN direction = 'in' THEN punched_at END) AS check_in,
+                           MAX(CASE WHEN direction = 'out' THEN punched_at END) AS check_out
+                      FROM attendance_device_events
+                     WHERE (employee_id, work_date) IN (${dayPlaceholders})
+                     GROUP BY employee_id, work_date
+               ) daily
+              ORDER BY daily.employee_id, daily.work_date`,
+            dayParams
+        );
+        const [existingRows] = await connection.execute(
+            `SELECT id,
+                    employee_id,
+                    DATE_FORMAT(work_date, '%Y-%m-%d') AS work_date,
+                    DATE_FORMAT(check_in, '%Y-%m-%d %H:%i:%s') AS check_in,
+                    DATE_FORMAT(check_out, '%Y-%m-%d %H:%i:%s') AS check_out,
+                    status,
+                    record_source
+               FROM attendance
+              WHERE (employee_id, work_date) IN (${dayPlaceholders})
+              ORDER BY employee_id, work_date
+              FOR UPDATE`,
+            dayParams
+        );
+        const existingByKey = new Map(
+            existingRows.map((row) => [`${row.employee_id}:${row.work_date}`, row])
+        );
+        const pendingInserts = [];
+        const pendingUpdates = [];
+        const result = {
+            received_events: events.length,
+            inserted_events: Number(insertResult.affectedRows),
+            duplicate_events: events.length - Number(insertResult.affectedRows),
+            created_records: 0,
+            updated_records: 0,
+            unchanged_records: 0,
+            preserved_manual_records: 0
+        };
+
+        for (const dailyRecord of dailyRows) {
+            const existing = existingByKey.get(`${dailyRecord.employee_id}:${dailyRecord.work_date}`);
+            if (!existing) {
+                pendingInserts.push(dailyRecord);
+                result.created_records += 1;
+                continue;
+            }
+
+            if (existing.record_source !== "device") {
+                result.preserved_manual_records += 1;
+                continue;
+            }
+
+            if (existing.check_in === dailyRecord.check_in
+                && existing.check_out === dailyRecord.check_out
+                && String(existing.status || "").toLowerCase() === dailyRecord.status) {
+                result.unchanged_records += 1;
+                continue;
+            }
+
+            pendingUpdates.push({ ...dailyRecord, id: existing.id });
+            result.updated_records += 1;
+        }
+
+        if (pendingInserts.length > 0) {
+            const insertPlaceholders = pendingInserts.map(() => "(?, ?, ?, ?, ?, 'device')").join(", ");
+            const insertParams = pendingInserts.flatMap((record) => [
+                record.employee_id,
+                record.work_date,
+                record.check_in,
+                record.check_out,
+                record.status
+            ]);
+            await connection.execute(
+                `INSERT INTO attendance
+                    (employee_id, work_date, check_in, check_out, status, record_source)
+                 VALUES ${insertPlaceholders}`,
+                insertParams
+            );
+        }
+
+        if (pendingUpdates.length > 0) {
+            const updateCases = (column) =>
+                `${column} = CASE id ${pendingUpdates.map(() => "WHEN ? THEN ?").join(" ")} ELSE ${column} END`;
+            const updateParams = ["check_in", "check_out", "status"].flatMap((field) =>
+                pendingUpdates.flatMap((record) => [record.id, record[field]])
+            );
+            updateParams.push(...pendingUpdates.map((record) => record.id));
+            await connection.execute(
+                `UPDATE attendance
+                    SET ${updateCases("check_in")},
+                        ${updateCases("check_out")},
+                        ${updateCases("status")}
+                  WHERE id IN (${pendingUpdates.map(() => "?").join(", ")})`,
+                updateParams
+            );
+        }
+
+        await connection.execute(
+            `UPDATE attendance_devices
+                SET last_seen_at = NOW(6),
+                    last_sync_at = NOW(6),
+                    last_sync_count = ?
+              WHERE id = ? AND is_active = 1`,
+            [events.length, deviceId]
         );
 
         await connection.commit();

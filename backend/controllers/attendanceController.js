@@ -101,30 +101,55 @@ const validateRecord = async (body, excludeId = null) => {
     return { data, errors };
 };
 
+const getAttendancePageData = async () => {
+    const [records, employees] = await Promise.all([
+        AttendanceModel.findAll(),
+        AttendanceModel.getEmployees()
+    ]);
+    const stats = {
+        total_employees: employees.length,
+        present: 0,
+        late: 0,
+        absent: 0
+    };
+    const overview = {
+        late: 0,
+        early: 0,
+        unassigned: 0,
+        absent: 0,
+        absenceRate: 0,
+        attended: 0,
+        attendanceRate: 0
+    };
+
+    for (const record of records) {
+        if (record.status === "present") {
+            stats.present += 1;
+            overview.attended += 1;
+        } else if (record.status === "late") {
+            stats.late += 1;
+            overview.attended += 1;
+        } else if (record.status === "absent") {
+            stats.absent += 1;
+            overview.absent += 1;
+        }
+
+        if (record.status === "late" || record.late_minutes > 0) overview.late += 1;
+        if (record.early_leave_minutes > 0) overview.early += 1;
+        if (record.status !== "absent" && !record.has_schedule) overview.unassigned += 1;
+    }
+
+    if (records.length > 0) {
+        overview.absenceRate = Math.round((overview.absent / records.length) * 100);
+        overview.attendanceRate = Math.round((overview.attended / records.length) * 100);
+    }
+
+    return { records, employees, stats, overview };
+};
+
 export const index = async (req, res) => {
     try {
-        const [records, employees, stats] = await Promise.all([
-            AttendanceModel.findAll(),
-            AttendanceModel.getEmployees(),
-            AttendanceModel.getStats()
-        ]);
-        const attendedRecords = records.filter(
-            (record) => record.status === "present" || record.status === "late"
-        ).length;
-        const absentRecords = records.filter((record) => record.status === "absent").length;
-        const overview = {
-            late: records.filter((record) => record.status === "late" || record.late_minutes > 0).length,
-            early: records.filter((record) => record.early_leave_minutes > 0).length,
-            unassigned: records.filter((record) => record.status !== "absent" && !record.has_schedule).length,
-            absent: absentRecords,
-            absenceRate: records.length > 0
-                ? Math.round((absentRecords / records.length) * 100)
-                : 0,
-            attended: attendedRecords,
-            attendanceRate: records.length > 0
-                ? Math.round((attendedRecords / records.length) * 100)
-                : 0
-        };
+        const { records, employees, stats, overview } = await getAttendancePageData();
 
         res.render("admin/attendance", {
             user: req.session.user,
@@ -153,6 +178,33 @@ export const index = async (req, res) => {
             },
             success: null,
             error: "Không thể tải dữ liệu chấm công. Vui lòng thử lại."
+        });
+    }
+};
+
+export const refresh = async (_req, res) => {
+    try {
+        const { records, employees, stats } = await getAttendancePageData();
+
+        return res.render("admin/attendanceRows", { records }, (renderError, rowsHtml) => {
+            if (renderError) {
+                console.error("Lỗi tạo nội dung làm mới bảng chấm công:", renderError);
+                return res.status(500).json({
+                    error: "Không thể cập nhật bảng chấm công. Vui lòng thử lại."
+                });
+            }
+
+            return res.json({
+                rowsHtml,
+                employees,
+                stats,
+                refreshedAt: new Date().toISOString()
+            });
+        });
+    } catch (error) {
+        console.error("Lỗi đồng bộ bảng chấm công:", error);
+        return res.status(500).json({
+            error: "Không thể đồng bộ dữ liệu chấm công. Vui lòng thử lại."
         });
     }
 };

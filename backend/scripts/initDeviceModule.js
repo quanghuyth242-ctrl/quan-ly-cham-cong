@@ -36,6 +36,23 @@ const main = async () => {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     `);
 
+    await db.execute(`
+        CREATE TABLE IF NOT EXISTS attendance_device_events (
+            id BIGINT NOT NULL AUTO_INCREMENT,
+            device_id INT NOT NULL,
+            employee_id INT NOT NULL,
+            work_date DATE NOT NULL,
+            punched_at DATETIME NOT NULL,
+            direction ENUM('in', 'out') NOT NULL,
+            event_fingerprint CHAR(64) NOT NULL,
+            received_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+            PRIMARY KEY (id),
+            UNIQUE KEY uk_attendance_device_event_fingerprint (device_id, event_fingerprint),
+            KEY idx_attendance_device_events_employee_date (employee_id, work_date),
+            KEY idx_attendance_device_events_device_received (device_id, received_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+    `);
+
     if (!(await columnExists("attendance_devices", "is_sample"))) {
         await db.execute(
             "ALTER TABLE attendance_devices ADD COLUMN is_sample TINYINT(1) NOT NULL DEFAULT 0 AFTER is_active"

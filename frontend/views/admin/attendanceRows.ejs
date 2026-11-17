@@ -1,0 +1,127 @@
+<% records.forEach((record) => { %>
+    <tr
+        class="attendance-row align-middle hover:bg-surface-container-low/70 transition-colors"
+        data-name="<%= String(record.employee_name || '').toLowerCase() %>"
+        data-employee-name="<%= record.employee_name %>"
+        data-employee-id="<%= record.employee_id %>"
+        data-code="<%= record.employee_code %>"
+        data-code-search="<%= String(record.employee_code || '').toLowerCase() %>"
+        data-date="<%= record.work_date %>"
+        data-check-in="<%= record.check_in %>"
+        data-check-out="<%= record.check_out %>"
+        data-total-hours="<%= record.total_hours %>"
+        data-status="<%= record.status %>"
+        data-shift-name="<%= record.shift_name || '' %>"
+        data-late-minutes="<%= record.late_minutes === null ? '' : record.late_minutes %>"
+        data-early-minutes="<%= record.early_leave_minutes === null ? '' : record.early_leave_minutes %>"
+        data-is-late="<%= record.status === 'late' || record.late_minutes > 0 ? 'true' : 'false' %>"
+        data-is-early="<%= record.early_leave_minutes > 0 ? 'true' : 'false' %>"
+        data-no-schedule="<%= record.status !== 'absent' && !record.has_schedule ? 'true' : 'false' %>"
+    >
+        <td class="py-space-md px-space-lg">
+            <span class="inline-flex px-space-sm py-1 rounded-lg bg-primary-fixed text-primary font-data-mono text-data-mono font-semibold">
+                <%= record.employee_code %>
+            </span>
+        </td>
+        <td class="py-space-md px-space-md">
+            <div class="flex items-center gap-space-sm">
+                <div class="w-9 h-9 rounded-full bg-primary-fixed text-primary font-semibold flex items-center justify-center text-xs shrink-0">
+                    <%= String(record.employee_name || "?").trim().slice(0, 2).toUpperCase() %>
+                </div>
+                <span class="font-label-md text-label-md text-on-surface font-semibold"><%= record.employee_name %></span>
+            </div>
+        </td>
+        <td class="py-space-md px-space-md font-data-mono text-data-mono"><%= record.work_date %></td>
+        <td class="py-space-md px-space-md">
+            <% if (record.has_schedule) { %>
+                <div class="flex flex-col">
+                    <span class="font-label-md text-label-md text-on-surface"><%= record.shift_name %></span>
+                    <span class="font-body-sm text-body-sm text-on-surface-variant"><%= record.scheduled_start %> – <%= record.scheduled_end %></span>
+                </div>
+            <% } else { %>
+                <span class="font-body-sm text-body-sm text-outline">Không có ca áp dụng</span>
+            <% } %>
+        </td>
+        <td class="py-space-md px-space-md font-data-mono text-data-mono">
+            <span class="<%= record.check_in ? 'text-on-surface' : 'text-outline' %>"><%= record.check_in || "—" %></span>
+        </td>
+        <td class="py-space-md px-space-md font-data-mono text-data-mono">
+            <span class="<%= record.check_out ? 'text-on-surface' : 'text-outline' %>"><%= record.check_out || "—" %></span>
+        </td>
+        <td class="py-space-md px-space-md">
+            <% if (record.status === "absent") { %>
+                <span class="text-outline">—</span>
+            <% } else if (record.late_minutes > 0) { %>
+                <span class="font-label-md text-label-md text-orange-700">Trễ <%= record.late_minutes %> phút</span>
+            <% } else if (record.status === "late") { %>
+                <span class="font-label-md text-label-md text-orange-700">Đi muộn</span>
+            <% } else if (record.has_schedule) { %>
+                <span class="font-body-sm text-body-sm text-green-700">Đúng giờ</span>
+            <% } else { %>
+                <span class="text-outline">—</span>
+            <% } %>
+        </td>
+        <td class="py-space-md px-space-md">
+            <% if (record.status === "absent") { %>
+                <span class="text-outline">—</span>
+            <% } else if (record.early_leave_minutes > 0) { %>
+                <span class="font-label-md text-label-md text-red-700">Sớm <%= record.early_leave_minutes %> phút</span>
+            <% } else if (!record.has_schedule) { %>
+                <span class="text-outline">—</span>
+            <% } else if (!record.check_out) { %>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Chưa có giờ ra</span>
+            <% } else { %>
+                <span class="font-body-sm text-body-sm text-green-700">Đủ giờ</span>
+            <% } %>
+        </td>
+        <td class="py-space-md px-space-md font-data-mono text-data-mono"><%= record.total_hours %> giờ</td>
+        <td class="py-space-md px-space-lg">
+            <% if (record.status === "present") { %>
+                <span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                    Đúng giờ
+                </span>
+            <% } else if (record.status === "late") { %>
+                <span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-orange-50 text-orange-700 text-xs font-semibold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                    Đi muộn
+                </span>
+            <% } else if (record.status === "absent") { %>
+                <span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-red-50 text-red-700 text-xs font-semibold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                    Vắng mặt
+                </span>
+            <% } else { %>
+                <span class="inline-flex px-space-sm py-1 rounded-full bg-surface-container-high text-on-surface-variant text-xs font-semibold"><%= record.status_label %></span>
+            <% } %>
+        </td>
+        <td class="py-space-md px-space-lg">
+            <div class="flex justify-end">
+                <button
+                    class="flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
+                    data-edit-attendance
+                    data-id="<%= record.id %>"
+                    data-employee-id="<%= record.employee_id %>"
+                    data-work-date="<%= record.work_date %>"
+                    data-check-in="<%= record.check_in || '' %>"
+                    data-check-out="<%= record.check_out || '' %>"
+                    data-status="<%= record.status %>"
+                    type="button"
+                    title="Điều chỉnh dữ liệu chấm công"
+                >
+                    <span class="material-symbols-outlined text-[16px]">edit</span>
+                    <span>Điều chỉnh</span>
+                </button>
+            </div>
+        </td>
+    </tr>
+<% }); %>
+<tr id="emptyMessage" class="<%= records.length === 0 ? '' : 'hidden' %>">
+    <td colspan="11" class="py-space-2xl px-space-lg text-center">
+        <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
+            <span class="material-symbols-outlined text-[40px] text-outline">event_busy</span>
+            <span class="font-label-md text-label-md">Không tìm thấy dữ liệu chấm công phù hợp</span>
+            <span class="font-body-sm text-body-sm">Thử thay đổi bộ lọc hoặc xóa bộ lọc hiện tại.</span>
+        </div>
+    </td>
+</tr>
