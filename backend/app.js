@@ -35,7 +35,6 @@ app.use("/", AuthRouter);
 // Quản lý ca làm việc & phân ca nhân viên (chỉ dành cho Admin)
 app.use("/admin/shifts", requireAdmin, WorkShiftRouter);
 app.use("/admin/shift-assignments", requireAdmin, ShiftAssignmentRouter);
-<<<<<<< HEAD
 
 // Quản lý ca làm việc & phân ca nhân viên (chỉ dành cho Admin)
 app.use("/admin/shifts", requireAdmin, WorkShiftRouter);
