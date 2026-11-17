@@ -92,3 +92,33 @@ export const create = async (employee) => {
 
     return result.insertId;
 };
+
+export const findById = async (id) => {
+    const [rows] = await db.execute(
+        `SELECT id, employee_code, full_name, email, phone, department
+           FROM employees
+          WHERE id = ?
+          LIMIT 1`,
+        [id]
+    );
+
+    return rows[0] || null;
+};
+
+export const update = async (id, employee) => {
+    await db.execute(
+        `UPDATE employees
+            SET full_name = ?,
+                email = ?,
+                phone = ?,
+                department = ?
+          WHERE id = ?`,
+        [
+            employee.full_name,
+            employee.email,
+            employee.phone,
+            employee.department,
+            id
+        ]
+    );
+};
