@@ -88,6 +88,49 @@
         </article>
     </section>
 
+    <section class="flex flex-col gap-space-md" aria-label="Tổng quan đi muộn và về sớm">
+        <div>
+            <h3 class="font-headline-sm text-headline-sm text-primary">Theo dõi đi muộn / về sớm</h3>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
+                So sánh giờ chấm công với ca và ngày làm việc đã phân công; chưa áp dụng thời gian ân hạn. Các chỉ số thay đổi theo bộ lọc bên dưới.
+            </p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-space-lg">
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đi muộn</span>
+                <span id="lateOverviewCount" class="font-headline-xl text-headline-xl text-orange-600 font-bold mt-space-xs"><%= overview.late %></span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Theo giờ ca hoặc trạng thái ghi nhận</span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">more_time</span>
+            </div>
+        </article>
+
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Về sớm</span>
+                <span id="earlyOverviewCount" class="font-headline-xl text-headline-xl text-red-600 font-bold mt-space-xs"><%= overview.early %></span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Ra trước giờ kết thúc ca</span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">logout</span>
+            </div>
+        </article>
+
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Chưa có ca đối chiếu</span>
+                <span id="unassignedOverviewCount" class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= overview.unassigned %></span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Không thể xác định đi muộn/về sớm</span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">event_busy</span>
+            </div>
+        </article>
+        </div>
+    </section>
+
     <section class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg md:p-space-xl">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md mb-space-lg">
             <div>
@@ -155,15 +198,18 @@
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse min-w-[900px]">
+            <table class="w-full text-left border-collapse min-w-[1200px]">
                 <caption class="sr-only">Danh sách thời gian chấm công của nhân viên</caption>
                 <thead>
                     <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
                         <th class="py-space-md px-space-lg font-semibold">Mã NV</th>
                         <th class="py-space-md px-space-md font-semibold">Nhân viên</th>
                         <th class="py-space-md px-space-md font-semibold">Ngày</th>
+                        <th class="py-space-md px-space-md font-semibold">Ca làm</th>
                         <th class="py-space-md px-space-md font-semibold">Giờ vào</th>
                         <th class="py-space-md px-space-md font-semibold">Giờ ra</th>
+                        <th class="py-space-md px-space-md font-semibold">Đi muộn</th>
+                        <th class="py-space-md px-space-md font-semibold">Về sớm</th>
                         <th class="py-space-md px-space-md font-semibold">Số giờ</th>
                         <th class="py-space-md px-space-md font-semibold">Trạng thái</th>
                         <th class="py-space-md px-space-lg font-semibold text-right">Thao tác</th>
@@ -182,6 +228,12 @@
                             data-check-out="<%= record.check_out %>"
                             data-total-hours="<%= record.total_hours %>"
                             data-status="<%= record.status %>"
+                            data-shift-name="<%= record.shift_name || '' %>"
+                            data-late-minutes="<%= record.late_minutes === null ? '' : record.late_minutes %>"
+                            data-early-minutes="<%= record.early_leave_minutes === null ? '' : record.early_leave_minutes %>"
+                            data-is-late="<%= record.status === 'late' || record.late_minutes > 0 ? 'true' : 'false' %>"
+                            data-is-early="<%= record.early_leave_minutes > 0 ? 'true' : 'false' %>"
+                            data-no-schedule="<%= record.status !== 'absent' && !record.has_schedule ? 'true' : 'false' %>"
                         >
                             <td class="py-space-md px-space-lg">
                                 <span class="inline-flex px-space-sm py-1 rounded-lg bg-primary-fixed text-primary font-data-mono text-data-mono font-semibold">
@@ -197,11 +249,47 @@
                                 </div>
                             </td>
                             <td class="py-space-md px-space-md font-data-mono text-data-mono"><%= record.work_date %></td>
+                            <td class="py-space-md px-space-md">
+                                <% if (record.has_schedule) { %>
+                                    <div class="flex flex-col">
+                                        <span class="font-label-md text-label-md text-on-surface"><%= record.shift_name %></span>
+                                        <span class="font-body-sm text-body-sm text-on-surface-variant"><%= record.scheduled_start %> – <%= record.scheduled_end %></span>
+                                    </div>
+                                <% } else { %>
+                                    <span class="font-body-sm text-body-sm text-outline">Không có ca áp dụng</span>
+                                <% } %>
+                            </td>
                             <td class="py-space-md px-space-md font-data-mono text-data-mono">
                                 <span class="<%= record.check_in ? 'text-on-surface' : 'text-outline' %>"><%= record.check_in || "—" %></span>
                             </td>
                             <td class="py-space-md px-space-md font-data-mono text-data-mono">
                                 <span class="<%= record.check_out ? 'text-on-surface' : 'text-outline' %>"><%= record.check_out || "—" %></span>
+                            </td>
+                            <td class="py-space-md px-space-md">
+                                <% if (record.status === "absent") { %>
+                                    <span class="text-outline">—</span>
+                                <% } else if (record.late_minutes > 0) { %>
+                                    <span class="font-label-md text-label-md text-orange-700">Trễ <%= record.late_minutes %> phút</span>
+                                <% } else if (record.status === "late") { %>
+                                    <span class="font-label-md text-label-md text-orange-700">Đi muộn</span>
+                                <% } else if (record.has_schedule) { %>
+                                    <span class="font-body-sm text-body-sm text-green-700">Đúng giờ</span>
+                                <% } else { %>
+                                    <span class="text-outline">—</span>
+                                <% } %>
+                            </td>
+                            <td class="py-space-md px-space-md">
+                                <% if (record.status === "absent") { %>
+                                    <span class="text-outline">—</span>
+                                <% } else if (record.early_leave_minutes > 0) { %>
+                                    <span class="font-label-md text-label-md text-red-700">Sớm <%= record.early_leave_minutes %> phút</span>
+                                <% } else if (!record.has_schedule) { %>
+                                    <span class="text-outline">—</span>
+                                <% } else if (!record.check_out) { %>
+                                    <span class="font-body-sm text-body-sm text-on-surface-variant">Chưa có giờ ra</span>
+                                <% } else { %>
+                                    <span class="font-body-sm text-body-sm text-green-700">Đủ giờ</span>
+                                <% } %>
                             </td>
                             <td class="py-space-md px-space-md font-data-mono text-data-mono"><%= record.total_hours %> giờ</td>
                             <td class="py-space-md px-space-lg">
@@ -246,7 +334,7 @@
                         </tr>
                     <% }) %>
                     <tr id="emptyMessage" class="<%= records.length === 0 ? '' : 'hidden' %>">
-                        <td colspan="8" class="py-space-2xl px-space-lg text-center">
+                        <td colspan="11" class="py-space-2xl px-space-lg text-center">
                             <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
                                 <span class="material-symbols-outlined text-[40px] text-outline">event_busy</span>
                                 <span class="font-label-md text-label-md">Không tìm thấy dữ liệu chấm công phù hợp</span>
@@ -476,6 +564,14 @@ function filterRecords() {
         if (show) visible += 1;
     });
 
+    const visibleRows = rows.filter((row) => !row.classList.contains("hidden"));
+    document.getElementById("lateOverviewCount").textContent = visibleRows
+        .filter((row) => row.dataset.isLate === "true").length;
+    document.getElementById("earlyOverviewCount").textContent = visibleRows
+        .filter((row) => row.dataset.isEarly === "true").length;
+    document.getElementById("unassignedOverviewCount").textContent = visibleRows
+        .filter((row) => row.dataset.noSchedule === "true").length;
+
     document.getElementById("emptyMessage").classList.toggle("hidden", visible !== 0);
     document.getElementById("attendanceCount").textContent = `Hiển thị ${visible} / ${rows.length} bản ghi`;
     document.getElementById("export-attendance").disabled = visible === 0;
@@ -488,13 +584,16 @@ function exportCSV() {
     if (rows.length === 0) return;
 
     const data = [
-        ["Mã nhân viên", "Nhân viên", "Ngày", "Giờ vào", "Giờ ra", "Số giờ", "Trạng thái"],
+        ["Mã nhân viên", "Nhân viên", "Ngày", "Ca làm", "Giờ vào", "Giờ ra", "Đi muộn (phút)", "Về sớm (phút)", "Số giờ", "Trạng thái"],
         ...rows.map((row) => [
             row.dataset.code,
             row.dataset.employeeName,
             row.dataset.date,
+            row.dataset.shiftName,
             row.dataset.checkIn,
             row.dataset.checkOut,
+            row.dataset.lateMinutes,
+            row.dataset.earlyMinutes,
             row.dataset.totalHours,
             { present: "Đúng giờ", late: "Đi muộn", absent: "Vắng mặt" }[row.dataset.status] || row.dataset.status
         ])
