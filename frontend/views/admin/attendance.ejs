@@ -95,7 +95,7 @@
                 Tỷ lệ chuyên cần tính số lượt đúng giờ và đi muộn trên tổng lượt ghi nhận; các chỉ số thay đổi theo bộ lọc bên dưới.
             </p>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-lg">
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-space-lg">
         <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đi muộn</span>
@@ -140,6 +140,17 @@
             </div>
             <div class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
                 <span class="material-symbols-outlined text-[24px]">percent</span>
+            </div>
+        </article>
+
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tình hình vắng mặt</span>
+                <span id="absenceOverviewCount" class="font-headline-xl text-headline-xl text-red-600 font-bold mt-space-xs"><%= overview.absent %> lượt</span>
+                <span id="absenceOverviewRate" class="font-body-sm text-body-sm text-on-surface-variant"><%= overview.absenceRate %>% tổng lượt ghi nhận</span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">person_off</span>
             </div>
         </article>
         </div>
@@ -585,10 +596,17 @@ function filterRecords() {
     const attendanceRate = visibleRows.length > 0
         ? Math.round((attendedRows / visibleRows.length) * 100)
         : 0;
+    const absentRows = visibleRows.filter((row) => row.dataset.status === "absent").length;
+    const absenceRate = visibleRows.length > 0
+        ? Math.round((absentRows / visibleRows.length) * 100)
+        : 0;
 
     document.getElementById("attendanceRateCount").textContent = attendanceRate;
     document.getElementById("attendanceRateDetail").textContent =
         `${attendedRows} / ${visibleRows.length} lượt đi làm`;
+    document.getElementById("absenceOverviewCount").textContent = `${absentRows} lượt`;
+    document.getElementById("absenceOverviewRate").textContent =
+        `${absenceRate}% tổng lượt ghi nhận`;
     document.getElementById("lateOverviewCount").textContent = visibleRows
         .filter((row) => row.dataset.isLate === "true").length;
     document.getElementById("earlyOverviewCount").textContent = visibleRows
