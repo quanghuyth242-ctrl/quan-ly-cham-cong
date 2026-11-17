@@ -3,160 +3,267 @@
     activePage: "attendance"
 }) %>
 
-<section class="flex flex-col gap-6">
-
-    <!-- Tiêu đề -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-            <h2 class="text-2xl font-bold text-primary">Bảng chấm công</h2>
-            <p class="text-on-surface-variant mt-1">
-                Theo dõi và quản lý thời gian làm việc của nhân viên
+<section class="flex flex-col gap-space-xl">
+    <section class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+        <div class="flex flex-col gap-space-xs">
+            <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
+                <span class="flex h-2 w-2 rounded-full bg-primary-container"></span>
+                <span class="uppercase tracking-wider">Theo dõi thời gian làm việc</span>
+            </div>
+            <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Bảng chấm công</h2>
+            <p class="font-body-md text-body-md text-on-surface-variant">
+                Theo dõi giờ vào, giờ ra và tình trạng chấm công của nhân viên.
             </p>
         </div>
-        <button onclick="exportCSV()"
-            class="bg-primary text-white px-5 py-3 rounded-xl hover:bg-primary-container">
-            Xuất báo cáo CSV
+
+        <button
+            id="export-attendance"
+            class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            onclick="exportCSV()"
+            type="button"
+        >
+            <span class="material-symbols-outlined text-[20px]">download</span>
+            <span>Xuất báo cáo CSV</span>
         </button>
-    </div>
+    </section>
 
-    <!-- Thống kê -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div class="bg-white rounded-xl p-5 shadow-sm">
-            <p class="text-on-surface-variant">Tổng nhân viên</p>
-            <p class="text-3xl font-bold text-primary mt-2"><%= stats.total_employees %></p>
+    <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-lg" aria-label="Thống kê chấm công">
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng nhân viên</span>
+                <span class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= stats.total_employees %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">groups</span>
+            </div>
+        </article>
+
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Có mặt</span>
+                <span class="font-headline-xl text-headline-xl text-green-600 font-bold mt-space-xs"><%= stats.present %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">task_alt</span>
+            </div>
+        </article>
+
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đi muộn</span>
+                <span class="font-headline-xl text-headline-xl text-orange-500 font-bold mt-space-xs"><%= stats.late %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">schedule</span>
+            </div>
+        </article>
+
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Vắng mặt</span>
+                <span class="font-headline-xl text-headline-xl text-red-500 font-bold mt-space-xs"><%= stats.absent %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">person_off</span>
+            </div>
+        </article>
+    </section>
+
+    <section class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg md:p-space-xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md mb-space-lg">
+            <div>
+                <h3 class="font-headline-sm text-headline-sm text-on-surface">Tìm kiếm và lọc chấm công</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Lọc danh sách theo nhân viên, ngày hoặc trạng thái.</p>
+            </div>
+            <button
+                id="clear-attendance-filters"
+                class="inline-flex items-center justify-center gap-space-xs px-space-md py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors"
+                type="button"
+            >
+                <span class="material-symbols-outlined text-[18px]">restart_alt</span>
+                <span>Xóa bộ lọc</span>
+            </button>
         </div>
-        <div class="bg-white rounded-xl p-5 shadow-sm">
-            <p class="text-on-surface-variant">Có mặt</p>
-            <p class="text-3xl font-bold text-green-600 mt-2"><%= stats.present %></p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+            <label class="relative">
+                <span class="sr-only">Tìm nhân viên</span>
+                <span class="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">search</span>
+                <input
+                    id="keyword"
+                    type="search"
+                    placeholder="Nhập tên hoặc mã nhân viên..."
+                    class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md pl-11 pr-space-md py-space-md rounded-xl outline-none focus:ring-2 focus:ring-primary-container transition-shadow"
+                    oninput="filterRecords()"
+                >
+            </label>
+
+            <label>
+                <span class="sr-only">Lọc theo ngày</span>
+                <input
+                    id="dateFilter"
+                    type="date"
+                    class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-md rounded-xl outline-none focus:ring-2 focus:ring-primary-container transition-shadow"
+                    onchange="filterRecords()"
+                >
+            </label>
+
+            <label>
+                <span class="sr-only">Lọc theo trạng thái</span>
+                <select
+                    id="statusFilter"
+                    class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-md rounded-xl outline-none focus:ring-2 focus:ring-primary-container transition-shadow"
+                    onchange="filterRecords()"
+                >
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="Đúng giờ">Đúng giờ</option>
+                    <option value="Đi muộn">Đi muộn</option>
+                    <option value="Vắng mặt">Vắng mặt</option>
+                </select>
+            </label>
         </div>
-        <div class="bg-white rounded-xl p-5 shadow-sm">
-            <p class="text-on-surface-variant">Đi muộn</p>
-            <p class="text-3xl font-bold text-orange-500 mt-2"><%= stats.late %></p>
-        </div>
-        <div class="bg-white rounded-xl p-5 shadow-sm">
-            <p class="text-on-surface-variant">Vắng mặt</p>
-            <p class="text-3xl font-bold text-red-500 mt-2"><%= stats.absent %></p>
-        </div>
-    </div>
+    </section>
 
-    <!-- Bộ lọc -->
-    <div class="bg-white rounded-xl shadow-sm p-5">
-        <h3 class="font-semibold text-lg mb-4">Tìm kiếm và lọc chấm công</h3>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input id="keyword" type="text"
-                placeholder="Nhập tên nhân viên..."
-                class="border border-gray-300 rounded-lg px-4 py-3"
-                oninput="filterRecords()">
-
-            <input id="dateFilter" type="date"
-                class="border border-gray-300 rounded-lg px-4 py-3"
-                onchange="filterRecords()">
-
-            <select id="statusFilter"
-                class="border border-gray-300 rounded-lg px-4 py-3"
-                onchange="filterRecords()">
-                <option value="">Tất cả trạng thái</option>
-                <option value="Đúng giờ">Đúng giờ</option>
-                <option value="Đi muộn">Đi muộn</option>
-                <option value="Vắng mặt">Vắng mặt</option>
-            </select>
-        </div>
-    </div>
-
-    <!-- Bảng dữ liệu -->
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div class="p-5 border-b border-gray-100">
-            <h3 class="font-semibold text-lg">Danh sách chấm công</h3>
-            <p class="text-sm text-gray-500 mt-1">
-                Thông tin giờ vào, giờ ra và trạng thái làm việc
-            </p>
+    <section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <div class="p-space-lg md:p-space-xl border-b border-surface-container-high flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
+            <div>
+                <h3 class="font-headline-sm text-headline-sm text-on-surface">Danh sách chấm công</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
+                    Thông tin giờ vào, giờ ra và trạng thái làm việc.
+                </p>
+            </div>
+            <span id="attendanceCount" class="font-body-sm text-body-sm text-on-surface-variant" aria-live="polite"></span>
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full text-left">
-                <thead class="bg-surface-container-low text-on-surface-variant">
-                    <tr>
-                        <th class="px-5 py-4">Mã NV</th>
-                        <th class="px-5 py-4">Nhân viên</th>
-                        <th class="px-5 py-4">Ngày</th>
-                        <th class="px-5 py-4">Giờ vào</th>
-                        <th class="px-5 py-4">Giờ ra</th>
-                        <th class="px-5 py-4">Số giờ</th>
-                        <th class="px-5 py-4">Trạng thái</th>
+            <table class="w-full text-left border-collapse min-w-[900px]">
+                <caption class="sr-only">Danh sách thời gian chấm công của nhân viên</caption>
+                <thead>
+                    <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                        <th class="py-space-md px-space-lg font-semibold">Mã NV</th>
+                        <th class="py-space-md px-space-md font-semibold">Nhân viên</th>
+                        <th class="py-space-md px-space-md font-semibold">Ngày</th>
+                        <th class="py-space-md px-space-md font-semibold">Giờ vào</th>
+                        <th class="py-space-md px-space-md font-semibold">Giờ ra</th>
+                        <th class="py-space-md px-space-md font-semibold">Số giờ</th>
+                        <th class="py-space-md px-space-lg font-semibold">Trạng thái</th>
                     </tr>
                 </thead>
-
-                <tbody id="attendanceBody">
-                    <% records.forEach(record => { %>
-                    <tr class="attendance-row border-b border-gray-100 hover:bg-gray-50"
-                        data-name="<%= record.employee_name.toLowerCase() %>"
-                        data-date="<%= record.work_date %>"
-                        data-status="<%= record.status %>">
-
-                        <td class="px-5 py-4"><%= record.employee_id %></td>
-                        <td class="px-5 py-4 font-medium"><%= record.employee_name %></td>
-                        <td class="px-5 py-4"><%= record.work_date %></td>
-                        <td class="px-5 py-4"><%= record.check_in %></td>
-                        <td class="px-5 py-4"><%= record.check_out %></td>
-                        <td class="px-5 py-4"><%= record.total_hours %> giờ</td>
-                        <td class="px-5 py-4">
-                            <% if (record.status === "Đúng giờ") { %>
-                                <span class="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm">Đúng giờ</span>
-                            <% } else if (record.status === "Đi muộn") { %>
-                                <span class="px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-sm">Đi muộn</span>
-                            <% } else { %>
-                                <span class="px-3 py-1 rounded-full bg-red-100 text-red-700 text-sm">Vắng mặt</span>
-                            <% } %>
+                <tbody id="attendanceBody" class="divide-y divide-surface-container-low text-body-sm text-on-surface">
+                    <% records.forEach((record) => { %>
+                        <tr
+                            class="attendance-row align-middle hover:bg-surface-container-low/70 transition-colors"
+                            data-name="<%= String(record.employee_name || '').toLowerCase() %>"
+                            data-employee-name="<%= record.employee_name %>"
+                            data-code="<%= record.employee_id %>"
+                            data-date="<%= record.work_date %>"
+                            data-check-in="<%= record.check_in %>"
+                            data-check-out="<%= record.check_out %>"
+                            data-total-hours="<%= record.total_hours %>"
+                            data-status="<%= record.status %>"
+                        >
+                            <td class="py-space-md px-space-lg">
+                                <span class="inline-flex px-space-sm py-1 rounded-lg bg-primary-fixed text-primary font-data-mono text-data-mono font-semibold">
+                                    <%= record.employee_id %>
+                                </span>
+                            </td>
+                            <td class="py-space-md px-space-md">
+                                <div class="flex items-center gap-space-sm">
+                                    <div class="w-9 h-9 rounded-full bg-primary-fixed text-primary font-semibold flex items-center justify-center text-xs shrink-0">
+                                        <%= String(record.employee_name || "?").trim().slice(0, 2).toUpperCase() %>
+                                    </div>
+                                    <span class="font-label-md text-label-md text-on-surface font-semibold"><%= record.employee_name %></span>
+                                </div>
+                            </td>
+                            <td class="py-space-md px-space-md font-data-mono text-data-mono"><%= record.work_date %></td>
+                            <td class="py-space-md px-space-md font-data-mono text-data-mono">
+                                <span class="<%= record.check_in === '--' ? 'text-outline' : 'text-on-surface' %>"><%= record.check_in %></span>
+                            </td>
+                            <td class="py-space-md px-space-md font-data-mono text-data-mono">
+                                <span class="<%= record.check_out === '--' ? 'text-outline' : 'text-on-surface' %>"><%= record.check_out %></span>
+                            </td>
+                            <td class="py-space-md px-space-md font-data-mono text-data-mono"><%= record.total_hours %> giờ</td>
+                            <td class="py-space-md px-space-lg">
+                                <% if (record.status === "Đúng giờ") { %>
+                                    <span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                        Đúng giờ
+                                    </span>
+                                <% } else if (record.status === "Đi muộn") { %>
+                                    <span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-orange-50 text-orange-700 text-xs font-semibold">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                                        Đi muộn
+                                    </span>
+                                <% } else { %>
+                                    <span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-red-50 text-red-700 text-xs font-semibold">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                        Vắng mặt
+                                    </span>
+                                <% } %>
+                            </td>
+                        </tr>
+                    <% }) %>
+                    <tr id="emptyMessage" class="<%= records.length === 0 ? '' : 'hidden' %>">
+                        <td colspan="7" class="py-space-2xl px-space-lg text-center">
+                            <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
+                                <span class="material-symbols-outlined text-[40px] text-outline">event_busy</span>
+                                <span class="font-label-md text-label-md">Không tìm thấy dữ liệu chấm công phù hợp</span>
+                                <span class="font-body-sm text-body-sm">Thử thay đổi bộ lọc hoặc xóa bộ lọc hiện tại.</span>
+                            </div>
                         </td>
                     </tr>
-                    <% }) %>
                 </tbody>
             </table>
         </div>
-
-        <div id="emptyMessage" class="hidden text-center text-gray-500 py-8">
-            Không tìm thấy dữ liệu chấm công phù hợp.
-        </div>
-    </div>
+    </section>
 </section>
 
 <script>
 function filterRecords() {
-    const keyword = document.getElementById("keyword").value.toLowerCase();
+    const keyword = document.getElementById("keyword").value.trim().toLocaleLowerCase();
     const date = document.getElementById("dateFilter").value;
     const status = document.getElementById("statusFilter").value;
-
-    const rows = document.querySelectorAll(".attendance-row");
+    const rows = [...document.querySelectorAll(".attendance-row")];
     let visible = 0;
 
-    rows.forEach(row => {
-        const matchName = row.dataset.name.includes(keyword);
-        const matchDate = !date || row.dataset.date === date;
-        const matchStatus = !status || row.dataset.status === status;
+    rows.forEach((row) => {
+        const matchesKeyword = !keyword
+            || row.dataset.name.includes(keyword)
+            || row.dataset.code.toLocaleLowerCase().includes(keyword);
+        const matchesDate = !date || row.dataset.date === date;
+        const matchesStatus = !status || row.dataset.status === status;
+        const show = matchesKeyword && matchesDate && matchesStatus;
 
-        const show = matchName && matchDate && matchStatus;
         row.classList.toggle("hidden", !show);
-
-        if (show) visible++;
+        if (show) visible += 1;
     });
 
-    document.getElementById("emptyMessage")
-        .classList.toggle("hidden", visible !== 0);
+    document.getElementById("emptyMessage").classList.toggle("hidden", visible !== 0);
+    document.getElementById("attendanceCount").textContent = `Hiển thị ${visible} / ${rows.length} bản ghi`;
+    document.getElementById("export-attendance").disabled = visible === 0;
 }
 
 function exportCSV() {
     const rows = [...document.querySelectorAll(".attendance-row")]
-        .filter(row => !row.classList.contains("hidden"));
+        .filter((row) => !row.classList.contains("hidden"));
+
+    if (rows.length === 0) return;
 
     const data = [
         ["Mã nhân viên", "Nhân viên", "Ngày", "Giờ vào", "Giờ ra", "Số giờ", "Trạng thái"],
-        ...rows.map(row => [...row.querySelectorAll("td")]
-            .map(cell => cell.innerText.trim()))
+        ...rows.map((row) => [
+            row.dataset.code,
+            row.dataset.employeeName,
+            row.dataset.date,
+            row.dataset.checkIn,
+            row.dataset.checkOut,
+            row.dataset.totalHours,
+            row.dataset.status
+        ])
     ];
 
-    const csv = "\uFEFF" + data.map(row =>
-        row.map(value => `"${value.replace(/"/g, '""')}"`).join(",")
+    const csv = "\uFEFF" + data.map((row) =>
+        row.map((value) => `"${value.replace(/"/g, '""')}"`).join(",")
     ).join("\n");
 
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -166,9 +273,21 @@ function exportCSV() {
     link.href = url;
     link.download = "bao-cao-cham-cong.csv";
     link.click();
-
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+    const clearButton = document.getElementById("clear-attendance-filters");
+
+    clearButton.addEventListener("click", () => {
+        document.getElementById("keyword").value = "";
+        document.getElementById("dateFilter").value = "";
+        document.getElementById("statusFilter").value = "";
+        filterRecords();
+    });
+
+    filterRecords();
+});
 </script>
 
 <%- include("../partials/adminFoot") %>
