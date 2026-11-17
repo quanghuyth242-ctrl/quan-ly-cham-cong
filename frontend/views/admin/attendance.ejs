@@ -1,204 +1,174 @@
+<%- include("../partials/adminHead", {
+    pageTitle: "Bảng chấm công",
+    activePage: "attendance"
+}) %>
 
-<%- include("../partials/adminHead", { title: "Bảng chấm công" }) %>
+<section class="flex flex-col gap-6">
 
-<div class="container-fluid py-4">
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- Tiêu đề -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-            <h3 class="fw-bold mb-1">Bảng chấm công</h3>
-            <p class="text-muted mb-0">
-                Theo dõi tình hình chấm công của nhân viên
+            <h2 class="text-2xl font-bold text-primary">Bảng chấm công</h2>
+            <p class="text-on-surface-variant mt-1">
+                Theo dõi và quản lý thời gian làm việc của nhân viên
             </p>
         </div>
+        <button onclick="exportCSV()"
+            class="bg-primary text-white px-5 py-3 rounded-xl hover:bg-primary-container">
+            Xuất báo cáo CSV
+        </button>
     </div>
 
     <!-- Thống kê -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3">
-                <div class="text-muted">Tổng nhân viên</div>
-                <h3 class="fw-bold mb-0"><%= stats.total_employees || 0 %></h3>
-            </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl p-5 shadow-sm">
+            <p class="text-on-surface-variant">Tổng nhân viên</p>
+            <p class="text-3xl font-bold text-primary mt-2"><%= stats.total_employees %></p>
         </div>
-
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3">
-                <div class="text-muted">Có mặt hôm nay</div>
-                <h3 class="fw-bold text-success mb-0">
-                    <%= stats.present || 0 %>
-                </h3>
-            </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm">
+            <p class="text-on-surface-variant">Có mặt</p>
+            <p class="text-3xl font-bold text-green-600 mt-2"><%= stats.present %></p>
         </div>
-
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3">
-                <div class="text-muted">Đi muộn</div>
-                <h3 class="fw-bold text-warning mb-0">
-                    <%= stats.late || 0 %>
-                </h3>
-            </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm">
+            <p class="text-on-surface-variant">Đi muộn</p>
+            <p class="text-3xl font-bold text-orange-500 mt-2"><%= stats.late %></p>
         </div>
-
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3">
-                <div class="text-muted">Vắng mặt</div>
-                <h3 class="fw-bold text-danger mb-0">
-                    <%= stats.absent || 0 %>
-                </h3>
-            </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm">
+            <p class="text-on-surface-variant">Vắng mặt</p>
+            <p class="text-3xl font-bold text-red-500 mt-2"><%= stats.absent %></p>
         </div>
     </div>
 
     <!-- Bộ lọc -->
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body">
-            <form action="/admin/attendance" method="GET"
-                  class="row g-3 align-items-end">
+    <div class="bg-white rounded-xl shadow-sm p-5">
+        <h3 class="font-semibold text-lg mb-4">Tìm kiếm và lọc chấm công</h3>
 
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">
-                        Tìm nhân viên
-                    </label>
-                    <input type="text"
-                           name="keyword"
-                           class="form-control"
-                           placeholder="Mã hoặc tên nhân viên"
-                           value="<%= filters.keyword || '' %>">
-                </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input id="keyword" type="text"
+                placeholder="Nhập tên nhân viên..."
+                class="border border-gray-300 rounded-lg px-4 py-3"
+                oninput="filterRecords()">
 
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">
-                        Ngày chấm công
-                    </label>
-                    <input type="date"
-                           name="date"
-                           class="form-control"
-                           value="<%= filters.date || '' %>">
-                </div>
+            <input id="dateFilter" type="date"
+                class="border border-gray-300 rounded-lg px-4 py-3"
+                onchange="filterRecords()">
 
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">
-                        Trạng thái
-                    </label>
-                    <select name="status" class="form-select">
-                        <option value="">Tất cả</option>
-                        <option value="present"
-                            <%= filters.status === "present" ? "selected" : "" %>>
-                            Có mặt
-                        </option>
-                        <option value="late"
-                            <%= filters.status === "late" ? "selected" : "" %>>
-                            Đi muộn
-                        </option>
-                        <option value="absent"
-                            <%= filters.status === "absent" ? "selected" : "" %>>
-                            Vắng mặt
-                        </option>
-                    </select>
-                </div>
-
-                <div class="col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-search"></i> Tìm kiếm
-                    </button>
-                    <a href="/admin/attendance"
-                       class="btn btn-outline-secondary">
-                        Làm mới
-                    </a>
-                </div>
-            </form>
+            <select id="statusFilter"
+                class="border border-gray-300 rounded-lg px-4 py-3"
+                onchange="filterRecords()">
+                <option value="">Tất cả trạng thái</option>
+                <option value="Đúng giờ">Đúng giờ</option>
+                <option value="Đi muộn">Đi muộn</option>
+                <option value="Vắng mặt">Vắng mặt</option>
+            </select>
         </div>
     </div>
 
-    <!-- Bảng chấm công -->
-    <div class="card border-0 shadow-sm">
-        <div class="card-body">
+    <!-- Bảng dữ liệu -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="p-5 border-b border-gray-100">
+            <h3 class="font-semibold text-lg">Danh sách chấm công</h3>
+            <p class="text-sm text-gray-500 mt-1">
+                Thông tin giờ vào, giờ ra và trạng thái làm việc
+            </p>
+        </div>
 
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold mb-0">Danh sách chấm công</h5>
-                <span class="text-muted small">
-                    Ngày: <%= filters.date || "Tất cả" %>
-                </span>
-            </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-surface-container-low text-on-surface-variant">
+                    <tr>
+                        <th class="px-5 py-4">Mã NV</th>
+                        <th class="px-5 py-4">Nhân viên</th>
+                        <th class="px-5 py-4">Ngày</th>
+                        <th class="px-5 py-4">Giờ vào</th>
+                        <th class="px-5 py-4">Giờ ra</th>
+                        <th class="px-5 py-4">Số giờ</th>
+                        <th class="px-5 py-4">Trạng thái</th>
+                    </tr>
+                </thead>
 
-            <div class="table-responsive">
-                <table class="table table-hover table-bordered align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>STT</th>
-                            <th>Mã nhân viên</th>
-                            <th>Họ và tên</th>
-                            <th>Ngày</th>
-                            <th>Giờ vào</th>
-                            <th>Giờ ra</th>
-                            <th>Tổng giờ</th>
-                            <th>Trạng thái</th>
-                        </tr>
-                    </thead>
+                <tbody id="attendanceBody">
+                    <% records.forEach(record => { %>
+                    <tr class="attendance-row border-b border-gray-100 hover:bg-gray-50"
+                        data-name="<%= record.employee_name.toLowerCase() %>"
+                        data-date="<%= record.work_date %>"
+                        data-status="<%= record.status %>">
 
-                    <tbody>
-                        <% if (!records || records.length === 0) { %>
-                            <tr>
-                                <td colspan="8" class="text-center text-muted py-4">
-                                    Không có dữ liệu chấm công
-                                </td>
-                            </tr>
-                        <% } else { %>
+                        <td class="px-5 py-4"><%= record.employee_id %></td>
+                        <td class="px-5 py-4 font-medium"><%= record.employee_name %></td>
+                        <td class="px-5 py-4"><%= record.work_date %></td>
+                        <td class="px-5 py-4"><%= record.check_in %></td>
+                        <td class="px-5 py-4"><%= record.check_out %></td>
+                        <td class="px-5 py-4"><%= record.total_hours %> giờ</td>
+                        <td class="px-5 py-4">
+                            <% if (record.status === "Đúng giờ") { %>
+                                <span class="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm">Đúng giờ</span>
+                            <% } else if (record.status === "Đi muộn") { %>
+                                <span class="px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-sm">Đi muộn</span>
+                            <% } else { %>
+                                <span class="px-3 py-1 rounded-full bg-red-100 text-red-700 text-sm">Vắng mặt</span>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
 
-                            <% records.forEach((record, index) => { %>
-                                <tr>
-                                    <td><%= index + 1 %></td>
-
-                                    <td>
-                                        <%= record.employee_id %>
-                                    </td>
-
-                                    <td>
-                                        <%= record.employee_name || "Chưa cập nhật" %>
-                                    </td>
-
-                                    <td>
-                                        <%= record.work_date || "" %>
-                                    </td>
-
-                                    <td>
-                                        <%= record.check_in || "--:--" %>
-                                    </td>
-
-                                    <td>
-                                        <%= record.check_out || "--:--" %>
-                                    </td>
-
-                                    <td>
-                                        <%= record.total_hours || "0" %> giờ
-                                    </td>
-
-                                    <td>
-                                        <% if (record.status === "present") { %>
-                                            <span class="badge bg-success">
-                                                Có mặt
-                                            </span>
-                                        <% } else if (record.status === "late") { %>
-                                            <span class="badge bg-warning text-dark">
-                                                Đi muộn
-                                            </span>
-                                        <% } else { %>
-                                            <span class="badge bg-danger">
-                                                Vắng mặt
-                                            </span>
-                                        <% } %>
-                                    </td>
-                                </tr>
-                            <% }) %>
-
-                        <% } %>
-                    </tbody>
-                </table>
-            </div>
-
+        <div id="emptyMessage" class="hidden text-center text-gray-500 py-8">
+            Không tìm thấy dữ liệu chấm công phù hợp.
         </div>
     </div>
+</section>
 
-</div>
+<script>
+function filterRecords() {
+    const keyword = document.getElementById("keyword").value.toLowerCase();
+    const date = document.getElementById("dateFilter").value;
+    const status = document.getElementById("statusFilter").value;
+
+    const rows = document.querySelectorAll(".attendance-row");
+    let visible = 0;
+
+    rows.forEach(row => {
+        const matchName = row.dataset.name.includes(keyword);
+        const matchDate = !date || row.dataset.date === date;
+        const matchStatus = !status || row.dataset.status === status;
+
+        const show = matchName && matchDate && matchStatus;
+        row.classList.toggle("hidden", !show);
+
+        if (show) visible++;
+    });
+
+    document.getElementById("emptyMessage")
+        .classList.toggle("hidden", visible !== 0);
+}
+
+function exportCSV() {
+    const rows = [...document.querySelectorAll(".attendance-row")]
+        .filter(row => !row.classList.contains("hidden"));
+
+    const data = [
+        ["Mã nhân viên", "Nhân viên", "Ngày", "Giờ vào", "Giờ ra", "Số giờ", "Trạng thái"],
+        ...rows.map(row => [...row.querySelectorAll("td")]
+            .map(cell => cell.innerText.trim()))
+    ];
+
+    const csv = "\uFEFF" + data.map(row =>
+        row.map(value => `"${value.replace(/"/g, '""')}"`).join(",")
+    ).join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "bao-cao-cham-cong.csv";
+    link.click();
+
+    URL.revokeObjectURL(url);
+}
+</script>
 
 <%- include("../partials/adminFoot") %>

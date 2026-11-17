@@ -1,4 +1,3 @@
-
 import express from "express";
 import path from "path";
 import session from "express-session";
@@ -7,7 +6,7 @@ import AuthRouter from "./routers/AuthRouter.js";
 import WorkShiftRouter from "./routers/WorkShiftRouter.js";
 import ShiftAssignmentRouter from "./routers/ShiftAssignmentRouter.js";
 import { requireAdmin } from "./middlewares/authMiddleware.js";
-
+import adminAttendanceRoutes from "./routers/adminAttendanceRoutes.js";
 const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -35,7 +34,7 @@ app.use("/", AuthRouter);
 // Quản lý ca làm việc & phân ca nhân viên (chỉ dành cho Admin)
 app.use("/admin/shifts", requireAdmin, WorkShiftRouter);
 app.use("/admin/shift-assignments", requireAdmin, ShiftAssignmentRouter);
-
+app.use("/admin/attendance", requireAdmin, adminAttendanceRoutes);
 app.get("/", (req, res) => {
     if (!req.session.user) {
         return res.redirect("/login");
