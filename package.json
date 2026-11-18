@@ -10,6 +10,7 @@
     "init:attendance-indexes": "node backend/scripts/initAttendanceIndexes.js",
     "init:shift-module": "node backend/scripts/initShiftModule.js",
     "init:device-module": "node backend/scripts/initDeviceModule.js",
+    "init:employee-status": "node backend/scripts/initEmployeeStatusModule.js",
     "seed:devices": "node backend/scripts/seedSampleDevices.js"
   },
   "keywords": [],

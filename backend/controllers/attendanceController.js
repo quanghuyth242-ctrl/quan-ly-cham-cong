@@ -301,7 +301,10 @@ export const update = async (req, res) => {
             return redirectWith(res, { error: "Bản ghi chấm công không tồn tại." });
         }
 
-        const { data, errors } = await validateRecord(req.body, id);
+        const { data, errors } = await validateRecord({
+            ...req.body,
+            employee_id: record.employee_id
+        }, id);
         if (errors.length > 0) {
             return redirectWith(res, { error: errors.join(" ") });
         }

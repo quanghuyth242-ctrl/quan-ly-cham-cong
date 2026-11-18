@@ -115,7 +115,7 @@ export const findByEmployeeDate = async (employeeId, workDate, excludeId = null)
 
 export const findEmployeeById = async (id) => {
     const [rows] = await db.execute(
-        "SELECT id FROM employees WHERE id = ? LIMIT 1",
+        "SELECT id FROM employees WHERE id = ? AND is_active = 1 LIMIT 1",
         [id]
     );
     return rows[0] || null;
@@ -125,6 +125,7 @@ export const getEmployees = async () => {
     const [rows] = await db.execute(`
         SELECT id, employee_code, full_name, department
           FROM employees
+         WHERE is_active = 1
          ORDER BY full_name ASC
     `);
     return rows;
@@ -244,15 +245,13 @@ export const create = async (data) => {
 export const update = async (id, data) => {
     await db.execute(
         `UPDATE attendance
-            SET employee_id = ?,
-                work_date = ?,
+            SET work_date = ?,
                 check_in = ?,
                 check_out = ?,
                 status = ?,
                 record_source = 'manual'
           WHERE id = ?`,
         [
-            data.employee_id,
             data.work_date,
             toDateTime(data.work_date, data.check_in),
             toDateTime(data.work_date, data.check_out),
