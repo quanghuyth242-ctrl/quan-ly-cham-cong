@@ -6,7 +6,8 @@
 <section class="flex flex-col gap-space-xl">
     <%- include("../partials/alerts", { success: success, error: error }) %>
 
-    <section class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+    <section class="relative overflow-hidden flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-lg md:p-space-xl rounded-xl border border-surface-container-high/60 shadow-sm">
+        <div class="absolute inset-y-0 left-0 w-1 bg-primary"></div>
         <div class="flex flex-col gap-space-xs">
             <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
                 <span class="flex h-2 w-2 rounded-full bg-primary-container"></span>
@@ -25,7 +26,7 @@
             </div>
         </div>
 
-        <div class="flex flex-col sm:flex-row gap-space-sm">
+        <div class="flex flex-wrap items-center gap-space-sm">
             <button
                 id="open-create-attendance"
                 class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md shadow-md transition-colors"
@@ -43,7 +44,7 @@
             </a>
             <button
                 id="export-attendance"
-                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 onclick="exportCSV()"
                 type="button"
             >
@@ -57,6 +58,15 @@
             >
                 <span class="material-symbols-outlined text-[20px]">sync</span>
                 <span>Đồng bộ ngay</span>
+            </button>
+            <button
+                id="toggle-auto-sync-attendance"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary-fixed text-primary rounded-xl font-label-md text-label-md transition-colors"
+                type="button"
+                aria-pressed="true"
+            >
+                <span id="auto-sync-attendance-icon" class="material-symbols-outlined text-[20px]">pause_circle</span>
+                <span id="auto-sync-attendance-label">Tạm dừng tự động</span>
             </button>
         </div>
     </section>
@@ -139,6 +149,14 @@
                         class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md pl-11 pr-space-md py-space-md rounded-xl outline-none focus:ring-2 focus:ring-primary-container transition-shadow"
                         oninput="scheduleFilterRecords()"
                     >
+                    <button
+                        id="clear-attendance-search"
+                        type="button"
+                        class="hidden absolute right-space-sm top-1/2 -translate-y-1/2 p-1 text-on-surface-variant hover:text-primary rounded-md"
+                        aria-label="Xóa từ khóa tìm kiếm"
+                    >
+                        <span class="material-symbols-outlined text-[18px]">close</span>
+                    </button>
                 </span>
             </label>
 
@@ -275,8 +293,8 @@
 
 <div id="attendance-modal" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-black/40" data-close-attendance-modal></div>
-    <div class="relative min-h-full flex items-center justify-center p-space-lg">
-        <div class="w-full max-w-xl bg-surface-container-lowest rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.18)] overflow-hidden">
+    <div class="relative min-h-full flex items-center justify-center p-space-lg overflow-y-auto">
+        <div class="w-full max-w-xl bg-surface-container-lowest rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.18)] overflow-hidden max-h-[calc(100vh-2rem)] overflow-y-auto">
             <div class="flex items-center justify-between px-space-xl py-space-lg border-b border-surface-container-high">
                 <div>
                     <h3 id="attendance-modal-title" class="font-headline-md text-headline-md text-primary font-semibold">Điều chỉnh chấm công</h3>
@@ -344,9 +362,9 @@
                     <button class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md rounded-xl transition-colors" data-close-attendance-modal type="button">
                         Hủy
                     </button>
-                    <button class="flex items-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl shadow-md transition-colors" type="submit">
+                    <button id="attendance-submit" class="flex items-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl shadow-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed" type="submit">
                         <span class="material-symbols-outlined text-[18px]">save</span>
-                        <span>Lưu dữ liệu</span>
+                        <span id="attendance-submit-label">Lưu dữ liệu</span>
                     </button>
                 </div>
             </form>
@@ -379,6 +397,14 @@ document.addEventListener("DOMContentLoaded", () => {
         errorBox.classList.remove("flex");
     };
 
+    const resetSubmitButton = () => {
+        const submitButton = document.getElementById("attendance-submit");
+        const submitLabel = document.getElementById("attendance-submit-label");
+        submitButton.disabled = false;
+        submitButton.removeAttribute("aria-busy");
+        submitLabel.textContent = "Lưu dữ liệu";
+    };
+
     const syncStatusFields = () => {
         const isAbsent = statusSelect.value === "absent";
         checkInInput.disabled = isAbsent;
@@ -404,6 +430,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const resetForm = () => {
         form.reset();
+        resetSubmitButton();
         form.action = "/admin/attendance/create";
         modalTitle.textContent = "Điều chỉnh chấm công";
         employeeSelect.disabled = false;
@@ -436,6 +463,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const data = button.dataset;
         form.reset();
+        resetSubmitButton();
         form.action = `/admin/attendance/${data.id}/update`;
         modalTitle.textContent = "Điều chỉnh dữ liệu chấm công";
         employeeSelect.value = data.employeeId;
@@ -460,6 +488,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     form.addEventListener("submit", (event) => {
         clearError();
+        const submitButton = document.getElementById("attendance-submit");
+        const submitLabel = document.getElementById("attendance-submit-label");
 
         if (statusSelect.value === "absent" && (checkInInput.value || checkOutInput.value)) {
             event.preventDefault();
@@ -476,12 +506,19 @@ document.addEventListener("DOMContentLoaded", () => {
         if (checkOutInput.value && checkOutInput.value <= checkInInput.value) {
             event.preventDefault();
             showError("Giờ ra phải sau giờ vào.");
+            return;
         }
+
+        submitButton.disabled = true;
+        submitButton.setAttribute("aria-busy", "true");
+        submitLabel.textContent = "Đang lưu...";
     });
 });
 
 function filterRecords() {
-    const keyword = document.getElementById("keyword").value.trim().toLocaleLowerCase();
+    const keywordInput = document.getElementById("keyword");
+    const keyword = keywordInput.value.trim().toLocaleLowerCase();
+    document.getElementById("clear-attendance-search").classList.toggle("hidden", !keywordInput.value);
     const date = document.getElementById("dateFilter").value;
     const status = document.getElementById("statusFilter").value;
     const rows = document.querySelectorAll(".attendance-row");
@@ -579,6 +616,8 @@ function exportCSV() {
 let attendanceRefreshInProgress = false;
 let lastAttendanceRowsHtml = null;
 let lastEmployeeOptionsSignature = null;
+let attendanceAutoSyncEnabled = true;
+let attendanceAutoSyncTimer = null;
 
 const formatRefreshTime = (date) => new Intl.DateTimeFormat("vi-VN", {
     hour: "2-digit",
@@ -608,6 +647,7 @@ function updateEmployeeOptions(employees) {
 
 async function refreshAttendance(manual = false) {
     if (attendanceRefreshInProgress) return;
+    if (!manual && !attendanceAutoSyncEnabled) return;
     if (!manual && document.visibilityState !== "visible") return;
 
     const modal = document.getElementById("attendance-modal");
@@ -622,6 +662,9 @@ async function refreshAttendance(manual = false) {
     const lastUpdated = document.getElementById("attendance-last-updated");
     attendanceRefreshInProgress = true;
     refreshButton.disabled = true;
+    refreshButton.setAttribute("aria-busy", "true");
+    const refreshIcon = refreshButton.querySelector(".material-symbols-outlined");
+    if (refreshIcon) refreshIcon.classList.add("animate-spin");
     syncStatus.classList.remove("text-red-600");
     syncStatus.classList.add("text-primary");
     syncStatus.textContent = "Đang đồng bộ dữ liệu...";
@@ -663,6 +706,9 @@ async function refreshAttendance(manual = false) {
     } finally {
         attendanceRefreshInProgress = false;
         refreshButton.disabled = false;
+        refreshButton.removeAttribute("aria-busy");
+        const refreshIcon = refreshButton.querySelector(".material-symbols-outlined");
+        if (refreshIcon) refreshIcon.classList.remove("animate-spin");
     }
 }
 
@@ -670,6 +716,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const clearButton = document.getElementById("clear-attendance-filters");
     const refreshButton = document.getElementById("refresh-attendance");
     const lastUpdated = document.getElementById("attendance-last-updated");
+    const autoSyncButton = document.getElementById("toggle-auto-sync-attendance");
+    const autoSyncIcon = document.getElementById("auto-sync-attendance-icon");
+    const autoSyncLabel = document.getElementById("auto-sync-attendance-label");
 
     clearButton.addEventListener("click", () => {
         document.getElementById("keyword").value = "";
@@ -678,11 +727,41 @@ document.addEventListener("DOMContentLoaded", () => {
         filterRecords();
     });
 
+    document.getElementById("clear-attendance-search").addEventListener("click", () => {
+        document.getElementById("keyword").value = "";
+        document.getElementById("clear-attendance-search").classList.add("hidden");
+        filterRecords();
+        document.getElementById("keyword").focus();
+    });
+
     lastUpdated.textContent = `Trang tải lúc ${formatRefreshTime(new Date())}`;
     refreshButton.addEventListener("click", () => refreshAttendance(true));
-    window.setInterval(() => refreshAttendance(), 30000);
+    const startAttendanceAutoSync = () => {
+        window.clearInterval(attendanceAutoSyncTimer);
+        attendanceAutoSyncTimer = window.setInterval(() => refreshAttendance(), 30000);
+    };
+    startAttendanceAutoSync();
+
+    autoSyncButton.addEventListener("click", () => {
+        attendanceAutoSyncEnabled = !attendanceAutoSyncEnabled;
+        autoSyncButton.setAttribute("aria-pressed", String(attendanceAutoSyncEnabled));
+        autoSyncIcon.textContent = attendanceAutoSyncEnabled ? "pause_circle" : "play_circle";
+        autoSyncLabel.textContent = attendanceAutoSyncEnabled ? "Tạm dừng tự động" : "Bật tự đồng bộ";
+        document.getElementById("attendance-sync-status").textContent =
+            attendanceAutoSyncEnabled ? "Tự đồng bộ mỗi 30 giây" : "Tự đồng bộ đang tạm dừng";
+
+        if (attendanceAutoSyncEnabled) {
+            startAttendanceAutoSync();
+            refreshAttendance(true);
+        } else {
+            window.clearInterval(attendanceAutoSyncTimer);
+        }
+    });
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") refreshAttendance();
+    });
+    window.addEventListener("online", () => {
+        if (attendanceAutoSyncEnabled) refreshAttendance(true);
     });
 
     filterRecords();

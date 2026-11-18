@@ -18,7 +18,7 @@
         data-is-early="<%= record.early_leave_minutes > 0 ? 'true' : 'false' %>"
         data-no-schedule="<%= record.status !== 'absent' && !record.has_schedule ? 'true' : 'false' %>"
     >
-        <td class="py-space-md px-space-lg">
+        <td class="py-space-md px-space-lg sticky left-0 z-[1] bg-surface-container-lowest">
             <span class="inline-flex px-space-sm py-1 rounded-lg bg-primary-fixed text-primary font-data-mono text-data-mono font-semibold">
                 <%= record.employee_code %>
             </span>
@@ -75,7 +75,7 @@
             <% } %>
         </td>
         <td class="py-space-md px-space-md font-data-mono text-data-mono"><%= record.total_hours %> giờ</td>
-        <td class="py-space-md px-space-lg">
+        <td class="py-space-md px-space-lg sticky right-0 z-[1] bg-surface-container-lowest">
             <% if (record.status === "present") { %>
                 <span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>

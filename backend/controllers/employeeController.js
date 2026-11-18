@@ -115,8 +115,38 @@ export const index = async (req, res) => renderPage(req, res, {
         ? "Đã thêm nhân viên mới."
         : req.query.success === "updated" ? "Đã cập nhật thông tin nhân viên."
         : req.query.success === "deactivated" ? "Đã ngừng hoạt động nhân viên."
-        : req.query.success === "reactivated" ? "Đã khôi phục hoạt động nhân viên." : null
+        : req.query.success === "reactivated" ? "Đã khôi phục hoạt động nhân viên." : null,
+    error: req.query.error ? String(req.query.error).replaceAll("+", " ") : null
 });
+
+export const refresh = async (req, res) => {
+    try {
+        const filters = getFilters(req.query);
+        const pageData = await getPageData(filters);
+
+        return res.render("admin/employeeRows", { employees: pageData.employees }, (renderError, rowsHtml) => {
+            if (renderError) {
+                console.error("Lỗi tạo nội dung làm mới nhân sự:", renderError);
+                return res.status(500).json({
+                    error: "Không thể đồng bộ danh sách nhân viên. Vui lòng thử lại."
+                });
+            }
+
+            return res.json({
+                rowsHtml,
+                departments: pageData.departments,
+                stats: pageData.stats,
+                availableEmployeeCodes: pageData.availableEmployeeCodes,
+                refreshedAt: new Date().toISOString()
+            });
+        });
+    } catch (error) {
+        console.error("Lỗi đồng bộ danh sách nhân viên:", error);
+        return res.status(500).json({
+            error: "Không thể đồng bộ danh sách nhân viên. Vui lòng thử lại."
+        });
+    }
+};
 
 export const create = async (req, res) => {
     const { employee, errors } = validateEmployee(req.body);
@@ -229,20 +259,35 @@ export const update = async (req, res) => {
 
 export const toggleStatus = async (req, res) => {
     const id = parseId(req.params.id);
+    const wantsJson = req.headers?.accept?.includes("application/json");
     if (!id) {
+        if (wantsJson) return res.status(400).json({ error: "Mã nhân viên không hợp lệ." });
         return res.redirect("/admin/employees?error=M%C3%A3+nh%C3%A2n+vi%C3%AAn+kh%C3%B4ng+h%E1%BB%A3p+l%E1%BB%87.");
     }
 
     try {
         const employee = await EmployeeModel.findById(id);
         if (!employee) {
+            if (wantsJson) return res.status(404).json({ error: "Không tìm thấy nhân viên." });
             return res.redirect("/admin/employees?error=Không+tìm+thấy+nhân+viên.");
         }
 
         const isActive = employee.is_active === 1 || employee.is_active === true;
         const updated = await EmployeeModel.setActiveStatus(id, !isActive);
         if (!updated) {
+            if (wantsJson) return res.status(404).json({ error: "Không tìm thấy nhân viên." });
             return res.redirect("/admin/employees?error=Không+tìm+thấy+nhân+viên.");
+        }
+
+        if (wantsJson) {
+            return res.json({
+                success: true,
+                employeeId: id,
+                isActive: !isActive,
+                message: isActive
+                    ? "Đã ngừng hoạt động nhân viên."
+                    : "Đã khôi phục hoạt động nhân viên."
+            });
         }
 
         return res.redirect(
@@ -250,6 +295,9 @@ export const toggleStatus = async (req, res) => {
         );
     } catch (error) {
         console.error("Lỗi cập nhật trạng thái nhân viên:", error);
+        if (wantsJson) {
+            return res.status(500).json({ error: "Không thể cập nhật trạng thái nhân viên." });
+        }
         return res.redirect("/admin/employees?error=Không+thể+cập+nhật+trạng+thái+nhân+viên.");
     }
 };
