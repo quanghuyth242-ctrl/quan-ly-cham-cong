@@ -81,7 +81,7 @@ const validateRecord = async (body, excludeId = null) => {
         errors.push("Giờ ra phải sau giờ vào.");
     }
 
-    if (errors.length === 0) {
+    if (errors.length === 0 && !excludeId) {
         const employee = await AttendanceModel.findEmployeeById(data.employee_id);
         if (!employee) {
             errors.push("Nhân viên được chọn không tồn tại.");

@@ -272,7 +272,8 @@ export const syncDeviceRecords = async (deviceId, records) => {
         const [employeeRows] = await connection.execute(
             `SELECT id, employee_code
                FROM employees
-              WHERE employee_code IN (${placeholders})`,
+              WHERE employee_code IN (${placeholders})
+                AND is_active = 1`,
             employeeCodes
         );
         const employeeIds = new Map(
@@ -438,7 +439,8 @@ export const syncDeviceEvents = async (deviceId, events) => {
         const [employeeRows] = await connection.execute(
             `SELECT id, employee_code
                FROM employees
-              WHERE employee_code IN (${employeePlaceholders})`,
+              WHERE employee_code IN (${employeePlaceholders})
+                AND is_active = 1`,
             employeeCodes
         );
         const employeeIds = new Map(
