@@ -1,6 +1,6 @@
 import * as EmployeeModel from "../models/EmployeeModel.js";
 
-const EMPTY_STATS = { total: 0, departments: 0, unassignedDepartment: 0 };
+const EMPTY_STATS = { total: 0, departments: 0, unassignedDepartment: 0, active: 0, inactive: 0 };
 const EMPLOYEE_CODE_PATTERN = /^[A-Za-z0-9._-]{1,50}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_PATTERN = /^[+\d().\-\s]+$/;
@@ -12,7 +12,10 @@ const parseId = (value) => {
 
 const getFilters = (query = {}) => ({
     search: String(query.search || "").trim().slice(0, 100),
-    department: String(query.department || "").trim().slice(0, 100)
+    department: String(query.department || "").trim().slice(0, 100),
+    status: ["active", "inactive"].includes(String(query.status || "").trim())
+        ? String(query.status).trim()
+        : ""
 });
 
 const getPageData = async (filters) => {
@@ -110,7 +113,9 @@ const validateEmployee = (body = {}, employeeCode = null) => {
 export const index = async (req, res) => renderPage(req, res, {
     success: req.query.success === "created"
         ? "Đã thêm nhân viên mới."
-        : req.query.success === "updated" ? "Đã cập nhật thông tin nhân viên." : null
+        : req.query.success === "updated" ? "Đã cập nhật thông tin nhân viên."
+        : req.query.success === "deactivated" ? "Đã ngừng hoạt động nhân viên."
+        : req.query.success === "reactivated" ? "Đã khôi phục hoạt động nhân viên." : null
 });
 
 export const create = async (req, res) => {
@@ -219,5 +224,32 @@ export const update = async (req, res) => {
             error: "Không thể cập nhật thông tin nhân viên. Vui lòng thử lại.",
             statusCode: 500
         });
+    }
+};
+
+export const toggleStatus = async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) {
+        return res.redirect("/admin/employees?error=M%C3%A3+nh%C3%A2n+vi%C3%AAn+kh%C3%B4ng+h%E1%BB%A3p+l%E1%BB%87.");
+    }
+
+    try {
+        const employee = await EmployeeModel.findById(id);
+        if (!employee) {
+            return res.redirect("/admin/employees?error=Không+tìm+thấy+nhân+viên.");
+        }
+
+        const isActive = employee.is_active === 1 || employee.is_active === true;
+        const updated = await EmployeeModel.setActiveStatus(id, !isActive);
+        if (!updated) {
+            return res.redirect("/admin/employees?error=Không+tìm+thấy+nhân+viên.");
+        }
+
+        return res.redirect(
+            `/admin/employees?success=${isActive ? "deactivated" : "reactivated"}`
+        );
+    } catch (error) {
+        console.error("Lỗi cập nhật trạng thái nhân viên:", error);
+        return res.redirect("/admin/employees?error=Không+thể+cập+nhật+trạng+thái+nhân+viên.");
     }
 };

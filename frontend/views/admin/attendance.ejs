@@ -303,6 +303,9 @@
                             </option>
                         <% }) %>
                     </select>
+                    <p id="attendance-employee-lock-note" class="hidden text-body-sm text-on-surface-variant">
+                        Nhân viên được cố định khi điều chỉnh bản ghi chấm công.
+                    </p>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
@@ -390,7 +393,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const openModal = () => {
         modal.classList.remove("hidden");
         document.body.classList.add("shift-modal-open");
-        employeeSelect.focus();
+        (employeeSelect.disabled ? dateInput : employeeSelect).focus();
     };
 
     const closeModal = () => {
@@ -403,6 +406,8 @@ document.addEventListener("DOMContentLoaded", () => {
         form.reset();
         form.action = "/admin/attendance/create";
         modalTitle.textContent = "Điều chỉnh chấm công";
+        employeeSelect.disabled = false;
+        document.getElementById("attendance-employee-lock-note").classList.add("hidden");
         statusSelect.value = "auto";
 
         const today = new Date();
@@ -434,6 +439,8 @@ document.addEventListener("DOMContentLoaded", () => {
         form.action = `/admin/attendance/${data.id}/update`;
         modalTitle.textContent = "Điều chỉnh dữ liệu chấm công";
         employeeSelect.value = data.employeeId;
+        employeeSelect.disabled = true;
+        document.getElementById("attendance-employee-lock-note").classList.remove("hidden");
         dateInput.value = data.workDate;
         checkInInput.value = data.checkIn;
         checkOutInput.value = data.checkOut;
