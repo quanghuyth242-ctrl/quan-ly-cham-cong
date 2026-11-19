@@ -1,4 +1,4 @@
-<%- include("../partials/adminHead", { pageTitle: pageTitle || "Bß║úng chß║Ñm c├┤ng", activePage: activePage || "attendance", user: user }) %>
+<%- include("../partials/adminHead", { pageTitle: pageTitle || "Bảng chấm công", activePage: activePage || "attendance", user: user }) %>
 
 <style>
     .att-modal-open {
@@ -77,18 +77,18 @@
     }
 </style>
 
-<!-- Ti├¬u ─æß╗ü trang -->
+<!-- Tiêu đề trang -->
 <section class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
     <div class="flex flex-col gap-space-xs">
         <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
             <span class="flex h-2 w-2 rounded-full bg-primary"></span>
-            <span class="uppercase tracking-wider">Chß║Ñm c├┤ng &amp; theo d├╡i</span>
+            <span class="uppercase tracking-wider">Chấm công &amp; theo dõi</span>
         </div>
         <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">
-            Bß║úng chß║Ñm c├┤ng
+            Bảng chấm công
         </h2>
         <p class="font-body-md text-body-md text-on-surface-variant max-w-3xl">
-            Theo d├╡i trß║íng th├íi chß║Ñm c├┤ng h├áng ng├áy, hß╗ù trß╗ú chß║Ñm c├┤ng bß║▒ng nhß║¡n diß╗çn khu├┤n mß║╖t v├á ph╞░╞íng thß╗⌐c thß╗º c├┤ng khi cß║ºn.
+            Theo dõi trạng thái chấm công hàng ngày, hỗ trợ chấm công bằng nhận diện khuôn mặt và phương thức thủ công khi cần.
         </p>
     </div>
 
@@ -99,7 +99,7 @@
             type="button"
         >
             <span class="material-symbols-outlined text-[18px]">face</span>
-            <span>Chß║Ñm c├┤ng khu├┤n mß║╖t</span>
+            <span>Chấm công khuôn mặt</span>
         </button>
 
         <button
@@ -108,17 +108,17 @@
             type="button"
         >
             <span id="att-refresh-icon" class="material-symbols-outlined text-[18px] text-on-surface-variant">refresh</span>
-            <span>L├ám mß╗¢i</span>
+            <span>Làm mới</span>
         </button>
     </div>
 </section>
 
-<!-- Thß╗æng k├¬ -->
+<!-- Thống kê -->
 <section class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-space-lg">
     <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
         <div class="flex flex-col min-w-0">
-            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tß╗òng NV</span>
-            <span id="att-stat-total" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">ΓÇö</span>
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng NV</span>
+            <span id="att-stat-total" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">—</span>
         </div>
         <div class="w-9 h-9 rounded-xl bg-surface-container-low text-primary flex items-center justify-center shrink-0">
             <span class="material-symbols-outlined text-[20px]">groups</span>
@@ -127,8 +127,8 @@
 
     <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
         <div class="flex flex-col min-w-0">
-            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">─É├ú v├áo</span>
-            <span id="att-stat-checkedin" class="font-headline-xl text-headline-xl text-secondary font-bold mt-space-xs">ΓÇö</span>
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đã vào</span>
+            <span id="att-stat-checkedin" class="font-headline-xl text-headline-xl text-secondary font-bold mt-space-xs">—</span>
         </div>
         <div class="w-9 h-9 rounded-xl bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center shrink-0">
             <span class="material-symbols-outlined text-[20px]">login</span>
@@ -137,8 +137,8 @@
 
     <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
         <div class="flex flex-col min-w-0">
-            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">─É├ú ra</span>
-            <span id="att-stat-checkedout" class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs">ΓÇö</span>
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đã ra</span>
+            <span id="att-stat-checkedout" class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs">—</span>
         </div>
         <div class="w-9 h-9 rounded-xl bg-primary-fixed text-primary flex items-center justify-center shrink-0">
             <span class="material-symbols-outlined text-[20px]">logout</span>
@@ -147,8 +147,8 @@
 
     <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
         <div class="flex flex-col min-w-0">
-            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">─Éi muß╗Ön</span>
-            <span id="att-stat-late" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">ΓÇö</span>
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đi muộn</span>
+            <span id="att-stat-late" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">—</span>
         </div>
         <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
             <span class="material-symbols-outlined text-[20px]">schedule</span>
@@ -157,8 +157,8 @@
 
     <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
         <div class="flex flex-col min-w-0">
-            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Vß╗ü sß╗¢m</span>
-            <span id="att-stat-early" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">ΓÇö</span>
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Về sớm</span>
+            <span id="att-stat-early" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">—</span>
         </div>
         <div class="w-9 h-9 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
             <span class="material-symbols-outlined text-[20px]">directions_run</span>
@@ -167,8 +167,8 @@
 
     <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
         <div class="flex flex-col min-w-0">
-            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Ch╞░a v├áo</span>
-            <span id="att-stat-notcheckedin" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">ΓÇö</span>
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Chưa vào</span>
+            <span id="att-stat-notcheckedin" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">—</span>
         </div>
         <div class="w-9 h-9 rounded-xl bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
             <span class="material-symbols-outlined text-[20px]">person_off</span>
@@ -176,13 +176,13 @@
     </div>
 </section>
 
-<!-- Danh s├ích chß║Ñm c├┤ng -->
+<!-- Danh sách chấm công -->
 <section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
     <div class="p-space-lg border-b border-surface-container-high">
         <div class="flex flex-col xl:flex-row xl:items-end gap-space-md">
             <div class="w-full xl:w-48">
                 <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-date">
-                    Ng├áy chß║Ñm c├┤ng
+                    Ngày chấm công
                 </label>
                 <input
                     id="att-date"
@@ -194,7 +194,7 @@
 
             <div class="flex-1 min-w-0">
                 <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-search">
-                    T├¼m kiß║┐m nh├ón vi├¬n
+                    Tìm kiếm nhân viên
                 </label>
                 <div class="relative">
                     <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px] pointer-events-none">search</span>
@@ -204,14 +204,14 @@
                         name="search"
                         type="search"
                         autocomplete="off"
-                        placeholder="Nhß║¡p m├ú nh├ón vi├¬n hoß║╖c hß╗ì t├¬n..."
+                        placeholder="Nhập mã nhân viên hoặc họ tên..."
                     >
                 </div>
             </div>
 
             <div class="w-full xl:w-48">
                 <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-department">
-                    Ph├▓ng ban
+                    Phòng ban
                 </label>
                 <div class="relative">
                     <select
@@ -219,7 +219,7 @@
                         class="w-full appearance-none bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-space-md pr-space-xl py-space-sm rounded-xl outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
                         name="department"
                     >
-                        <option value="">Tß║Ñt cß║ú ph├▓ng ban</option>
+                        <option value="">Tất cả phòng ban</option>
                     </select>
                     <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
                 </div>
@@ -227,7 +227,7 @@
 
             <div class="w-full xl:w-48">
                 <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-status">
-                    Trß║íng th├íi
+                    Trạng thái
                 </label>
                 <div class="relative">
                     <select
@@ -235,12 +235,12 @@
                         class="w-full appearance-none bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-space-md pr-space-xl py-space-sm rounded-xl outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
                         name="status"
                     >
-                        <option value="all">Tß║Ñt cß║ú trß║íng th├íi</option>
-                        <option value="checked_in">─É├ú check-in</option>
-                        <option value="checked_out">─É├ú check-out</option>
-                        <option value="not_checked_in">Ch╞░a check-in</option>
-                        <option value="late">─Éi muß╗Ön</option>
-                        <option value="early_leave">Vß╗ü sß╗¢m</option>
+                        <option value="all">Tất cả trạng thái</option>
+                        <option value="checked_in">Đã check-in</option>
+                        <option value="checked_out">Đã check-out</option>
+                        <option value="not_checked_in">Chưa check-in</option>
+                        <option value="late">Đi muộn</option>
+                        <option value="early_leave">Về sớm</option>
                     </select>
                     <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
                 </div>
@@ -253,14 +253,14 @@
                     type="button"
                 >
                     <span class="material-symbols-outlined text-[18px]">filter_alt</span>
-                    <span>Lß╗ìc</span>
+                    <span>Lọc</span>
                 </button>
                 <button
                     id="att-reset-filter"
                     class="px-space-md py-space-sm text-on-surface-variant hover:text-on-surface font-label-md text-label-md rounded-xl hover:bg-surface-container-low transition-colors"
                     type="button"
                 >
-                    X├│a lß╗ìc
+                    Xóa lọc
                 </button>
             </div>
         </div>
@@ -270,13 +270,13 @@
         <table class="w-full text-left border-collapse">
             <thead>
                 <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
-                    <th class="py-space-md px-space-lg font-semibold">Nh├ón vi├¬n</th>
-                    <th class="py-space-md px-space-md font-semibold">Ph├▓ng ban</th>
-                    <th class="py-space-md px-space-md font-semibold">Ca l├ám</th>
+                    <th class="py-space-md px-space-lg font-semibold">Nhân viên</th>
+                    <th class="py-space-md px-space-md font-semibold">Phòng ban</th>
+                    <th class="py-space-md px-space-md font-semibold">Ca làm</th>
                     <th class="py-space-md px-space-md font-semibold">Check-in</th>
                     <th class="py-space-md px-space-md font-semibold">Check-out</th>
-                    <th class="py-space-md px-space-md font-semibold">Trß║íng th├íi</th>
-                    <th class="py-space-md px-space-lg font-semibold text-right">Thao t├íc</th>
+                    <th class="py-space-md px-space-md font-semibold">Trạng thái</th>
+                    <th class="py-space-md px-space-lg font-semibold text-right">Thao tác</th>
                 </tr>
             </thead>
             <tbody id="att-table-body" class="divide-y divide-surface-container-low text-body-sm text-on-surface"></tbody>
@@ -284,12 +284,12 @@
     </div>
 
     <div class="p-space-lg bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-sm text-body-sm text-on-surface-variant">
-        <span id="att-table-summary">─Éang tß║úi dß╗» liß╗çu...</span>
+        <span id="att-table-summary">Đang tải dữ liệu...</span>
         <span id="att-table-date"></span>
     </div>
 </section>
 
-<!-- Modal chß║Ñm c├┤ng khu├┤n mß║╖t -->
+<!-- Modal chấm công khuôn mặt -->
 <div
     id="att-face-modal"
     class="fixed inset-0 z-[60] hidden"
@@ -309,10 +309,10 @@
                     </div>
                     <div class="min-w-0">
                         <h3 id="att-face-title" class="font-headline-sm text-headline-sm text-primary font-semibold truncate">
-                            Chß║Ñm c├┤ng bß║▒ng khu├┤n mß║╖t
+                            Chấm công bằng khuôn mặt
                         </h3>
                         <p class="font-body-sm text-body-sm text-on-surface-variant">
-                            Nhß║¡n diß╗çn tß╗▒ ─æß╗Öng ΓÇö kh├┤ng cß║ºn chß╗ìn nh├ón vi├¬n
+                            Nhận diện tự động — không cần chọn nhân viên
                         </p>
                     </div>
                 </div>
@@ -321,16 +321,16 @@
                     class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors"
                     data-close-modal="face"
                     type="button"
-                    aria-label="─É├│ng"
+                    aria-label="Đóng"
                 >
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
 
             <div class="p-space-xl overflow-y-auto flex flex-col gap-space-lg">
-                <!-- Chß╗ìn loß║íi chß║Ñm c├┤ng -->
+                <!-- Chọn loại chấm công -->
                 <div class="flex items-center gap-space-sm">
-                    <label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider shrink-0">Loß║íi:</label>
+                    <label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider shrink-0">Loại:</label>
                     <div class="flex gap-space-sm">
                         <button
                             id="att-face-action-checkin"
@@ -353,7 +353,7 @@
                     </div>
                 </div>
 
-                <!-- Lß╗ùi -->
+                <!-- Lỗi -->
                 <div id="att-face-error" class="hidden flex items-start gap-space-sm p-space-md rounded-xl bg-error-container border border-error/20 text-on-error-container">
                     <span class="material-symbols-outlined text-[20px] shrink-0">error</span>
                     <p id="att-face-error-message" class="font-body-sm text-body-sm"></p>
@@ -371,7 +371,7 @@
 
                     <div id="att-face-placeholder" class="absolute inset-0 flex flex-col items-center justify-center gap-space-sm text-on-surface-variant bg-surface-container-high">
                         <span class="material-symbols-outlined text-[36px]">videocam_off</span>
-                        <p class="font-body-sm text-body-sm">Camera ch╞░a bß║¡t</p>
+                        <p class="font-body-sm text-body-sm">Camera chưa bật</p>
                     </div>
 
                     <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -382,11 +382,11 @@
 
                     <div class="absolute bottom-space-md left-1/2 -translate-x-1/2 flex items-center gap-space-xs px-space-md py-space-sm rounded-full bg-black/60 text-white backdrop-blur-sm max-w-[90%]">
                         <span id="att-face-status-icon" class="material-symbols-outlined text-[18px]">progress_activity</span>
-                        <span id="att-face-status-text" class="font-body-sm text-body-sm text-center">Bß║Ñm n├║t b├¬n d╞░ß╗¢i ─æß╗â bß║»t ─æß║ºu</span>
+                        <span id="att-face-status-text" class="font-body-sm text-body-sm text-center">Bấm nút bên dưới để bắt đầu</span>
                     </div>
                 </div>
 
-                <!-- Kß║┐t quß║ú nhß║¡n diß╗çn -->
+                <!-- Kết quả nhận diện -->
                 <div id="att-face-result" class="hidden">
                     <div class="flex items-center gap-space-md p-space-lg rounded-xl bg-green-50 border border-green-200">
                         <div class="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center shrink-0 relative att-pulse-ring">
@@ -400,19 +400,19 @@
                     </div>
                 </div>
 
-                <!-- H╞░ß╗¢ng dß║½n -->
+                <!-- Hướng dẫn -->
                 <p id="att-face-hint" class="font-body-sm text-body-sm text-on-surface-variant text-center">
-                    Nh├¼n thß║│ng v├áo camera, giß╗» khu├┤n mß║╖t trong khung oval. Hß╗ç thß╗æng sß║╜ tß╗▒ ─æß╗Öng nhß║¡n diß╗çn.
+                    Nhìn thẳng vào camera, giữ khuôn mặt trong khung oval. Hệ thống sẽ tự động nhận diện.
                 </p>
 
-                <!-- N├║t ─æiß╗üu khiß╗ân -->
+                <!-- Nút điều khiển -->
                 <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-space-sm">
                     <button
                         class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-container text-on-surface font-label-md text-label-md rounded-xl transition-colors"
                         data-close-modal="face"
                         type="button"
                     >
-                        ─É├│ng
+                        Đóng
                     </button>
                     <div class="flex flex-col sm:flex-row gap-space-sm">
                         <button
@@ -421,7 +421,7 @@
                             type="button"
                         >
                             <span class="material-symbols-outlined text-[18px]">videocam</span>
-                            <span>Bß║»t ─æß║ºu camera</span>
+                            <span>Bắt đầu camera</span>
                         </button>
                         <button
                             id="att-face-capture"
@@ -430,7 +430,7 @@
                             disabled
                         >
                             <span class="material-symbols-outlined text-[18px]">photo_camera</span>
-                            <span>Chß║Ñm c├┤ng</span>
+                            <span>Chấm công</span>
                         </button>
                         <button
                             id="att-face-retry"
@@ -438,7 +438,7 @@
                             type="button"
                         >
                             <span class="material-symbols-outlined text-[18px]">refresh</span>
-                            <span>Thß╗¡ lß║íi</span>
+                            <span>Thử lại</span>
                         </button>
                     </div>
                 </div>
@@ -447,7 +447,7 @@
     </div>
 </div>
 
-<!-- Modal chß║Ñm c├┤ng thß╗º c├┤ng -->
+<!-- Modal chấm công thủ công -->
 <div
     id="att-manual-modal"
     class="fixed inset-0 z-[65] hidden"
@@ -467,12 +467,12 @@
                     </div>
                     <div class="min-w-0">
                         <h3 id="att-manual-title" class="font-headline-sm text-headline-sm text-primary font-semibold truncate">
-                            Chß║Ñm c├┤ng thß╗º c├┤ng
+                            Chấm công thủ công
                         </h3>
                         <p class="font-body-sm text-body-sm text-on-surface-variant truncate">
-                            <span id="att-manual-employee-name">ΓÇö</span>
-                            <span class="mx-1">ΓÇó</span>
-                            <span id="att-manual-employee-code" class="font-data-mono text-data-mono">ΓÇö</span>
+                            <span id="att-manual-employee-name">—</span>
+                            <span class="mx-1">•</span>
+                            <span id="att-manual-employee-code" class="font-data-mono text-data-mono">—</span>
                         </p>
                     </div>
                 </div>
@@ -481,7 +481,7 @@
                     class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors"
                     data-close-modal="manual"
                     type="button"
-                    aria-label="─É├│ng"
+                    aria-label="Đóng"
                 >
                     <span class="material-symbols-outlined">close</span>
                 </button>
@@ -495,7 +495,7 @@
 
                 <div class="flex flex-col gap-space-md">
                     <div>
-                        <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs">Loß║íi chß║Ñm c├┤ng</label>
+                        <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs">Loại chấm công</label>
                         <div class="flex gap-space-sm">
                             <button
                                 id="att-manual-action-checkin"
@@ -520,23 +520,23 @@
 
                     <div>
                         <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-manual-reason">
-                            L├╜ do chß║Ñm c├┤ng thß╗º c├┤ng <span class="text-error">*</span>
+                            Lý do chấm công thủ công <span class="text-error">*</span>
                         </label>
                         <textarea
                             id="att-manual-reason"
                             class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm px-space-md py-space-sm rounded-xl outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/20 transition-all resize-none"
                             rows="3"
-                            placeholder="V├¡ dß╗Ñ: Camera hß╗Ång, nh├ón vi├¬n qu├¬n badge..."
+                            placeholder="Ví dụ: Camera hỏng, nhân viên quên badge..."
                             maxlength="255"
                         ></textarea>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Tß╗½ 5 ─æß║┐n 255 k├╜ tß╗▒</p>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Từ 5 đến 255 ký tự</p>
                     </div>
                 </div>
 
                 <div class="flex items-start gap-space-sm p-space-md rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
                     <span class="material-symbols-outlined text-[20px] shrink-0">info</span>
                     <p class="font-body-sm text-body-sm">
-                        Chß║Ñm c├┤ng thß╗º c├┤ng chß╗ë sß╗¡ dß╗Ñng khi camera/nhß║¡n diß╗çn gß║╖p sß╗▒ cß╗æ. Mß╗ìi thao t├íc ─æß╗üu ─æ╞░ß╗úc ghi nhß║¡t k├╜ kiß╗âm to├ín.
+                        Chấm công thủ công chỉ sử dụng khi camera/nhận diện gặp sự cố. Mọi thao tác đều được ghi nhật ký kiểm toán.
                     </p>
                 </div>
             </div>
@@ -547,7 +547,7 @@
                     data-close-modal="manual"
                     type="button"
                 >
-                    Hß╗ºy
+                    Hủy
                 </button>
                 <button
                     id="att-manual-submit"
@@ -555,14 +555,14 @@
                     type="button"
                 >
                     <span class="material-symbols-outlined text-[18px]">check</span>
-                    <span>X├íc nhß║¡n chß║Ñm c├┤ng</span>
+                    <span>Xác nhận chấm công</span>
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Th├┤ng b├ío -->
+<!-- Thông báo -->
 <div
     id="att-toast-container"
     class="fixed top-20 right-4 z-[80] flex flex-col gap-space-sm w-80 max-w-[90vw]"
@@ -675,16 +675,16 @@
 
         const setText = (element, value) => {
             if (element) {
-                element.textContent = value === null || value === undefined || value === "" ? "ΓÇö" : value;
+                element.textContent = value === null || value === undefined || value === "" ? "—" : value;
             }
         };
 
         const formatTime = (value) => {
-            if (!value) return "ΓÇö";
+            if (!value) return "—";
 
             const date = new Date(value);
 
-            if (Number.isNaN(date.getTime())) return "ΓÇö";
+            if (Number.isNaN(date.getTime())) return "—";
 
             return new Intl.DateTimeFormat("vi-VN", {
                 hour: "2-digit",
@@ -694,11 +694,11 @@
         };
 
         const formatDate = (value) => {
-            if (!value) return "ΓÇö";
+            if (!value) return "—";
 
             const date = new Date(value);
 
-            if (Number.isNaN(date.getTime())) return "ΓÇö";
+            if (Number.isNaN(date.getTime())) return "—";
 
             return new Intl.DateTimeFormat("vi-VN", {
                 weekday: "long",
@@ -731,33 +731,33 @@
 
         const statusBadgeHtml = (employee) => {
             if (!employee.check_in) {
-                return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-outline"></span>Ch╞░a chß║Ñm</span>`;
+                return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-outline"></span>Chưa chấm</span>`;
             }
 
             const evaluation = employee.evaluation;
 
             if (!evaluation) {
                 if (employee.check_out) {
-                    return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>─É├ú xong</span>`;
+                    return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Đã xong</span>`;
                 }
-                return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>─Éang l├ám</span>`;
+                return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>Đang làm</span>`;
             }
 
             const badges = [];
 
             if (evaluation.isLate) {
-                badges.push(`<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Muß╗Ön ${evaluation.lateMinutes}p</span>`);
+                badges.push(`<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Muộn ${evaluation.lateMinutes}p</span>`);
             }
 
             if (evaluation.isEarlyLeave) {
-                badges.push(`<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>Sß╗¢m ${evaluation.earlyLeaveMinutes}p</span>`);
+                badges.push(`<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>Sớm ${evaluation.earlyLeaveMinutes}p</span>`);
             }
 
             if (badges.length === 0) {
                 if (employee.check_out) {
-                    return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>─É├║ng giß╗¥</span>`;
+                    return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Đúng giờ</span>`;
                 }
-                return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>─Éang l├ám</span>`;
+                return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>Đang làm</span>`;
             }
 
             return badges.join(" ");
@@ -787,7 +787,7 @@
             toast.innerHTML = `
                 <span class="material-symbols-outlined text-[20px] shrink-0">${toastConfig.icon}</span>
                 <p class="font-body-sm text-body-sm flex-1">${escapeHtml(message)}</p>
-                <button class="p-0.5 rounded-lg opacity-70 hover:opacity-100 transition-opacity shrink-0" type="button" aria-label="─É├│ng th├┤ng b├ío" data-dismiss-toast>
+                <button class="p-0.5 rounded-lg opacity-70 hover:opacity-100 transition-opacity shrink-0" type="button" aria-label="Đóng thông báo" data-dismiss-toast>
                     <span class="material-symbols-outlined text-[18px]">close</span>
                 </button>
             `;
@@ -870,17 +870,17 @@
         };
 
         const updateSummary = () => {
-            elements.tableSummary.textContent = `Hiß╗ân thß╗ï ${state.employees.length} nh├ón vi├¬n`;
-            elements.tableDate.textContent = `Ng├áy: ${formatDate(state.date + "T00:00:00")}`;
+            elements.tableSummary.textContent = `Hiển thị ${state.employees.length} nhân viên`;
+            elements.tableDate.textContent = `Ngày: ${formatDate(state.date + "T00:00:00")}`;
         };
 
         const renderRow = (employee) => {
             const initials = getInitials(employee.full_name);
             const safeName = escapeHtml(employee.full_name);
             const safeCode = escapeHtml(employee.employee_code);
-            const checkIn = employee.check_in ? formatTime(employee.check_in) : "ΓÇö";
-            const checkOut = employee.check_out ? formatTime(employee.check_out) : "ΓÇö";
-            const shiftName = employee.evaluation?.shift?.shift_name || "ΓÇö";
+            const checkIn = employee.check_in ? formatTime(employee.check_in) : "—";
+            const checkOut = employee.check_out ? formatTime(employee.check_out) : "—";
+            const shiftName = employee.evaluation?.shift?.shift_name || "—";
             const expectedTime = employee.evaluation?.expectedStart && employee.evaluation?.expectedEnd
                 ? `${escapeHtml(employee.evaluation.expectedStart)} - ${escapeHtml(employee.evaluation.expectedEnd)}`
                 : "";
@@ -900,7 +900,7 @@
                         data-employee-name="${safeName}"
                         data-employee-code="${safeCode}"
                         type="button"
-                        title="${canCheckIn ? "Check-in thß╗º c├┤ng" : "Check-out thß╗º c├┤ng"}"
+                        title="${canCheckIn ? "Check-in thủ công" : "Check-out thủ công"}"
                     >
                         <span class="material-symbols-outlined text-[16px]">${canCheckIn ? "login" : "logout"}</span>
                         <span>${canCheckIn ? "Check-in" : "Check-out"}</span>
@@ -918,13 +918,13 @@
                             <div class="flex flex-col min-w-0">
                                 <span class="font-label-md text-label-md text-on-surface font-semibold truncate">${safeName}</span>
                                 <span class="font-data-mono text-[11px] text-on-surface-variant truncate">
-                                    ${safeCode}${faceRegistered ? ' <span class="text-green-600">ΓùÅ</span>' : ""}
+                                    ${safeCode}${faceRegistered ? ' <span class="text-green-600">●</span>' : ""}
                                 </span>
                             </div>
                         </div>
                     </td>
                     <td class="py-space-md px-space-md text-on-surface-variant">
-                        ${escapeHtml(employee.department || "ΓÇö")}
+                        ${escapeHtml(employee.department || "—")}
                     </td>
                     <td class="py-space-md px-space-md">
                         <div class="flex flex-col">
@@ -959,15 +959,15 @@
                                 <div class="w-14 h-14 rounded-full bg-surface-container-low text-on-surface-variant flex items-center justify-center">
                                     <span class="material-symbols-outlined text-[28px]">group_off</span>
                                 </div>
-                                <p class="font-label-md text-label-md text-on-surface">Kh├┤ng t├¼m thß║Ñy nh├ón vi├¬n ph├╣ hß╗úp</p>
-                                <p class="font-body-sm text-body-sm text-on-surface-variant">Thß╗¡ thay ─æß╗òi ng├áy, tß╗½ kh├│a hoß║╖c bß╗Ö lß╗ìc.</p>
+                                <p class="font-label-md text-label-md text-on-surface">Không tìm thấy nhân viên phù hợp</p>
+                                <p class="font-body-sm text-body-sm text-on-surface-variant">Thử thay đổi ngày, từ khóa hoặc bộ lọc.</p>
                                 <button
                                     class="mt-space-xs flex items-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-label-sm text-label-sm transition-colors"
                                     data-reset-filter
                                     type="button"
                                 >
                                     <span class="material-symbols-outlined text-[18px]">filter_alt_off</span>
-                                    <span>X├│a bß╗Ö lß╗ìc</span>
+                                    <span>Xóa bộ lọc</span>
                                 </button>
                             </div>
                         </td>
@@ -987,7 +987,7 @@
                             <div class="w-14 h-14 rounded-full bg-error-container text-on-error-container flex items-center justify-center">
                                 <span class="material-symbols-outlined text-[28px]">cloud_off</span>
                             </div>
-                            <p class="font-label-md text-label-md text-on-surface">Kh├┤ng tß║úi ─æ╞░ß╗úc dß╗» liß╗çu</p>
+                            <p class="font-label-md text-label-md text-on-surface">Không tải được dữ liệu</p>
                             <p class="font-body-sm text-body-sm text-on-surface-variant max-w-md">${escapeHtml(message)}</p>
                             <button
                                 class="mt-space-xs flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-md py-space-sm rounded-xl font-label-sm text-label-sm transition-colors"
@@ -995,7 +995,7 @@
                                 type="button"
                             >
                                 <span class="material-symbols-outlined text-[18px]">refresh</span>
-                                <span>Thß╗¡ lß║íi</span>
+                                <span>Thử lại</span>
                             </button>
                         </div>
                     </td>
@@ -1008,7 +1008,7 @@
             elements.refreshIcon.classList.toggle("animate-spin", loading);
 
             if (loading) {
-                elements.tableSummary.textContent = "─Éang tß║úi dß╗» liß╗çu...";
+                elements.tableSummary.textContent = "Đang tải dữ liệu...";
 
                 if (state.employees.length === 0) {
                     renderSkeleton();
@@ -1023,7 +1023,7 @@
         const populateDepartments = (departments) => {
             const current = elements.departmentSelect.value;
 
-            elements.departmentSelect.innerHTML = `<option value="">Tß║Ñt cß║ú ph├▓ng ban</option>`;
+            elements.departmentSelect.innerHTML = `<option value="">Tất cả phòng ban</option>`;
 
             departments.forEach((dept) => {
                 const option = document.createElement("option");
@@ -1079,7 +1079,7 @@
                 if (requestId !== state.requestId) return;
 
                 if (!response.ok || !payload.success) {
-                    throw new Error(payload.message || "Kh├┤ng thß╗â lß║Ñy bß║úng chß║Ñm c├┤ng.");
+                    throw new Error(payload.message || "Không thể lấy bảng chấm công.");
                 }
 
                 state.employees = Array.isArray(payload.employees) ? payload.employees : [];
@@ -1110,7 +1110,7 @@
 
                 state.employees = [];
                 renderErrorState(error.message);
-                elements.tableSummary.textContent = "Kh├┤ng tß║úi ─æ╞░ß╗úc dß╗» liß╗çu";
+                elements.tableSummary.textContent = "Không tải được dữ liệu";
                 elements.tableDate.textContent = "";
                 showToast("error", error.message);
             } finally {
@@ -1133,7 +1133,7 @@
             loadData();
         };
 
-        // ---- Chß║Ñm c├┤ng khu├┤n mß║╖t ----
+        // ---- Chấm công khuôn mặt ----
 
         const FACE_API_SCRIPT_URL = "/vendor/face-api/face-api.js";
         const FACE_API_MODEL_URL = "/vendor/face-api/models";
@@ -1157,12 +1157,12 @@
                         resolve(window.faceapi);
                     } else {
                         faceApiScriptPromise = null;
-                        reject(new Error("Th╞░ viß╗çn nhß║¡n diß╗çn khu├┤n mß║╖t kh├┤ng khß║ú dß╗Ñng."));
+                        reject(new Error("Thư viện nhận diện khuôn mặt không khả dụng."));
                     }
                 };
                 script.onerror = () => {
                     faceApiScriptPromise = null;
-                    reject(new Error("Kh├┤ng tß║úi ─æ╞░ß╗úc th╞░ viß╗çn nhß║¡n diß╗çn khu├┤n mß║╖t."));
+                    reject(new Error("Không tải được thư viện nhận diện khuôn mặt."));
                 };
                 document.head.appendChild(script);
             });
@@ -1182,7 +1182,7 @@
                     try {
                         await faceapi.tf.setBackend("webgl");
                     } catch {
-                        // Tr├¼nh duyß╗çt kh├┤ng hß╗ù trß╗ú WebGL th├¼ d├╣ng backend mß║╖c ─æß╗ïnh.
+                        // Trình duyệt không hỗ trợ WebGL thì dùng backend mặc định.
                     }
 
                     await faceapi.tf.ready();
@@ -1273,21 +1273,21 @@
             const video = elements.faceVideo;
 
             if (!video.videoWidth) {
-                setFaceStatus("─Éang chuß║⌐n bß╗ï camera...", "loading");
+                setFaceStatus("Đang chuẩn bị camera...", "loading");
                 elements.faceCaptureBtn.disabled = true;
                 return;
             }
 
             if (detections.length === 0) {
-                setFaceStatus("Kh├┤ng ph├ít hiß╗çn khu├┤n mß║╖t", "searching");
-                elements.faceHint.textContent = "─É╞░a khu├┤n mß║╖t v├áo giß╗»a khung oval v├á ─æß║úm bß║úo ─æß╗º ├ính s├íng.";
+                setFaceStatus("Không phát hiện khuôn mặt", "searching");
+                elements.faceHint.textContent = "Đưa khuôn mặt vào giữa khung oval và đảm bảo đủ ánh sáng.";
                 elements.faceCaptureBtn.disabled = true;
                 return;
             }
 
             if (detections.length > 1) {
-                setFaceStatus("C├│ nhiß╗üu khu├┤n mß║╖t trong khung h├¼nh", "warning");
-                elements.faceHint.textContent = "Chß╗ë ─æß╗â mß╗Öt ng╞░ß╗¥i trong khung h├¼nh tr╞░ß╗¢c khi chß║Ñm c├┤ng.";
+                setFaceStatus("Có nhiều khuôn mặt trong khung hình", "warning");
+                elements.faceHint.textContent = "Chỉ để một người trong khung hình trước khi chấm công.";
                 elements.faceCaptureBtn.disabled = true;
                 return;
             }
@@ -1300,21 +1300,21 @@
             const offsetY = Math.abs(centerY - video.videoHeight / 2) / video.videoHeight;
 
             if (widthRatio < 0.15) {
-                setFaceStatus("Khu├┤n mß║╖t qu├í nhß╗Å", "warning");
-                elements.faceHint.textContent = "─É╞░a khu├┤n mß║╖t lß║íi gß║ºn camera h╞ín.";
+                setFaceStatus("Khuôn mặt quá nhỏ", "warning");
+                elements.faceHint.textContent = "Đưa khuôn mặt lại gần camera hơn.";
                 elements.faceCaptureBtn.disabled = true;
                 return;
             }
 
             if (offsetX > 0.22 || offsetY > 0.22) {
-                setFaceStatus("Khu├┤n mß║╖t ch╞░a ß╗ƒ giß╗»a khung", "warning");
-                elements.faceHint.textContent = "Di chuyß╗ân khu├┤n mß║╖t v├áo giß╗»a khung oval.";
+                setFaceStatus("Khuôn mặt chưa ở giữa khung", "warning");
+                elements.faceHint.textContent = "Di chuyển khuôn mặt vào giữa khung oval.";
                 elements.faceCaptureBtn.disabled = true;
                 return;
             }
 
-            setFaceStatus("─É├ú ph├ít hiß╗çn khu├┤n mß║╖t", "success");
-            elements.faceHint.textContent = "Giß╗» y├¬n, nh├¼n thß║│ng v├áo camera v├á bß║Ñm Chß║Ñm c├┤ng.";
+            setFaceStatus("Đã phát hiện khuôn mặt", "success");
+            elements.faceHint.textContent = "Giữ yên, nhìn thẳng vào camera và bấm Chấm công.";
             elements.faceCaptureBtn.disabled = false;
         };
 
@@ -1362,9 +1362,9 @@
                     if (faceState.capturing) return;
                     if (loopId !== faceState.requestId) return;
 
-                    console.error("Lß╗ùi nhß║¡n diß╗çn khu├┤n mß║╖t:", error);
-                    setFaceStatus("Kh├┤ng thß╗â nhß║¡n diß╗çn khu├┤n mß║╖t", "error");
-                    showFaceError("Kh├┤ng thß╗â nhß║¡n diß╗çn khu├┤n mß║╖t tß╗½ camera. Vui l├▓ng thß╗¡ lß║íi.");
+                    console.error("Lỗi nhận diện khuôn mặt:", error);
+                    setFaceStatus("Không thể nhận diện khuôn mặt", "error");
+                    showFaceError("Không thể nhận diện khuôn mặt từ camera. Vui lòng thử lại.");
                     elements.faceCaptureBtn.disabled = true;
                     elements.faceRetryBtn.classList.remove("hidden");
                     elements.faceRetryBtn.classList.add("flex");
@@ -1399,15 +1399,15 @@
             elements.faceCaptureBtn.disabled = true;
             elements.faceRetryBtn.classList.add("hidden");
             elements.faceRetryBtn.classList.remove("flex");
-            setFaceStatus("─Éang khß╗ƒi ─æß╗Öng camera...", "loading");
+            setFaceStatus("Đang khởi động camera...", "loading");
 
             try {
                 if (!window.isSecureContext) {
-                    throw new Error("Camera chß╗ë hoß║ít ─æß╗Öng tr├¬n HTTPS hoß║╖c localhost.");
+                    throw new Error("Camera chỉ hoạt động trên HTTPS hoặc localhost.");
                 }
 
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    throw new Error("Tr├¼nh duyß╗çt kh├┤ng hß╗ù trß╗ú truy cß║¡p camera.");
+                    throw new Error("Trình duyệt không hỗ trợ truy cập camera.");
                 }
 
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -1437,8 +1437,8 @@
 
                         stopFaceDetectionLoop();
                         stopFaceCamera();
-                        setFaceStatus("Camera ─æ├ú bß╗ï ngß║»t", "error");
-                        showFaceError("Camera ─æ├ú bß╗ï ngß║»t. Vui l├▓ng thß╗¡ lß║íi.");
+                        setFaceStatus("Camera đã bị ngắt", "error");
+                        showFaceError("Camera đã bị ngắt. Vui lòng thử lại.");
                         elements.faceCaptureBtn.disabled = true;
                         elements.faceRetryBtn.classList.remove("hidden");
                         elements.faceRetryBtn.classList.add("flex");
@@ -1464,7 +1464,7 @@
                 }
 
                 elements.facePlaceholder.classList.add("hidden");
-                setFaceStatus("─Éang tß║úi m├┤ h├¼nh nhß║¡n diß╗çn...", "loading");
+                setFaceStatus("Đang tải mô hình nhận diện...", "loading");
 
                 const faceapi = await ensureFaceApiModels();
 
@@ -1476,28 +1476,28 @@
                 }
 
                 faceState.faceapi = faceapi;
-                setFaceStatus("─Éang t├¼m khu├┤n mß║╖t...", "searching");
+                setFaceStatus("Đang tìm khuôn mặt...", "searching");
                 startFaceDetectionLoop();
             } catch (error) {
-                console.error("Lß╗ùi khß╗ƒi ─æß╗Öng camera:", error);
+                console.error("Lỗi khởi động camera:", error);
 
                 if (requestId !== faceState.requestId) return;
 
                 stopFaceCamera();
 
-                let message = "Kh├┤ng thß╗â khß╗ƒi ─æß╗Öng camera. Vui l├▓ng thß╗¡ lß║íi.";
+                let message = "Không thể khởi động camera. Vui lòng thử lại.";
 
                 if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
-                    message = "Bß║ín ─æ├ú tß╗½ chß╗æi quyß╗ün truy cß║¡p camera. H├úy cß║Ñp quyß╗ün camera trong tr├¼nh duyß╗çt rß╗ôi thß╗¡ lß║íi.";
+                    message = "Bạn đã từ chối quyền truy cập camera. Hãy cấp quyền camera trong trình duyệt rồi thử lại.";
                 } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
-                    message = "Kh├┤ng t├¼m thß║Ñy camera tr├¬n thiß║┐t bß╗ï.";
+                    message = "Không tìm thấy camera trên thiết bị.";
                 } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
-                    message = "Camera ─æang ─æ╞░ß╗úc ß╗⌐ng dß╗Ñng kh├íc sß╗¡ dß╗Ñng.";
+                    message = "Camera đang được ứng dụng khác sử dụng.";
                 } else if (error.message) {
                     message = error.message;
                 }
 
-                setFaceStatus("Kh├┤ng thß╗â khß╗ƒi ─æß╗Öng camera", "error");
+                setFaceStatus("Không thể khởi động camera", "error");
                 showFaceError(message);
                 elements.faceCaptureBtn.disabled = true;
                 elements.faceRetryBtn.classList.remove("hidden");
@@ -1519,7 +1519,7 @@
             elements.faceCaptureBtn.disabled = true;
             hideFaceError();
             hideFaceResult();
-            setFaceStatus("─Éang tr├¡ch xuß║Ñt v├á gß╗¡i dß╗» liß╗çu khu├┤n mß║╖t...", "loading");
+            setFaceStatus("Đang trích xuất và gửi dữ liệu khuôn mặt...", "loading");
 
             try {
                 const options = new faceState.faceapi.TinyFaceDetectorOptions({
@@ -1535,21 +1535,21 @@
                 if (!faceState.open) return;
 
                 if (detections.length === 0) {
-                    throw new Error("Kh├┤ng ph├ít hiß╗çn khu├┤n mß║╖t. Vui l├▓ng nh├¼n thß║│ng v├áo camera v├á thß╗¡ lß║íi.");
+                    throw new Error("Không phát hiện khuôn mặt. Vui lòng nhìn thẳng vào camera và thử lại.");
                 }
 
                 if (detections.length > 1) {
-                    throw new Error("C├│ nhiß╗üu khu├┤n mß║╖t trong khung h├¼nh. Chß╗ë ─æß╗â mß╗Öt ng╞░ß╗¥i v├á thß╗¡ lß║íi.");
+                    throw new Error("Có nhiều khuôn mặt trong khung hình. Chỉ để một người và thử lại.");
                 }
 
                 const detection = detections[0];
                 const descriptor = Array.from(detection.descriptor);
 
                 if (descriptor.length !== 128 || !descriptor.every((value) => Number.isFinite(value))) {
-                    throw new Error("Dß╗» liß╗çu khu├┤n mß║╖t kh├┤ng hß╗úp lß╗ç. Vui l├▓ng thß╗¡ lß║íi.");
+                    throw new Error("Dữ liệu khuôn mặt không hợp lệ. Vui lòng thử lại.");
                 }
 
-                // Gß╗¡i l├¬n server
+                // Gửi lên server
                 const controller = new AbortController();
                 const timeoutId = window.setTimeout(() => controller.abort(), 20000);
 
@@ -1578,15 +1578,15 @@
                     if (captureRequestId !== faceState.requestId) return;
 
                     if (!response.ok || !payload.success) {
-                        throw new Error(payload.message || "Kh├┤ng thß╗â chß║Ñm c├┤ng.");
+                        throw new Error(payload.message || "Không thể chấm công.");
                     }
 
-                    // Th├ánh c├┤ng
+                    // Thành công
                     faceState.capturing = false;
-                    setFaceStatus("Chß║Ñm c├┤ng th├ánh c├┤ng!", "success");
+                    setFaceStatus("Chấm công thành công!", "success");
 
                     const employee = payload.employee;
-                    elements.faceResultMessage.textContent = payload.message || "Chß║Ñm c├┤ng th├ánh c├┤ng!";
+                    elements.faceResultMessage.textContent = payload.message || "Chấm công thành công!";
                     elements.faceResultEmployee.textContent = employee
                         ? `${employee.full_name} (${employee.employee_code})`
                         : "";
@@ -1596,21 +1596,21 @@
 
                     if (eval_) {
                         if (eval_.isLate) {
-                            detailParts.push(`─Éi muß╗Ön ${eval_.lateMinutes} ph├║t`);
+                            detailParts.push(`Đi muộn ${eval_.lateMinutes} phút`);
                         }
                         if (eval_.isEarlyLeave) {
-                            detailParts.push(`Vß╗ü sß╗¢m ${eval_.earlyLeaveMinutes} ph├║t`);
+                            detailParts.push(`Về sớm ${eval_.earlyLeaveMinutes} phút`);
                         }
                         if (eval_.suggestedStatus === "present") {
-                            detailParts.push("─É├║ng giß╗¥");
+                            detailParts.push("Đúng giờ");
                         }
                     }
 
-                    elements.faceResultDetail.textContent = detailParts.join(" ΓÇó ");
+                    elements.faceResultDetail.textContent = detailParts.join(" • ");
                     elements.faceResult.classList.remove("hidden");
                     elements.faceCaptureBtn.disabled = true;
 
-                    showToast("success", payload.message || "Chß║Ñm c├┤ng th├ánh c├┤ng!");
+                    showToast("success", payload.message || "Chấm công thành công!");
                     await loadData();
                 } finally {
                     window.clearTimeout(timeoutId);
@@ -1618,14 +1618,14 @@
             } catch (error) {
                 if (captureRequestId !== faceState.requestId) return;
 
-                console.error("Lß╗ùi chß║Ñm c├┤ng khu├┤n mß║╖t:", error);
+                console.error("Lỗi chấm công khuôn mặt:", error);
                 faceState.capturing = false;
 
                 const message = error.name === "AbortError"
-                    ? "Hß║┐t thß╗¥i gian chß╗¥ phß║ún hß╗ôi tß╗½ m├íy chß╗º."
+                    ? "Hết thời gian chờ phản hồi từ máy chủ."
                     : error.message;
 
-                setFaceStatus("Ch╞░a thß╗â chß║Ñm c├┤ng", "error");
+                setFaceStatus("Chưa thể chấm công", "error");
                 showFaceError(message);
                 elements.faceCaptureBtn.disabled = false;
 
@@ -1671,14 +1671,14 @@
             elements.faceCaptureBtn.disabled = true;
             elements.faceRetryBtn.classList.add("hidden");
             elements.faceRetryBtn.classList.remove("flex");
-            setFaceStatus("Bß║Ñm n├║t b├¬n d╞░ß╗¢i ─æß╗â bß║»t ─æß║ºu", "info");
-            elements.faceHint.textContent = "Nh├¼n thß║│ng v├áo camera, giß╗» khu├┤n mß║╖t trong khung oval. Hß╗ç thß╗æng sß║╜ tß╗▒ ─æß╗Öng nhß║¡n diß╗çn.";
+            setFaceStatus("Bấm nút bên dưới để bắt đầu", "info");
+            elements.faceHint.textContent = "Nhìn thẳng vào camera, giữ khuôn mặt trong khung oval. Hệ thống sẽ tự động nhận diện.";
             setFaceAction("check_in");
 
             openModal(elements.faceModal);
         };
 
-        // ---- Chß║Ñm c├┤ng thß╗º c├┤ng ----
+        // ---- Chấm công thủ công ----
 
         const closeManualModal = () => {
             if (manualState.submitting) return;
@@ -1719,7 +1719,7 @@
             elements.manualSubmitBtn.disabled = false;
             elements.manualSubmitBtn.innerHTML = `
                 <span class="material-symbols-outlined text-[18px]">check</span>
-                <span>X├íc nhß║¡n chß║Ñm c├┤ng</span>
+                <span>Xác nhận chấm công</span>
             `;
 
             setManualAction(defaultAction || "check_in");
@@ -1733,7 +1733,7 @@
             const reason = elements.manualReason.value.trim();
 
             if (reason.length < 5 || reason.length > 255) {
-                elements.manualErrorMessage.textContent = "Vui l├▓ng nhß║¡p l├╜ do chß║Ñm c├┤ng thß╗º c├┤ng (tß╗½ 5 ─æß║┐n 255 k├╜ tß╗▒).";
+                elements.manualErrorMessage.textContent = "Vui lòng nhập lý do chấm công thủ công (từ 5 đến 255 ký tự).";
                 elements.manualError.classList.remove("hidden");
                 elements.manualReason.focus();
                 return;
@@ -1744,7 +1744,7 @@
             elements.manualSubmitBtn.disabled = true;
             elements.manualSubmitBtn.innerHTML = `
                 <span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                <span>─Éang xß╗¡ l├╜...</span>
+                <span>Đang xử lý...</span>
             `;
 
             try {
@@ -1770,21 +1770,21 @@
                 }
 
                 if (!response.ok || !payload.success) {
-                    throw new Error(payload.message || "Kh├┤ng thß╗â chß║Ñm c├┤ng thß╗º c├┤ng.");
+                    throw new Error(payload.message || "Không thể chấm công thủ công.");
                 }
 
                 manualState.submitting = false;
                 state.lastFocused = null;
                 closeModal(elements.manualModal, false);
                 elements.refreshBtn.focus();
-                showToast("success", payload.message || "Chß║Ñm c├┤ng thß╗º c├┤ng th├ánh c├┤ng.");
+                showToast("success", payload.message || "Chấm công thủ công thành công.");
                 await loadData();
             } catch (error) {
                 manualState.submitting = false;
                 elements.manualSubmitBtn.disabled = false;
                 elements.manualSubmitBtn.innerHTML = `
                     <span class="material-symbols-outlined text-[18px]">check</span>
-                    <span>X├íc nhß║¡n chß║Ñm c├┤ng</span>
+                    <span>Xác nhận chấm công</span>
                 `;
                 elements.manualErrorMessage.textContent = error.message;
                 elements.manualError.classList.remove("hidden");
@@ -1792,7 +1792,7 @@
             }
         };
 
-        // ---- Sß╗▒ kiß╗çn ----
+        // ---- Sự kiện ----
 
         let searchTimer = null;
 
@@ -1866,7 +1866,7 @@
             }
         });
 
-        // Modal chß║Ñm c├┤ng khu├┤n mß║╖t
+        // Modal chấm công khuôn mặt
         elements.faceCheckinBtn.addEventListener("click", openFaceModal);
 
         elements.faceActionCheckin.addEventListener("click", () => setFaceAction("check_in"));
@@ -1886,7 +1886,7 @@
             element.addEventListener("click", closeFaceModal);
         });
 
-        // Modal chß║Ñm c├┤ng thß╗º c├┤ng
+        // Modal chấm công thủ công
         elements.manualActionCheckin.addEventListener("click", () => setManualAction("check_in"));
         elements.manualActionCheckout.addEventListener("click", () => setManualAction("check_out"));
 
@@ -1910,7 +1910,7 @@
             }
         });
 
-        // Khß╗ƒi tß║ío
+        // Khởi tạo
         state.date = getTodayString();
         elements.dateInput.value = state.date;
         renderSkeleton();
