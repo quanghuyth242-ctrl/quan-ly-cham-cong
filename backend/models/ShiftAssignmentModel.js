@@ -81,7 +81,7 @@ export const findById = async (id) => {
 
 export const findEmployeeById = async (id) => {
     const [rows] = await db.execute(
-        "SELECT id, employee_code, full_name, department FROM employees WHERE id = ?",
+        "SELECT id, employee_code, full_name, department FROM employees WHERE id = ? AND is_active = 1",
         [id]
     );
     return rows[0] || null;
@@ -91,6 +91,7 @@ export const getEmployeeOptions = async () => {
     const [rows] = await db.execute(`
         SELECT id, employee_code, full_name, department
           FROM employees
+         WHERE is_active = 1
          ORDER BY full_name ASC
     `);
     return rows;

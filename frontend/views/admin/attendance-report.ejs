@@ -1,0 +1,264 @@
+<%- include("../partials/adminHead", {
+    pageTitle: "Báo cáo chấm công",
+    activePage: "reports",
+    user: user
+}) %>
+
+<section class="flex flex-col gap-space-xl">
+    <%- include("../partials/alerts", { success: success, error: error }) %>
+
+    <section class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+        <div class="flex flex-col gap-space-xs">
+            <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
+                <span class="flex h-2 w-2 rounded-full bg-primary-container"></span>
+                <span class="uppercase tracking-wider">Tổng hợp dữ liệu chấm công</span>
+            </div>
+            <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Báo cáo chấm công</h2>
+            <p class="font-body-md text-body-md text-on-surface-variant">
+                Thống kê tình hình đi làm và thời gian ghi nhận theo từng nhân viên.
+            </p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-space-sm">
+            <a
+                href="/admin/attendance/export-csv?from_date=<%= encodeURIComponent(filters.fromDate) %>&to_date=<%= encodeURIComponent(filters.toDate) %>"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md transition-colors"
+            >
+                <span class="material-symbols-outlined text-[20px]">download</span>
+                <span>Xuất CSV khoảng ngày</span>
+            </a>
+            <a
+                href="/admin/attendance"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors"
+            >
+                <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+                <span>Bảng chấm công</span>
+            </a>
+        </div>
+    </section>
+
+    <section class="bg-surface-container-lowest p-space-lg sm:p-space-xl rounded-xl shadow-sm">
+        <form action="/admin/attendance/reports" method="GET" class="flex flex-col lg:flex-row lg:items-end gap-space-md">
+            <div class="flex flex-col gap-space-xs flex-1">
+                <label for="from_date" class="font-label-md text-label-md text-on-surface">Từ ngày</label>
+                <input
+                    id="from_date"
+                    name="from_date"
+                    type="date"
+                    value="<%= filters.fromDate %>"
+                    required
+                    class="w-full px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+            </div>
+            <div class="flex flex-col gap-space-xs flex-1">
+                <label for="to_date" class="font-label-md text-label-md text-on-surface">Đến ngày</label>
+                <input
+                    id="to_date"
+                    name="to_date"
+                    type="date"
+                    value="<%= filters.toDate %>"
+                    required
+                    class="w-full px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+            </div>
+            <button
+                type="submit"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md transition-colors"
+            >
+                <span class="material-symbols-outlined text-[20px]">filter_alt</span>
+                <span>Xem báo cáo</span>
+            </button>
+            <a
+                href="/admin/attendance/reports"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors"
+            >
+                <span class="material-symbols-outlined text-[20px]">calendar_month</span>
+                <span>Tháng hiện tại</span>
+            </a>
+        </form>
+    </section>
+
+    <% const totalRecords = Number(stats.total_records || 0); %>
+    <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-space-lg" aria-label="Tổng quan báo cáo">
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Lượt ghi nhận</span>
+                <span class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= totalRecords %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">assignment</span>
+            </div>
+        </article>
+
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đúng giờ</span>
+                <span class="font-headline-xl text-headline-xl text-green-600 font-bold mt-space-xs"><%= stats.present %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">task_alt</span>
+            </div>
+        </article>
+
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đi muộn</span>
+                <span class="font-headline-xl text-headline-xl text-orange-500 font-bold mt-space-xs"><%= stats.late %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">schedule</span>
+            </div>
+        </article>
+
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Vắng mặt</span>
+                <span class="font-headline-xl text-headline-xl text-red-600 font-bold mt-space-xs"><%= stats.absent %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">event_busy</span>
+            </div>
+        </article>
+
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng giờ ghi nhận</span>
+                <span class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= stats.total_hours %></span>
+                <span class="font-label-sm text-label-sm text-on-surface-variant">giờ</span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">timelapse</span>
+            </div>
+        </article>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-space-lg">
+        <article class="lg:col-span-2 bg-surface-container-lowest p-space-lg sm:p-space-xl rounded-xl shadow-sm">
+            <div class="flex items-start justify-between gap-space-md mb-space-lg">
+                <div>
+                    <h3 class="font-headline-sm text-headline-sm text-primary">Phân bố trạng thái</h3>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
+                        Tỷ lệ được tính trên tổng lượt chấm công trong khoảng đã chọn.
+                    </p>
+                </div>
+                <span class="font-label-md text-label-md text-on-surface-variant whitespace-nowrap">
+                    <%= filters.fromDate %> – <%= filters.toDate %>
+                </span>
+            </div>
+
+            <div class="h-3 w-full flex overflow-hidden rounded-full bg-surface-container-high" role="img" aria-label="Biểu đồ phân bố trạng thái chấm công">
+                <div class="h-full bg-green-500" style="width: <%= totalRecords ? (stats.present / totalRecords) * 100 : 0 %>%"></div>
+                <div class="h-full bg-orange-500" style="width: <%= totalRecords ? (stats.late / totalRecords) * 100 : 0 %>%"></div>
+                <div class="h-full bg-red-500" style="width: <%= totalRecords ? (stats.absent / totalRecords) * 100 : 0 %>%"></div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-space-md mt-space-lg">
+                <div class="flex items-center gap-space-sm">
+                    <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                    <span class="font-body-sm text-body-sm text-on-surface-variant">Đúng giờ</span>
+                    <span class="ml-auto font-label-md text-label-md text-on-surface"><%= stats.present %></span>
+                </div>
+                <div class="flex items-center gap-space-sm">
+                    <span class="w-3 h-3 rounded-full bg-orange-500"></span>
+                    <span class="font-body-sm text-body-sm text-on-surface-variant">Đi muộn</span>
+                    <span class="ml-auto font-label-md text-label-md text-on-surface"><%= stats.late %></span>
+                </div>
+                <div class="flex items-center gap-space-sm">
+                    <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                    <span class="font-body-sm text-body-sm text-on-surface-variant">Vắng mặt</span>
+                    <span class="ml-auto font-label-md text-label-md text-on-surface"><%= stats.absent %></span>
+                </div>
+            </div>
+        </article>
+
+        <article class="bg-primary p-space-lg sm:p-space-xl rounded-xl shadow-sm text-on-primary flex flex-col justify-center">
+            <span class="font-label-sm text-label-sm uppercase tracking-wider opacity-80">Tỷ lệ đi làm</span>
+            <div class="flex items-baseline gap-space-xs mt-space-sm">
+                <span class="font-headline-xl text-headline-xl font-bold"><%= attendanceRate %></span>
+                <span class="font-headline-md text-headline-md">%</span>
+            </div>
+            <p class="font-body-sm text-body-sm opacity-80 mt-space-sm">
+                Tính theo số lượt đúng giờ và đi muộn trên tổng lượt ghi nhận.
+            </p>
+        </article>
+    </section>
+
+    <section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm p-space-lg sm:p-space-xl border-b border-outline-variant">
+            <div>
+                <h3 class="font-headline-sm text-headline-sm text-primary">Chi tiết theo nhân viên</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
+                    Có <%= employees.length %> nhân viên có dữ liệu trong khoảng thời gian này.
+                </p>
+            </div>
+            <span class="font-label-sm text-label-sm text-on-surface-variant">
+                <%= filters.fromDate %> – <%= filters.toDate %>
+            </span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[900px] text-left">
+                <thead class="bg-surface-container-low">
+                    <tr class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
+                        <th class="px-space-lg py-space-md font-medium">Nhân viên</th>
+                        <th class="px-space-md py-space-md font-medium text-center">Lượt</th>
+                        <th class="px-space-md py-space-md font-medium text-center">Đúng giờ</th>
+                        <th class="px-space-md py-space-md font-medium text-center">Đi muộn</th>
+                        <th class="px-space-md py-space-md font-medium text-center">Vắng</th>
+                        <th class="px-space-md py-space-md font-medium text-right">Tổng giờ</th>
+                        <th class="px-space-lg py-space-md font-medium text-right">Tỷ lệ đi làm</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-outline-variant">
+                    <% if (employees.length === 0) { %>
+                        <tr>
+                            <td colspan="7" class="px-space-lg py-space-2xl text-center">
+                                <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
+                                    <span class="material-symbols-outlined text-[40px]">event_note</span>
+                                    <span class="font-label-md text-label-md">Không có dữ liệu chấm công trong khoảng ngày này.</span>
+                                </div>
+                            </td>
+                        </tr>
+                    <% } %>
+                    <% employees.forEach((employee) => { %>
+                        <tr class="hover:bg-surface-container-low transition-colors">
+                            <td class="px-space-lg py-space-md">
+                                <div class="flex flex-col">
+                                    <span class="font-label-md text-label-md text-on-surface"><%= employee.full_name %></span>
+                                    <span class="font-body-sm text-body-sm text-on-surface-variant">
+                                        <%= employee.employee_code %><%= employee.department ? ` · ${employee.department}` : "" %>
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="px-space-md py-space-md text-center font-body-md text-body-md text-on-surface"><%= employee.total_records %></td>
+                            <td class="px-space-md py-space-md text-center font-body-md text-body-md text-green-600"><%= employee.present %></td>
+                            <td class="px-space-md py-space-md text-center font-body-md text-body-md text-orange-600"><%= employee.late %></td>
+                            <td class="px-space-md py-space-md text-center font-body-md text-body-md text-red-600"><%= employee.absent %></td>
+                            <td class="px-space-md py-space-md text-right font-body-md text-body-md text-on-surface"><%= employee.total_hours %></td>
+                            <td class="px-space-lg py-space-md">
+                                <div class="flex items-center justify-end gap-space-sm">
+                                    <div class="w-16 h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+                                        <div class="h-full bg-primary rounded-full" style="width: <%= employee.attendance_rate %>%"></div>
+                                    </div>
+                                    <span class="w-10 text-right font-label-md text-label-md text-on-surface"><%= employee.attendance_rate %>%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    window.setInterval(() => {
+        if (document.visibilityState === "visible") {
+            window.location.reload();
+        }
+    }, 30000);
+});
+</script>
+
+<%- include("../partials/adminFoot") %>

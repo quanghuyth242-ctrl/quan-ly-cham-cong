@@ -43,7 +43,7 @@ export const findAll = async ({ search = "", status = "" } = {}) => {
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-    const sql = `${BASE_SELECT} ${where} ORDER BY s.status DESC, s.shift_name ASC`;
+    const sql = `${BASE_SELECT} ${where} ORDER BY s.shift_code ASC`;
 
     const [rows] = await db.execute(sql, params);
     return rows.map(mapShift);
@@ -68,7 +68,7 @@ export const findByCode = async (shiftCode, excludeId = null) => {
 };
 
 export const findActive = async () => {
-    const sql = `${BASE_SELECT} WHERE s.status = 1 ORDER BY s.shift_name ASC`;
+    const sql = `${BASE_SELECT} WHERE s.status = 1 ORDER BY s.shift_code ASC`;
     const [rows] = await db.execute(sql);
     return rows.map(mapShift);
 };

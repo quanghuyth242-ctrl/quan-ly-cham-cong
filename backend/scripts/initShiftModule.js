@@ -44,6 +44,28 @@ const tableExists = async (table) => {
 const main = async () => {
     console.log("=== Khởi tạo module ca làm việc & phân ca ===");
 
+    // Đảm bảo bảng ca làm việc tồn tại trên cơ sở dữ liệu mới
+    if (!(await tableExists("work_shifts"))) {
+        await db.query(`
+            CREATE TABLE work_shifts (
+                id INT NOT NULL AUTO_INCREMENT,
+                shift_code VARCHAR(50) NULL,
+                shift_name VARCHAR(100) NOT NULL,
+                morning_start TIME NOT NULL,
+                morning_end TIME NOT NULL,
+                afternoon_start TIME NOT NULL,
+                afternoon_end TIME NOT NULL,
+                status TINYINT(1) NOT NULL DEFAULT 1,
+                created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+        `);
+        console.log("+ Đã tạo bảng work_shifts");
+    } else {
+        console.log("= Bảng work_shifts đã tồn tại");
+    }
+
     // 1. Bổ sung cột shift_code cho work_shifts
     if (!(await columnExists("work_shifts", "shift_code"))) {
         await db.query(
@@ -105,7 +127,24 @@ const main = async () => {
         console.log("+ Đã tạo index idx_work_shifts_status");
     }
 
-    // 6. Tạo bảng phân ca nhân viên
+    // 6. Tạo bảng ngày làm việc của từng ca
+    if (!(await tableExists("shift_workdays"))) {
+        await db.query(`
+            CREATE TABLE shift_workdays (
+                shift_id INT NOT NULL,
+                weekday TINYINT UNSIGNED NOT NULL,
+                PRIMARY KEY (shift_id, weekday),
+                CONSTRAINT fk_shift_workdays_shift
+                    FOREIGN KEY (shift_id) REFERENCES work_shifts (id)
+                    ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+        `);
+        console.log("+ Đã tạo bảng shift_workdays");
+    } else {
+        console.log("= Bảng shift_workdays đã tồn tại");
+    }
+
+    // 7. Tạo bảng phân ca nhân viên
     if (!(await tableExists("employee_shift_assignments"))) {
         await db.query(`
             CREATE TABLE employee_shift_assignments (
@@ -135,7 +174,7 @@ const main = async () => {
         console.log("= Bảng employee_shift_assignments đã tồn tại");
     }
 
-    // 7. Tạo ca mặc định nếu hệ thống chưa có ca nào
+    // 8. Tạo ca mặc định nếu hệ thống chưa có ca nào
     const [shiftCount] = await db.query("SELECT COUNT(*) AS total FROM work_shifts");
 
     if (Number(shiftCount[0].total) === 0) {

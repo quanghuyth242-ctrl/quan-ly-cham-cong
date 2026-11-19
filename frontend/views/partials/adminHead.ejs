@@ -1,17 +1,19 @@
 <%
     const navItems = [
         { key: "dashboard", href: "/", icon: "dashboard", label: "Tổng quan" },
+        { key: "employees", href: "/admin/employees", icon: "badge", label: "Quản lý nhân sự" },
         { key: "attendance", href: "/admin/attendance", icon: "table_chart", label: "Bảng chấm công" },
+        { key: "devices", href: "/admin/devices", icon: "devices", label: "Quản lý thiết bị" },
         { key: "shifts", href: "/admin/shifts", icon: "calendar_month", label: "Quản lý ca & Lịch trực" },
         { key: "assignments", href: "/admin/shift-assignments", icon: "assignment_ind", label: "Phân ca nhân viên" },
         { key: "faces", href: "/admin/faces", icon: "face", label: "Quản lý khuôn mặt" },
-        { key: "leave", href: "#", icon: "event_note", label: "Đơn nghỉ & Giải trình" },
-        { key: "reports", href: "#", icon: "bar_chart", label: "Báo cáo & Thống kê" },
+        { key: "leave", href: "/admin/requests", icon: "event_note", label: "Đơn nghỉ & Giải trình" },
+        { key: "reports", href: "/admin/attendance/reports", icon: "bar_chart", label: "Báo cáo & Thống kê" },
         { key: "settings", href: "#", icon: "tune", label: "Cài đặt & Quy định" }
     ];
 
     const currentUser = locals.user || null;
-    const roleLabels = { admin: "Quản trị viên", employee: "Nhân viên" };
+    const roleLabels = { admin: "Quản trị viên", hr: "Quản trị HR", employee: "Nhân viên" };
     const userName = currentUser && currentUser.username ? currentUser.username : "Quản trị viên";
     const userRole = currentUser && roleLabels[currentUser.role] ? roleLabels[currentUser.role] : "Quản trị viên";
     const activePageKey = locals.activePage || "";
@@ -110,9 +112,9 @@
 
 <div id="sidebar-overlay" class="fixed inset-0 bg-black/40 z-40 hidden md:hidden"></div>
 
-<aside id="admin-sidebar" class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 hidden md:flex flex-col justify-between">
+<aside id="admin-sidebar" class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest border-r border-surface-container-high shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 hidden md:flex flex-col justify-between">
     <div class="flex flex-col">
-        <div class="h-16 px-space-lg flex items-center gap-space-sm bg-surface-container-lowest">
+        <div class="h-16 px-space-lg flex items-center gap-space-sm bg-surface-container-lowest border-b border-surface-container-low">
             <div class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shrink-0">
                 <span class="material-symbols-outlined text-on-primary text-[20px]">schedule</span>
             </div>
@@ -122,14 +124,10 @@
             </div>
         </div>
 
-        <div class="px-space-md py-space-sm">
-            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider px-space-sm">Chức năng chính</span>
-        </div>
-
-        <nav class="flex flex-col gap-space-xs px-space-md">
+        <nav aria-label="Điều hướng chính" class="flex flex-col gap-1.5 px-space-md pt-space-lg">
             <% navItems.forEach((item) => { %>
-                <a href="<%= item.href %>" class="flex items-center gap-space-md px-space-md py-space-sm whitespace-nowrap rounded-xl transition-colors font-label-md text-label-md <%= activePageKey === item.key ? 'bg-primary-container text-on-primary shadow-[0_1px_3px_rgba(15,23,42,0.08)]' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' %>">
-                    <span class="material-symbols-outlined shrink-0 text-[20px]"><%= item.icon %></span>
+                <a href="<%= item.href %>" <%= activePageKey === item.key ? 'aria-current="page"' : '' %> class="group flex items-center gap-space-md px-space-md py-2.5 whitespace-nowrap rounded-xl transition-all duration-200 font-label-md text-label-md <%= activePageKey === item.key ? 'bg-primary-container text-on-primary shadow-[0_6px_14px_rgba(30,64,175,0.18)]' : 'text-on-surface-variant hover:bg-primary-fixed/60 hover:text-primary' %>">
+                    <span class="material-symbols-outlined shrink-0 text-[20px] transition-transform duration-200 group-hover:scale-105"><%= item.icon %></span>
                     <span><%= item.label %></span>
                 </a>
             <% }) %>
@@ -139,11 +137,11 @@
     <div class="p-space-md flex flex-col gap-space-sm">
         <div class="p-space-md bg-surface-container-low rounded-xl flex items-center gap-space-md">
             <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
-                <span class="material-symbols-outlined text-on-primary text-[18px]">person</span>
+                <span class="material-symbols-outlined text-on-primary text-[18px]">support_agent</span>
             </div>
             <div class="flex flex-col min-w-0">
-                <span class="font-label-sm text-label-sm text-on-surface truncate"><%= userName %></span>
-                <span class="font-body-sm text-body-sm text-on-surface-variant truncate"><%= userRole %></span>
+                <span class="font-label-sm text-label-sm text-on-surface truncate">Hỗ trợ kỹ thuật</span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant truncate">support@chronotime.vn</span>
             </div>
         </div>
 
@@ -151,6 +149,7 @@
             <button class="w-full flex items-center gap-space-sm p-space-md bg-surface-container-low hover:bg-error-container/40 text-on-surface-variant hover:text-error rounded-xl transition-colors font-label-md text-label-md" type="submit">
                 <span class="material-symbols-outlined text-[20px]">logout</span>
                 <span>Đăng xuất</span>
+                <span class="material-symbols-outlined text-[18px] ml-auto">chevron_right</span>
             </button>
         </form>
     </div>
@@ -174,13 +173,35 @@
                 <span>Tổng quan</span>
             </a>
 
-            <div class="flex items-center gap-space-sm">
-                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                    <span class="material-symbols-outlined text-on-primary text-[18px]">person</span>
-                </div>
-                <div class="hidden md:flex flex-col">
-                    <span class="font-label-md text-label-md text-on-surface leading-tight"><%= userName %></span>
-                    <span class="font-body-sm text-body-sm text-on-surface-variant leading-tight"><%= userRole %></span>
+            <div class="relative" id="admin-user-menu">
+                <button
+                    id="admin-user-menu-button"
+                    class="flex items-center gap-space-md pl-space-sm pr-space-sm py-1 border-l border-surface-container-high hover:bg-surface-container-low rounded-xl transition-colors"
+                    type="button"
+                    aria-expanded="false"
+                    aria-haspopup="true"
+                    aria-controls="admin-user-menu-dropdown"
+                >
+                    <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                        <span class="material-symbols-outlined text-on-primary text-[18px]">person</span>
+                    </div>
+                    <div class="hidden md:flex flex-col text-left">
+                        <span class="font-label-md text-label-md text-on-surface leading-tight"><%= userName %></span>
+                        <span class="font-body-sm text-body-sm text-on-surface-variant leading-tight"><%= userRole %></span>
+                    </div>
+                    <span class="material-symbols-outlined text-on-surface-variant text-[20px]">expand_more</span>
+                </button>
+                <div id="admin-user-menu-dropdown" class="hidden absolute right-0 top-full mt-space-sm w-64 bg-surface-container-lowest rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.12)] border border-surface-container-high overflow-hidden z-50">
+                    <div class="px-space-md py-space-md border-b border-surface-container-high">
+                        <p class="font-label-md text-label-md text-on-surface font-semibold truncate"><%= userName %></p>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant truncate"><%= userRole %><%= currentUser && currentUser.employee_id ? ` • ${currentUser.employee_id}` : "" %></p>
+                    </div>
+                    <form action="/logout" method="POST">
+                        <button class="w-full flex items-center gap-space-sm px-space-md py-space-md text-error hover:bg-error-container/40 transition-colors font-label-md text-label-md" type="submit">
+                            <span class="material-symbols-outlined text-[20px]">logout</span>
+                            <span>Đăng xuất</span>
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

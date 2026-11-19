@@ -1,0 +1,131 @@
+<% if (employees.length === 0) { %>
+    <tr>
+        <td colspan="7" class="py-space-2xl px-space-lg text-center">
+            <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
+                <span class="material-symbols-outlined text-[40px] text-outline">group_off</span>
+                <span class="font-label-md text-label-md">Không tìm thấy nhân viên phù hợp</span>
+                <span class="font-body-sm text-body-sm">Thử thay đổi từ khóa hoặc bộ lọc đang chọn.</span>
+            </div>
+        </td>
+    </tr>
+<% } else { %>
+    <% employees.forEach((employee) => { %>
+        <tr
+            class="employee-row align-middle hover:bg-surface-container-low/70 transition-colors"
+            data-code="<%= employee.employee_code %>"
+            data-name="<%= employee.full_name %>"
+            data-department="<%= employee.department || '' %>"
+            data-email="<%= employee.email || '' %>"
+            data-phone="<%= employee.phone || '' %>"
+            data-created-date="<%= employee.created_date || '' %>"
+            data-status="<%= employee.is_active ? 'Đang hoạt động' : 'Ngừng hoạt động' %>"
+            data-active="<%= employee.is_active ? 'true' : 'false' %>"
+        >
+            <td class="py-space-md px-space-lg sticky left-0 z-[1] bg-surface-container-lowest">
+                <span class="inline-flex px-space-sm py-1 rounded-lg bg-primary-fixed text-primary font-data-mono text-data-mono font-semibold"><%= employee.employee_code %></span>
+            </td>
+            <td class="py-space-md px-space-md">
+                <div class="flex items-center gap-space-sm">
+                    <div class="w-9 h-9 rounded-full bg-primary-fixed text-primary font-semibold flex items-center justify-center text-xs shrink-0">
+                        <%= String(employee.full_name || "?").trim().slice(0, 2).toUpperCase() %>
+                    </div>
+                    <span class="font-label-md text-label-md text-on-surface font-semibold"><%= employee.full_name %></span>
+                </div>
+            </td>
+            <td class="py-space-md px-space-md">
+                <% if (employee.department) { %>
+                    <span class="inline-flex px-space-sm py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm"><%= employee.department %></span>
+                <% } else { %>
+                    <span class="text-outline">Chưa phân phòng ban</span>
+                <% } %>
+            </td>
+            <td class="py-space-md px-space-md">
+                <% if (employee.is_active) { %>
+                    <span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                        Đang hoạt động
+                    </span>
+                <% } else { %>
+                    <div class="flex flex-col gap-1">
+                        <span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-red-50 text-red-700 text-xs font-semibold w-fit">
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                            Ngừng hoạt động
+                        </span>
+                        <% if (employee.deactivated_date) { %>
+                            <span class="font-body-sm text-body-sm text-outline"><%= employee.deactivated_date %></span>
+                        <% } %>
+                    </div>
+                <% } %>
+            </td>
+            <td class="py-space-md px-space-md">
+                <div class="flex flex-col gap-1">
+                    <% if (employee.email) { %>
+                        <a class="text-primary hover:underline" href="mailto:<%= employee.email %>"><%= employee.email %></a>
+                    <% } else { %>
+                        <span class="text-outline">Chưa cập nhật email</span>
+                    <% } %>
+                    <% if (employee.phone) { %>
+                        <a class="font-data-mono text-data-mono text-on-surface-variant hover:text-primary" href="tel:<%= employee.phone %>"><%= employee.phone %></a>
+                    <% } else { %>
+                        <span class="text-outline">Chưa cập nhật số điện thoại</span>
+                    <% } %>
+                </div>
+            </td>
+            <td class="py-space-md px-space-md font-data-mono text-data-mono"><%= employee.created_date || "—" %></td>
+            <td class="py-space-md px-space-lg sticky right-0 z-[1] bg-surface-container-lowest">
+                <div class="flex justify-end gap-space-xs">
+                    <button
+                        class="inline-flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
+                        data-edit-employee
+                        data-id="<%= employee.id %>"
+                        data-code="<%= employee.employee_code %>"
+                        data-name="<%= employee.full_name %>"
+                        data-email="<%= employee.email || '' %>"
+                        data-phone="<%= employee.phone || '' %>"
+                        data-department="<%= employee.department || '' %>"
+                        type="button"
+                        title="Cập nhật thông tin nhân viên"
+                    >
+                        <span class="material-symbols-outlined text-[16px]">edit</span>
+                        <span>Cập nhật</span>
+                    </button>
+                    <form
+                        method="POST"
+                        action="/admin/employees/<%= employee.id %>/toggle-status"
+                        data-toggle-employee-status
+                        data-action="<%= employee.is_active ? 'deactivate' : 'reactivate' %>"
+                        data-name="<%= employee.full_name %>"
+                    >
+                        <% if (employee.is_active) { %>
+                            <button
+                                class="inline-flex items-center gap-1 px-space-sm py-1 bg-red-50 hover:bg-red-100 text-red-700 font-label-sm text-label-sm rounded-lg transition-colors"
+                                type="submit"
+                                title="Ngừng hoạt động nhân viên"
+                            >
+                                <span class="material-symbols-outlined text-[16px]">person_off</span>
+                                <span>Ngừng hoạt động</span>
+                            </button>
+                        <% } else { %>
+                            <button
+                                class="inline-flex items-center gap-1 px-space-sm py-1 bg-green-50 hover:bg-green-100 text-green-700 font-label-sm text-label-sm rounded-lg transition-colors"
+                                type="submit"
+                                title="Khôi phục hoạt động nhân viên"
+                            >
+                                <span class="material-symbols-outlined text-[16px]">person_check</span>
+                                <span>Kích hoạt lại</span>
+                            </button>
+                        <% } %>
+                    </form>
+                    <a
+                        class="inline-flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
+                        href="/admin/shift-assignments?search=<%= encodeURIComponent(employee.employee_code) %>"
+                        title="Mở phân ca cho nhân viên này"
+                    >
+                        <span class="material-symbols-outlined text-[16px]">event_repeat</span>
+                        <span>Phân ca</span>
+                    </a>
+                </div>
+            </td>
+        </tr>
+    <% }); %>
+<% } %>

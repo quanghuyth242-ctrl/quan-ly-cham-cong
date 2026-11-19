@@ -1,4 +1,3 @@
-
 import express from "express";
 import path from "path";
 import session from "express-session";
@@ -10,10 +9,12 @@ import WorkShiftRouter from "./routers/WorkShiftRouter.js";
 import ShiftAssignmentRouter from "./routers/ShiftAssignmentRouter.js";
 import FaceRouter from "./routers/FaceRouter.js";
 import AttendanceRouter from "./routers/attendanceRoutes.js";
-
+import LeaveRequestRouter from "./routers/LeaveRequestRouter.js";
 import { requireAdmin } from "./middlewares/authMiddleware.js";
 import { getOverviewNotifications } from "./services/notificationService.js";
-
+import adminDeviceRoutes from "./routers/adminDeviceRoutes.js";
+import adminEmployeeRoutes from "./routers/adminEmployeeRoutes.js";
+import deviceApiRoutes from "./routers/deviceApiRoutes.js";
 const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -58,9 +59,15 @@ app.use("/admin/shifts", requireAdmin, WorkShiftRouter);
 
 app.use("/admin/shift-assignments", requireAdmin, ShiftAssignmentRouter);
 
+// Quản lý đơn nghỉ phép, khuôn mặt và chấm công
+app.use("/admin/requests", requireAdmin, LeaveRequestRouter);
 app.use("/admin/faces", requireAdmin, FaceRouter);
-
 app.use("/admin/attendance", AttendanceRouter);
+
+// Quản lý thiết bị và nhân sự
+app.use("/admin/devices", requireAdmin, adminDeviceRoutes);
+app.use("/admin/employees", requireAdmin, adminEmployeeRoutes);
+app.use("/api/devices", deviceApiRoutes);
 
 app.get("/", async (req, res) => {
     if (!req.session.user) {

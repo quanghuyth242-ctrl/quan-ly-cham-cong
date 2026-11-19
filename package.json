@@ -7,7 +7,15 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon backend/app.js",
     "start": "node backend/app.js",
-    "init:face-profiles": "node backend/scripts/initFaceProfiles.js"
+    "init:attendance-indexes": "node backend/scripts/initAttendanceIndexes.js",
+    "init:shift-module": "node backend/scripts/initShiftModule.js",
+    "init:device-module": "node backend/scripts/initDeviceModule.js",
+    "init:employee-status": "node backend/scripts/initEmployeeStatusModule.js",
+    "init:face-profiles": "node backend/scripts/initFaceProfiles.js",
+    "seed:devices": "node backend/scripts/seedSampleDevices.js",
+    "seed:shifts": "node backend/scripts/seedSampleShifts.js",
+    "seed:employees": "node backend/scripts/seedSampleEmployees.js",
+    "seed:attendance": "node backend/scripts/seedSampleAttendance.js"
   },
   "keywords": [],
   "author": "",

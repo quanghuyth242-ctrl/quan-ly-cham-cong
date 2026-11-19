@@ -1,0 +1,589 @@
+<%- include("../partials/adminHead", {
+    pageTitle: "Quản lý nhân sự",
+    activePage: "employees",
+    user: user
+}) %>
+
+<section class="flex flex-col gap-space-xl">
+    <%- include("../partials/alerts", { success: success, error: error }) %>
+
+    <section class="relative overflow-hidden flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-lg md:p-space-xl rounded-xl border border-surface-container-high/60 shadow-sm">
+        <div class="absolute inset-y-0 left-0 w-1 bg-primary"></div>
+        <div class="flex flex-col gap-space-xs">
+            <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
+                <span class="flex h-2 w-2 rounded-full bg-primary-container"></span>
+                <span class="uppercase tracking-wider">Hồ sơ nhân viên</span>
+            </div>
+            <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Quản lý nhân sự</h2>
+            <p class="font-body-md text-body-md text-on-surface-variant">
+                Tra cứu thông tin nhân viên và phân bố nhân sự theo phòng ban.
+            </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-space-sm">
+            <div class="flex items-center gap-space-xs px-space-md py-space-sm bg-surface-container-low text-on-surface-variant rounded-xl border border-surface-container-high">
+                <span id="employee-sync-icon" class="material-symbols-outlined text-[18px] text-primary">sync</span>
+                <span id="employee-sync-status" class="font-label-sm text-label-sm">Tự đồng bộ mỗi 30 giây</span>
+            </div>
+            <button
+                id="refresh-employees"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-all active:scale-[0.98] disabled:opacity-60"
+                type="button"
+            >
+                <span class="material-symbols-outlined text-[20px]">refresh</span>
+                <span>Đồng bộ ngay</span>
+            </button>
+            <button
+                id="open-create-employee"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md shadow-md transition-all active:scale-[0.98]"
+                type="button"
+            >
+                <span class="material-symbols-outlined text-[20px]">person_add</span>
+                <span>Thêm nhân viên</span>
+            </button>
+            <button
+                id="export-employees"
+                class="flex items-center justify-center w-10 h-10 bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+                onclick="exportEmployeesCSV()"
+                <%= employees.length === 0 ? "disabled" : "" %>
+                title="Xuất danh sách CSV"
+                aria-label="Xuất danh sách CSV"
+            >
+                <span class="material-symbols-outlined text-[20px]">download</span>
+            </button>
+        </div>
+    </section>
+
+    <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-space-lg" aria-label="Thống kê nhân sự">
+        <a href="/admin/employees" class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-primary/10 transition-all">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng nhân viên</span>
+                <span id="employee-stat-total" class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= stats.total %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">groups</span>
+            </div>
+        </a>
+        <a href="/admin/employees?status=active" class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-green-200 transition-all">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đang hoạt động</span>
+                <span id="employee-stat-active" class="font-headline-xl text-headline-xl text-green-700 font-bold mt-space-xs"><%= stats.active %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-green-50 text-green-700 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">person_check</span>
+            </div>
+        </a>
+        <a href="/admin/employees?status=inactive" class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-red-200 transition-all">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Ngừng hoạt động</span>
+                <span id="employee-stat-inactive" class="font-headline-xl text-headline-xl text-red-700 font-bold mt-space-xs"><%= stats.inactive %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-red-50 text-red-700 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">person_off</span>
+            </div>
+        </a>
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Phòng ban</span>
+                <span id="employee-stat-departments" class="font-headline-xl text-headline-xl text-secondary font-bold mt-space-xs"><%= stats.departments %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-secondary-fixed text-secondary flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">domain</span>
+            </div>
+        </article>
+        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Chưa phân phòng ban</span>
+                <span id="employee-stat-unassigned" class="font-headline-xl text-headline-xl text-orange-600 font-bold mt-space-xs"><%= stats.unassignedDepartment %></span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">person_search</span>
+            </div>
+        </article>
+    </section>
+
+    <section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <div class="p-space-lg md:p-space-xl border-b border-surface-container-high">
+            <form id="employee-filter-form" method="GET" action="/admin/employees" class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-space-md flex-1">
+                    <label class="flex flex-col gap-space-xs">
+                        <span class="font-label-sm text-label-sm text-on-surface-variant">Tìm nhân viên</span>
+                        <span class="relative">
+                            <span class="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">search</span>
+                            <input
+                                id="employee-search"
+                                name="search"
+                                value="<%= filters.search %>"
+                                type="search"
+                                maxlength="100"
+                                placeholder="Tên, mã, email hoặc số điện thoại..."
+                                class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md pl-11 pr-space-md py-space-md rounded-xl outline-none focus:ring-2 focus:ring-primary-container transition-shadow"
+                            >
+                            <button
+                                id="clear-employee-search"
+                                type="button"
+                                class="<%= filters.search ? '' : 'hidden' %> absolute right-space-sm top-1/2 -translate-y-1/2 p-1 text-on-surface-variant hover:text-primary rounded-md"
+                                aria-label="Xóa từ khóa tìm kiếm"
+                            >
+                                <span class="material-symbols-outlined text-[18px]">close</span>
+                            </button>
+                        </span>
+                    </label>
+                    <label class="flex flex-col gap-space-xs">
+                        <span class="font-label-sm text-label-sm text-on-surface-variant">Phòng ban</span>
+                        <select
+                            name="department"
+                            data-auto-submit
+                            class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-md rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                        >
+                            <option value="">Tất cả phòng ban</option>
+                            <% departments.forEach((department) => { %>
+                                <option value="<%= department %>" <%= filters.department === department ? "selected" : "" %>><%= department %></option>
+                            <% }); %>
+                        </select>
+                    </label>
+                    <label class="flex flex-col gap-space-xs">
+                        <span class="font-label-sm text-label-sm text-on-surface-variant">Trạng thái</span>
+                        <select
+                            name="status"
+                            data-auto-submit
+                            class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-md rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                        >
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="active" <%= filters.status === "active" ? "selected" : "" %>>Đang hoạt động</option>
+                            <option value="inactive" <%= filters.status === "inactive" ? "selected" : "" %>>Ngừng hoạt động</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-space-sm">
+                    <button
+                        type="submit"
+                        class="flex items-center justify-center gap-space-xs px-space-lg py-space-md bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md transition-colors"
+                    >
+                        <span class="material-symbols-outlined text-[18px]">filter_alt</span>
+                        <span>Lọc danh sách</span>
+                    </button>
+                    <a
+                        href="/admin/employees"
+                        class="flex items-center justify-center gap-space-xs px-space-lg py-space-md bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors"
+                    >
+                        <span class="material-symbols-outlined text-[18px]">restart_alt</span>
+                        <span>Xóa bộ lọc</span>
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm p-space-lg md:px-space-xl border-b border-surface-container-low bg-surface-container-lowest">
+            <div>
+                <h3 class="font-headline-sm text-headline-sm text-on-surface">Danh sách nhân viên</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Thông tin liên hệ và phòng ban của nhân sự.</p>
+            </div>
+            <span id="employee-result-count" class="font-body-sm text-body-sm text-on-surface-variant" aria-live="polite">
+                Hiển thị <strong class="text-on-surface"><%= employees.length %></strong> / <%= stats.total %> nhân viên
+            </span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[980px]">
+                <caption class="sr-only">Danh sách nhân sự</caption>
+                <thead>
+                    <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                        <th class="py-space-md px-space-lg font-semibold">Mã nhân viên</th>
+                        <th class="py-space-md px-space-md font-semibold">Họ và tên</th>
+                        <th class="py-space-md px-space-md font-semibold">Phòng ban</th>
+                        <th class="py-space-md px-space-md font-semibold">Trạng thái</th>
+                        <th class="py-space-md px-space-md font-semibold">Thông tin liên hệ</th>
+                        <th class="py-space-md px-space-md font-semibold">Ngày tạo hồ sơ</th>
+                        <th class="py-space-md px-space-lg font-semibold text-right">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="employees-table-body" class="divide-y divide-surface-container-low text-body-sm text-on-surface">
+                    <%- include("employeeRows", { employees: employees }) %>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+
+<div
+    id="employee-modal"
+    class="fixed inset-0 z-50 <%= employeeModalOpen ? '' : 'hidden' %>"
+    data-available-codes="<%= JSON.stringify(availableEmployeeCodes) %>"
+>
+    <div class="absolute inset-0 bg-black/40" data-close-employee-modal></div>
+    <div class="relative min-h-full flex items-center justify-center p-space-lg overflow-y-auto">
+        <section
+            class="w-full max-w-xl max-h-[calc(100vh-2rem)] overflow-y-auto bg-surface-container-lowest rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.18)]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="employee-modal-title"
+        >
+            <div class="flex items-center justify-between px-space-xl py-space-lg border-b border-surface-container-high">
+                <div>
+                    <h3 id="employee-modal-title" class="font-headline-md text-headline-md text-primary font-semibold"><%= formMode === "edit" ? "Cập nhật nhân viên" : "Thêm nhân viên" %></h3>
+                    <p id="employee-modal-description" class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs"><%= formMode === "edit" ? "Cập nhật thông tin liên hệ và phòng ban." : "Nhập thông tin hồ sơ nhân viên mới." %></p>
+                </div>
+                <button class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-employee-modal type="button" aria-label="Đóng">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <form
+                id="employee-form"
+                data-mode="<%= formMode %>"
+                action="<%= formMode === 'edit' && formEmployeeId ? `/admin/employees/${formEmployeeId}/update` : '/admin/employees' %>"
+                method="POST"
+                class="p-space-xl flex flex-col gap-space-lg"
+            >
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
+                    <label class="flex flex-col gap-space-xs">
+                        <span class="font-label-sm text-label-sm text-on-surface">Mã nhân viên tự động</span>
+                        <input
+                            id="employee-code"
+                            name="employee_code"
+                            value="<%= formValues.employee_code || '' %>"
+                            type="text"
+                            maxlength="50"
+                            readonly
+                            required
+                            aria-live="polite"
+                            placeholder="Nhập họ tên để tự chọn mã"
+                            class="w-full bg-surface-container-low text-on-surface-variant font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none"
+                        >
+                        <span id="employee-code-help" class="font-body-sm text-body-sm text-on-surface-variant"><%= formMode === "edit" ? "Mã nhân viên được giữ cố định để bảo toàn dữ liệu chấm công." : "Mã sẽ được tự động chọn từ danh sách mã chưa sử dụng." %></span>
+                    </label>
+                    <label class="flex flex-col gap-space-xs">
+                        <span class="font-label-sm text-label-sm text-on-surface">Họ và tên <span class="text-error">*</span></span>
+                        <input
+                            name="full_name"
+                            value="<%= formValues.full_name || '' %>"
+                            type="text"
+                            maxlength="150"
+                            autocomplete="name"
+                            required
+                            class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                        >
+                    </label>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
+                    <label class="flex flex-col gap-space-xs">
+                        <span class="font-label-sm text-label-sm text-on-surface">Email</span>
+                        <input
+                            name="email"
+                            value="<%= formValues.email || '' %>"
+                            type="email"
+                            maxlength="150"
+                            autocomplete="email"
+                            class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                        >
+                    </label>
+                    <label class="flex flex-col gap-space-xs">
+                        <span class="font-label-sm text-label-sm text-on-surface">Số điện thoại</span>
+                        <input
+                            name="phone"
+                            value="<%= formValues.phone || '' %>"
+                            type="tel"
+                            maxlength="20"
+                            autocomplete="tel"
+                            class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                        >
+                    </label>
+                </div>
+
+                <label class="flex flex-col gap-space-xs">
+                    <span class="font-label-sm text-label-sm text-on-surface">Phòng ban</span>
+                    <input
+                        name="department"
+                        value="<%= formValues.department || '' %>"
+                        type="text"
+                        maxlength="100"
+                        list="employee-departments"
+                        autocomplete="organization-title"
+                        placeholder="Chọn hoặc nhập phòng ban mới"
+                        class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                    >
+                    <datalist id="employee-departments">
+                        <% departments.forEach((department) => { %>
+                            <option value="<%= department %>"></option>
+                        <% }); %>
+                    </datalist>
+                </label>
+
+                <div class="flex items-center justify-end gap-space-sm pt-space-md border-t border-surface-container-high">
+                    <button class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md rounded-xl transition-colors" data-close-employee-modal type="button">
+                        Hủy
+                    </button>
+                    <button id="employee-submit" class="flex items-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl shadow-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed" type="submit">
+                        <span id="employee-submit-icon" class="material-symbols-outlined text-[18px]"><%= formMode === "edit" ? "save" : "person_add" %></span>
+                        <span id="employee-submit-label"><%= formMode === "edit" ? "Lưu thay đổi" : "Lưu nhân viên" %></span>
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const modal = document.getElementById("employee-modal");
+    const submitButton = document.getElementById("employee-submit");
+    const openButton = document.getElementById("open-create-employee");
+    const form = document.getElementById("employee-form");
+    const modalTitle = document.getElementById("employee-modal-title");
+    const modalDescription = document.getElementById("employee-modal-description");
+    const submitIcon = document.getElementById("employee-submit-icon");
+    const submitLabel = document.getElementById("employee-submit-label");
+    const fullNameField = modal.querySelector('[name="full_name"]');
+    const employeeCodeField = document.getElementById("employee-code");
+    const employeeCodeHelp = document.getElementById("employee-code-help");
+    const getAvailableCodes = () => JSON.parse(modal.dataset.availableCodes || "[]");
+
+    const assignEmployeeCode = () => {
+        if (form.dataset.mode === "edit") return;
+
+        if (!fullNameField.value.trim()) {
+            employeeCodeField.value = "";
+            employeeCodeHelp.textContent = "Nhập họ tên để tự chọn mã nhân viên còn trống.";
+            return;
+        }
+
+        const availableCodes = getAvailableCodes();
+        if (!availableCodes.includes(employeeCodeField.value)) {
+            employeeCodeField.value = availableCodes[0] || "";
+        }
+        employeeCodeHelp.textContent = employeeCodeField.value
+            ? "Mã chưa sử dụng đã được tự động chọn."
+            : "Không còn mã nhân viên trống. Vui lòng liên hệ quản trị hệ thống.";
+    };
+
+    const openModal = () => {
+        modal.classList.remove("hidden");
+        document.body.classList.add("shift-modal-open");
+        fullNameField.focus();
+    };
+    const openCreateModal = () => {
+        form.reset();
+        submitButton.disabled = false;
+        submitButton.removeAttribute("aria-busy");
+        form.action = "/admin/employees";
+        form.dataset.mode = "create";
+        modalTitle.textContent = "Thêm nhân viên";
+        modalDescription.textContent = "Nhập thông tin hồ sơ nhân viên mới.";
+        submitIcon.textContent = "person_add";
+        submitLabel.textContent = "Lưu nhân viên";
+        employeeCodeField.value = "";
+        fullNameField.value = "";
+        form.elements.email.value = "";
+        form.elements.phone.value = "";
+        form.elements.department.value = "";
+        employeeCodeHelp.textContent = "Mã sẽ được tự động chọn từ danh sách mã chưa sử dụng.";
+        openModal();
+    };
+    const openEditModal = (button) => {
+        submitButton.disabled = false;
+        submitButton.removeAttribute("aria-busy");
+        form.action = `/admin/employees/${button.dataset.id}/update`;
+        form.dataset.mode = "edit";
+        modalTitle.textContent = "Cập nhật nhân viên";
+        modalDescription.textContent = "Cập nhật thông tin liên hệ và phòng ban.";
+        submitIcon.textContent = "save";
+        submitLabel.textContent = "Lưu thay đổi";
+        employeeCodeField.value = button.dataset.code;
+        fullNameField.value = button.dataset.name;
+        form.elements.email.value = button.dataset.email;
+        form.elements.phone.value = button.dataset.phone;
+        form.elements.department.value = button.dataset.department;
+        employeeCodeHelp.textContent = "Mã nhân viên được giữ cố định để bảo toàn dữ liệu chấm công.";
+        openModal();
+    };
+    const closeModal = () => {
+        modal.classList.add("hidden");
+        document.body.classList.remove("shift-modal-open");
+    };
+    const resetSubmitButton = () => {
+        submitButton.disabled = false;
+        submitButton.removeAttribute("aria-busy");
+        submitLabel.textContent = form.dataset.mode === "edit"
+            ? "Lưu thay đổi"
+            : "Lưu nhân viên";
+    };
+
+    form.addEventListener("submit", () => {
+        submitButton.disabled = true;
+        submitButton.setAttribute("aria-busy", "true");
+        submitLabel.textContent = "Đang lưu...";
+    });
+
+    fullNameField.addEventListener("input", assignEmployeeCode);
+    openButton.addEventListener("click", openCreateModal);
+    document.getElementById("employees-table-body").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-edit-employee]");
+        if (button) openEditModal(button);
+    });
+    document.querySelectorAll("[data-auto-submit]").forEach((select) => {
+        select.addEventListener("change", () => {
+            document.getElementById("employee-filter-form").submit();
+        });
+    });
+    const employeeSearch = document.getElementById("employee-search");
+    const clearEmployeeSearch = document.getElementById("clear-employee-search");
+    let employeeSearchTimeout;
+
+    employeeSearch.addEventListener("input", () => {
+        clearEmployeeSearch.classList.toggle("hidden", !employeeSearch.value);
+        window.clearTimeout(employeeSearchTimeout);
+        employeeSearchTimeout = window.setTimeout(() => {
+            document.getElementById("employee-filter-form").submit();
+        }, 500);
+    });
+    clearEmployeeSearch.addEventListener("click", () => {
+        employeeSearch.value = "";
+        clearEmployeeSearch.classList.add("hidden");
+        document.getElementById("employee-filter-form").submit();
+    });
+    modal.querySelectorAll("[data-close-employee-modal]").forEach((button) => {
+        button.addEventListener("click", closeModal);
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !modal.classList.contains("hidden")) {
+            closeModal();
+        }
+    });
+
+    if (!modal.classList.contains("hidden")) {
+        assignEmployeeCode();
+        fullNameField.focus();
+    }
+});
+
+let employeeRefreshInProgress = false;
+
+function bindEmployeeRowActions() {
+    document.querySelectorAll("[data-toggle-employee-status]").forEach((toggleForm) => {
+        if (toggleForm.dataset.bound === "true") return;
+        toggleForm.dataset.bound = "true";
+        toggleForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const isDeactivate = toggleForm.dataset.action === "deactivate";
+            const message = isDeactivate
+                ? `Ngừng hoạt động nhân viên "${toggleForm.dataset.name}"? Dữ liệu chấm công và phân ca hiện có sẽ được giữ nguyên.`
+                : `Khôi phục hoạt động nhân viên "${toggleForm.dataset.name}"?`;
+            if (!window.confirm(message)) return;
+
+            const submitButton = toggleForm.querySelector("button[type='submit']");
+            submitButton.disabled = true;
+            submitButton.setAttribute("aria-busy", "true");
+            submitButton.classList.add("opacity-60");
+
+            try {
+                const response = await fetch(toggleForm.action, {
+                    method: "POST",
+                    headers: { Accept: "application/json" },
+                    cache: "no-store"
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || "Không thể cập nhật trạng thái nhân viên.");
+                await refreshEmployees(true);
+            } catch (error) {
+                console.error("Lỗi thay đổi trạng thái nhân viên:", error);
+                window.alert(error.message);
+                submitButton.disabled = false;
+                submitButton.removeAttribute("aria-busy");
+                submitButton.classList.remove("opacity-60");
+            }
+        });
+    });
+}
+
+async function refreshEmployees(manual = false) {
+    if (employeeRefreshInProgress) return;
+
+    const refreshButton = document.getElementById("refresh-employees");
+    const syncStatus = document.getElementById("employee-sync-status");
+    const syncIcon = document.getElementById("employee-sync-icon");
+    const modal = document.getElementById("employee-modal");
+
+    employeeRefreshInProgress = true;
+    refreshButton.disabled = true;
+    syncStatus.textContent = "Đang đồng bộ dữ liệu...";
+    syncStatus.classList.add("text-primary");
+    syncIcon.classList.add("animate-spin");
+
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const response = await fetch(`/admin/employees/refresh?${params.toString()}`, {
+            headers: { "Accept": "application/json" },
+            cache: "no-store"
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Không thể đồng bộ danh sách nhân viên.");
+
+        document.getElementById("employees-table-body").innerHTML = data.rowsHtml;
+        const visibleRows = document.querySelectorAll("#employees-table-body .employee-row").length;
+        document.getElementById("employee-result-count").innerHTML =
+            `Hiển thị <strong class="text-on-surface">${visibleRows}</strong> / ${data.stats.total} nhân viên`;
+        document.getElementById("employee-stat-total").textContent = data.stats.total;
+        document.getElementById("employee-stat-active").textContent = data.stats.active;
+        document.getElementById("employee-stat-inactive").textContent = data.stats.inactive;
+        document.getElementById("employee-stat-departments").textContent = data.stats.departments;
+        document.getElementById("employee-stat-unassigned").textContent = data.stats.unassignedDepartment;
+        modal.dataset.availableCodes = JSON.stringify(data.availableEmployeeCodes);
+
+        bindEmployeeRowActions();
+        syncStatus.textContent = manual
+            ? "Đã đồng bộ dữ liệu nhân sự"
+            : "Tự đồng bộ mỗi 30 giây";
+    } catch (error) {
+        console.error("Lỗi đồng bộ nhân sự:", error);
+        syncStatus.textContent = "Đồng bộ thất bại; sẽ thử lại";
+        syncStatus.classList.remove("text-primary");
+        syncStatus.classList.add("text-red-600");
+    } finally {
+        employeeRefreshInProgress = false;
+        refreshButton.disabled = false;
+        syncIcon.classList.remove("animate-spin");
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    bindEmployeeRowActions();
+    document.getElementById("refresh-employees").addEventListener("click", () => refreshEmployees(true));
+    window.setInterval(() => refreshEmployees(), 30000);
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") refreshEmployees();
+    });
+});
+
+function exportEmployeesCSV() {
+    const rows = [...document.querySelectorAll(".employee-row")];
+    if (rows.length === 0) return;
+
+    const data = [
+        ["Mã nhân viên", "Họ và tên", "Phòng ban", "Trạng thái", "Email", "Số điện thoại", "Ngày tạo hồ sơ"],
+        ...rows.map((row) => [
+            row.dataset.code,
+            row.dataset.name,
+            row.dataset.department,
+            row.dataset.status,
+            row.dataset.email,
+            row.dataset.phone,
+            row.dataset.createdDate
+        ])
+    ];
+    const csv = "\uFEFF" + data.map((row) =>
+        row.map((value) => `"${value.replace(/"/g, '""')}"`).join(",")
+    ).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "danh-sach-nhan-su.csv";
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+</script>
+
+<%- include("../partials/adminFoot") %>
