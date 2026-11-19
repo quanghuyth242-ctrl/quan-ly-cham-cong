@@ -2,7 +2,8 @@
 
 <%- include("partials/alerts", { success: success, error: error }) %>
 
-<section class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+<section class="relative overflow-hidden flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-lg md:p-space-xl rounded-xl border border-surface-container-high/60 shadow-sm">
+    <div class="absolute inset-y-0 left-0 w-1 bg-primary"></div>
     <div class="flex flex-col gap-space-xs">
         <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
             <span class="flex h-2 w-2 rounded-full bg-primary-container"></span>
@@ -15,6 +16,16 @@
     </div>
 
     <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-space-sm self-start lg:self-auto">
+        <nav class="flex items-center p-1 rounded-xl bg-surface-container-high" aria-label="Chuyển mục ca và lịch trực">
+            <a href="/admin/shifts" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-lg bg-surface-container-lowest text-primary shadow-sm font-label-md text-label-md">
+                <span class="material-symbols-outlined text-[18px]">schedule</span>
+                Quản lý ca
+            </a>
+            <a href="/admin/shift-assignments" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-lg text-on-surface-variant hover:text-primary font-label-md text-label-md transition-colors">
+                <span class="material-symbols-outlined text-[18px]">calendar_month</span>
+                Lịch trực
+            </a>
+        </nav>
         <a href="/admin/shift-assignments" class="flex items-center justify-center gap-space-xs bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors">
             <span class="material-symbols-outlined text-[20px]">event_repeat</span>
             <span>Phân ca nhân viên</span>
@@ -26,8 +37,8 @@
     </div>
 </section>
 
-<section class="grid grid-cols-1 sm:grid-cols-3 gap-space-lg">
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+<section class="grid grid-cols-1 sm:grid-cols-3 gap-space-lg" aria-label="Thống kê ca làm việc">
+    <a href="/admin/shifts" class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-primary/10 transition-all">
         <div class="flex flex-col">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng số ca</span>
             <span class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= stats.total %></span>
@@ -35,9 +46,9 @@
         <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
             <span class="material-symbols-outlined text-[24px]">calendar_month</span>
         </div>
-    </div>
+    </a>
 
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+    <a href="/admin/shifts?status=1" class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-green-100 transition-all">
         <div class="flex flex-col">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đang hoạt động</span>
             <span class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs"><%= stats.active %></span>
@@ -45,9 +56,9 @@
         <div class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
             <span class="material-symbols-outlined text-[24px]">check_circle</span>
         </div>
-    </div>
+    </a>
 
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+    <a href="/admin/shifts?status=0" class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-surface-variant transition-all">
         <div class="flex flex-col">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Ngừng hoạt động</span>
             <span class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs"><%= stats.inactive %></span>
@@ -55,7 +66,7 @@
         <div class="w-11 h-11 rounded-xl bg-surface-container-high text-on-surface-variant flex items-center justify-center">
             <span class="material-symbols-outlined text-[24px]">pause_circle</span>
         </div>
-    </div>
+    </a>
 </section>
 
 <section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
@@ -65,12 +76,21 @@
                 <div class="relative flex-1 sm:max-w-xs">
                     <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
                     <input
+                        id="shift-search"
                         class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-8 pr-space-md py-space-sm rounded-xl outline-none focus:bg-surface-container transition-all"
                         name="search"
                         value="<%= filters.search %>"
                         placeholder="Tìm theo mã hoặc tên ca..."
                         type="text"
                     >
+                    <button
+                        id="clear-shift-search"
+                        type="button"
+                        class="<%= filters.search ? '' : 'hidden' %> absolute right-space-sm top-1/2 -translate-y-1/2 p-1 text-on-surface-variant hover:text-primary rounded-md"
+                        aria-label="Xóa từ khóa tìm kiếm"
+                    >
+                        <span class="material-symbols-outlined text-[18px]">close</span>
+                    </button>
                 </div>
 
                 <div class="relative sm:w-48">
@@ -126,7 +146,7 @@
                 <% } else { %>
                     <% shifts.forEach((shift) => { %>
                         <tr class="hover:bg-surface-container-low/70 transition-colors align-top">
-                            <td class="py-space-md px-space-lg">
+                            <td class="py-space-md px-space-lg sticky left-0 z-[1] bg-surface-container-lowest">
                                 <span class="inline-flex px-space-sm py-1 rounded-lg bg-primary-fixed text-primary font-data-mono text-data-mono font-semibold">
                                     <%= shift.shift_code %>
                                 </span>
@@ -175,7 +195,7 @@
                                     </span>
                                 <% } %>
                             </td>
-                            <td class="py-space-md px-space-lg">
+                            <td class="py-space-md px-space-lg sticky right-0 z-[1] bg-surface-container-lowest">
                                 <div class="flex items-center justify-end gap-space-xs">
                                     <button
                                         class="flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
@@ -370,6 +390,22 @@
         document.getElementById('open-create-shift').addEventListener('click', () => {
             resetForm();
             openModal();
+        });
+
+        const searchInput = document.getElementById('shift-search');
+        const clearSearch = document.getElementById('clear-shift-search');
+        let searchTimeout;
+        searchInput.addEventListener('input', () => {
+            clearSearch.classList.toggle('hidden', !searchInput.value);
+            window.clearTimeout(searchTimeout);
+            searchTimeout = window.setTimeout(() => {
+                searchInput.closest('form').submit();
+            }, 500);
+        });
+        clearSearch.addEventListener('click', () => {
+            searchInput.value = '';
+            clearSearch.classList.add('hidden');
+            searchInput.closest('form').submit();
         });
 
         document.querySelectorAll('[data-close-shift-modal]').forEach((button) => {

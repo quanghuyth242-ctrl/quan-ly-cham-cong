@@ -32,6 +32,7 @@ const BASE_SELECT = `
            a.status,
            CASE WHEN sw.shift_id IS NOT NULL THEN 1 ELSE 0 END AS has_schedule,
            CASE WHEN sw.shift_id IS NOT NULL THEN ws.shift_name ELSE NULL END AS shift_name,
+           CASE WHEN sw.shift_id IS NOT NULL THEN ws.shift_code ELSE NULL END AS shift_code,
            CASE WHEN sw.shift_id IS NOT NULL THEN TIME_FORMAT(ws.morning_start, '%H:%i') ELSE NULL END AS scheduled_start,
            CASE WHEN sw.shift_id IS NOT NULL THEN TIME_FORMAT(ws.afternoon_end, '%H:%i') ELSE NULL END AS scheduled_end,
            CASE
@@ -89,7 +90,17 @@ export const findAll = async () => {
     const [rows] = await db.execute(
         `${BASE_SELECT} ORDER BY e.employee_code DESC, a.work_date DESC, a.id DESC`
     );
-    return rows.map(mapRecord);
+    const latestByEmployee = new Map();
+
+    for (const row of rows) {
+        if (!latestByEmployee.has(row.employee_id)) {
+            latestByEmployee.set(row.employee_id, mapRecord(row));
+        }
+    }
+
+    return [...latestByEmployee.values()].sort((left, right) =>
+        String(right.employee_code).localeCompare(String(left.employee_code), "en", { numeric: true })
+    );
 };
 
 export const findById = async (id) => {
@@ -98,6 +109,102 @@ export const findById = async (id) => {
         [id]
     );
     return rows[0] || null;
+};
+
+export const findEmployeeDetailsById = async (id) => {
+    const [rows] = await db.execute(
+        "SELECT id, employee_code, full_name FROM employees WHERE id = ? LIMIT 1",
+        [id]
+    );
+    return rows[0] || null;
+};
+
+export const findHistoryByEmployee = async (employeeId) => {
+    const [rows] = await db.execute(
+        `SELECT a.id,
+                a.employee_id,
+                e.employee_code,
+                e.full_name AS employee_name,
+                DATE_FORMAT(a.work_date, '%Y-%m-%d') AS work_date,
+                TIME_FORMAT(a.check_in, '%H:%i') AS check_in,
+                TIME_FORMAT(a.check_out, '%H:%i') AS check_out,
+                COALESCE(
+                    ROUND(GREATEST(0, TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out)) / 60, 2),
+                    0
+                ) AS total_hours,
+                a.status,
+                CASE WHEN sw.shift_id IS NOT NULL THEN 1 ELSE 0 END AS has_schedule,
+                CASE WHEN sw.shift_id IS NOT NULL THEN ws.shift_name ELSE NULL END AS shift_name,
+                CASE WHEN sw.shift_id IS NOT NULL THEN ws.shift_code ELSE NULL END AS shift_code,
+                CASE WHEN sw.shift_id IS NOT NULL THEN TIME_FORMAT(ws.morning_start, '%H:%i') ELSE NULL END AS scheduled_start,
+                CASE WHEN sw.shift_id IS NOT NULL THEN TIME_FORMAT(ws.afternoon_end, '%H:%i') ELSE NULL END AS scheduled_end,
+                CASE
+                    WHEN sw.shift_id IS NOT NULL
+                     AND a.check_in IS NOT NULL
+                     AND LOWER(COALESCE(a.status, '')) NOT IN ('absent', 'vắng mặt')
+                    THEN GREATEST(TIMESTAMPDIFF(MINUTE, TIMESTAMP(a.work_date, ws.morning_start), a.check_in), 0)
+                    ELSE NULL
+                END AS late_minutes,
+                CASE
+                    WHEN sw.shift_id IS NOT NULL
+                     AND a.check_out IS NOT NULL
+                     AND LOWER(COALESCE(a.status, '')) NOT IN ('absent', 'vắng mặt')
+                    THEN GREATEST(TIMESTAMPDIFF(MINUTE, a.check_out, TIMESTAMP(a.work_date, ws.afternoon_end)), 0)
+                    ELSE NULL
+                END AS early_leave_minutes
+           FROM attendance a
+           INNER JOIN employees e ON e.id = a.employee_id
+           LEFT JOIN employee_shift_assignments sa
+             ON sa.employee_id = a.employee_id
+            AND sa.status = 'active'
+            AND a.work_date BETWEEN sa.start_date AND sa.end_date
+           LEFT JOIN work_shifts ws
+             ON ws.id = sa.shift_id
+            AND ws.status = 1
+           LEFT JOIN shift_workdays sw
+             ON sw.shift_id = ws.id
+            AND sw.weekday = WEEKDAY(a.work_date) + 1
+          WHERE a.employee_id = ?
+          ORDER BY a.work_date DESC, a.id DESC`,
+        [employeeId]
+    );
+
+    return rows.map((row) => {
+        const rawStatus = String(row.status || "");
+        const status = STATUS_VALUES[rawStatus.trim().toLocaleLowerCase()] || rawStatus;
+        return {
+            ...row,
+            status,
+            status_label: STATUS_LABELS[status] || rawStatus || "Chưa xác định",
+            total_hours: Number(row.total_hours || 0),
+            has_schedule: Boolean(Number(row.has_schedule)),
+            late_minutes: row.late_minutes === null ? null : Number(row.late_minutes),
+            early_leave_minutes: row.early_leave_minutes === null ? null : Number(row.early_leave_minutes)
+        };
+    });
+};
+
+export const exportAllHistory = async (fromDate = null, toDate = null) => {
+    const conditions = [];
+    const params = [];
+    if (fromDate && toDate) {
+        conditions.push("a.work_date BETWEEN ? AND ?");
+        params.push(fromDate, toDate);
+    }
+    const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    const [rows] = await db.execute(`
+        SELECT e.employee_code,
+               e.full_name,
+               DATE_FORMAT(a.work_date, '%Y-%m-%d') AS work_date,
+               TIME_FORMAT(a.check_in, '%H:%i') AS check_in,
+               TIME_FORMAT(a.check_out, '%H:%i') AS check_out,
+               LOWER(COALESCE(a.status, '')) AS status
+          FROM attendance a
+          INNER JOIN employees e ON e.id = a.employee_id
+         ${whereClause}
+         ORDER BY e.employee_code DESC, a.work_date DESC, a.id DESC
+    `, params);
+    return [rows];
 };
 
 export const findByEmployeeDate = async (employeeId, workDate, excludeId = null) => {

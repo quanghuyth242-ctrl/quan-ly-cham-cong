@@ -2,7 +2,8 @@
 
 <%- include("partials/alerts", { success: success, error: error }) %>
 
-<section class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+<section class="relative overflow-hidden flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-lg md:p-space-xl rounded-xl border border-surface-container-high/60 shadow-sm">
+    <div class="absolute inset-y-0 left-0 w-1 bg-primary"></div>
     <div class="flex flex-col gap-space-xs">
         <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
             <span class="flex h-2 w-2 rounded-full bg-primary-container"></span>
@@ -16,7 +17,18 @@
 
     <% const canAssign = employees.length > 0 && activeShifts.length > 0; %>
 
-    <button
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-space-sm self-start xl:self-auto">
+        <nav class="flex items-center p-1 rounded-xl bg-surface-container-high" aria-label="Chuyển mục ca và lịch trực">
+            <a href="/admin/shifts" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-lg text-on-surface-variant hover:text-primary font-label-md text-label-md transition-colors">
+                <span class="material-symbols-outlined text-[18px]">schedule</span>
+                Quản lý ca
+            </a>
+            <a href="/admin/shift-assignments" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-lg bg-surface-container-lowest text-primary shadow-sm font-label-md text-label-md">
+                <span class="material-symbols-outlined text-[18px]">calendar_month</span>
+                Lịch trực
+            </a>
+        </nav>
+        <button
         id="open-create-assignment"
         class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm rounded-xl font-label-md text-label-md shadow-md transition-all self-start lg:self-auto <%= canAssign ? 'bg-primary hover:bg-primary-container text-on-primary' : 'bg-surface-container-high text-outline cursor-not-allowed' %>"
         type="button"
@@ -25,7 +37,8 @@
     >
         <span class="material-symbols-outlined text-[20px]">person_add</span>
         <span>Phân ca mới</span>
-    </button>
+        </button>
+    </div>
 </section>
 
 <% if (!canAssign) { %>
@@ -44,7 +57,7 @@
 <% } %>
 
 <section class="grid grid-cols-1 sm:grid-cols-3 gap-space-lg">
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+    <a href="/admin/shift-assignments?status=active" class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-primary/10 transition-all">
         <div class="flex flex-col">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Phân ca đang áp dụng</span>
             <span class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= stats.activeAssignments %></span>
@@ -52,9 +65,9 @@
         <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
             <span class="material-symbols-outlined text-[24px]">assignment_ind</span>
         </div>
-    </div>
+    </a>
 
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between">
         <div class="flex flex-col">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Nhân viên đã phân ca</span>
             <span class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs"><%= stats.assignedEmployees %></span>
@@ -64,7 +77,7 @@
         </div>
     </div>
 
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+    <a href="/admin/shift-assignments?status=cancelled" class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-surface-variant transition-all">
         <div class="flex flex-col">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Phân ca đã hủy</span>
             <span class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs"><%= stats.cancelledAssignments %></span>
@@ -72,7 +85,7 @@
         <div class="w-11 h-11 rounded-xl bg-surface-container-high text-on-surface-variant flex items-center justify-center">
             <span class="material-symbols-outlined text-[24px]">cancel</span>
         </div>
-    </div>
+    </a>
 </section>
 
 <section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
@@ -82,12 +95,21 @@
                 <div class="relative flex-1">
                     <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
                     <input
+                        id="assignment-search"
                         class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-8 pr-space-md py-space-sm rounded-xl outline-none focus:bg-surface-container transition-all"
                         name="search"
                         value="<%= filters.search %>"
                         placeholder="Tìm theo tên nhân viên, mã nhân viên hoặc tên ca..."
                         type="text"
                     >
+                    <button
+                        id="clear-assignment-search"
+                        type="button"
+                        class="<%= filters.search ? '' : 'hidden' %> absolute right-space-sm top-1/2 -translate-y-1/2 p-1 text-on-surface-variant hover:text-primary rounded-md"
+                        aria-label="Xóa từ khóa tìm kiếm"
+                    >
+                        <span class="material-symbols-outlined text-[18px]">close</span>
+                    </button>
                 </div>
 
                 <select class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm px-space-md py-space-sm rounded-xl outline-none cursor-pointer" name="department">
@@ -159,7 +181,7 @@
                 <% } else { %>
                     <% assignments.forEach((assignment) => { %>
                         <tr class="hover:bg-surface-container-low/70 transition-colors align-top">
-                            <td class="py-space-md px-space-lg">
+                            <td class="py-space-md px-space-lg sticky left-0 z-[1] bg-surface-container-lowest">
                                 <div class="flex items-center gap-space-md">
                                     <div class="w-9 h-9 rounded-full bg-primary-fixed text-primary font-semibold flex items-center justify-center text-sm shrink-0">
                                         <%= assignment.full_name.slice(0, 2).toUpperCase() %>
@@ -214,7 +236,7 @@
                                     </span>
                                 <% } %>
                             </td>
-                            <td class="py-space-md px-space-lg">
+                            <td class="py-space-md px-space-lg sticky right-0 z-[1] bg-surface-container-lowest">
                                 <div class="flex items-center justify-end gap-space-xs">
                                     <button
                                         class="flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
@@ -421,6 +443,21 @@
         };
 
         const openCreateButton = document.getElementById('open-create-assignment');
+        const searchInput = document.getElementById('assignment-search');
+        const clearSearch = document.getElementById('clear-assignment-search');
+        let searchTimeout;
+        searchInput.addEventListener('input', () => {
+            clearSearch.classList.toggle('hidden', !searchInput.value);
+            window.clearTimeout(searchTimeout);
+            searchTimeout = window.setTimeout(() => {
+                searchInput.closest('form').submit();
+            }, 500);
+        });
+        clearSearch.addEventListener('click', () => {
+            searchInput.value = '';
+            clearSearch.classList.add('hidden');
+            searchInput.closest('form').submit();
+        });
 
         if (openCreateButton) {
             openCreateButton.addEventListener('click', () => {

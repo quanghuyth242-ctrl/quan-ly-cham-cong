@@ -44,12 +44,12 @@
             </a>
             <button
                 id="export-attendance"
-                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                onclick="exportCSV()"
+                class="flex items-center justify-center w-10 h-10 bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 type="button"
+                title="Xuất bảng chấm công CSV"
+                aria-label="Xuất bảng chấm công CSV"
             >
                 <span class="material-symbols-outlined text-[20px]">download</span>
-                <span>Xuất CSV</span>
             </button>
             <button
                 id="refresh-attendance"
@@ -75,11 +75,11 @@
         <div>
             <h3 class="font-headline-sm text-headline-sm text-primary">Số liệu toàn hệ thống</h3>
             <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
-                Tổng hợp toàn bộ bản ghi, không thay đổi theo bộ lọc danh sách.
+                Tổng hợp một bản ghi gần nhất cho mỗi nhân viên, không thay đổi theo bộ lọc danh sách.
             </p>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-lg">
-        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <button type="button" data-attendance-status-filter="" class="text-left bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-primary/10 transition-all">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng nhân viên</span>
                 <span id="totalEmployeesCount" class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= stats.total_employees %></span>
@@ -87,9 +87,9 @@
             <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
                 <span class="material-symbols-outlined text-[24px]">groups</span>
             </div>
-        </article>
+        </button>
 
-        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <button type="button" data-attendance-status-filter="present" class="text-left bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-green-100 transition-all">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Có mặt</span>
                 <span id="totalPresentCount" class="font-headline-xl text-headline-xl text-green-600 font-bold mt-space-xs"><%= stats.present %></span>
@@ -97,9 +97,9 @@
             <div class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
                 <span class="material-symbols-outlined text-[24px]">task_alt</span>
             </div>
-        </article>
+        </button>
 
-        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <button type="button" data-attendance-status-filter="late" class="text-left bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-orange-100 transition-all">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đi muộn</span>
                 <span id="totalLateCount" class="font-headline-xl text-headline-xl text-orange-500 font-bold mt-space-xs"><%= stats.late %></span>
@@ -107,9 +107,9 @@
             <div class="w-11 h-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
                 <span class="material-symbols-outlined text-[24px]">schedule</span>
             </div>
-        </article>
+        </button>
 
-        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <button type="button" data-attendance-status-filter="absent" class="text-left bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-red-100 transition-all">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Vắng mặt</span>
                 <span id="totalAbsentCount" class="font-headline-xl text-headline-xl text-red-500 font-bold mt-space-xs"><%= stats.absent %></span>
@@ -117,11 +117,11 @@
             <div class="w-11 h-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
                 <span class="material-symbols-outlined text-[24px]">person_off</span>
             </div>
-        </article>
+        </button>
         </div>
     </section>
 
-    <section class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg md:p-space-xl">
+    <section class="bg-surface-container-lowest rounded-xl border border-surface-container-high/60 shadow-sm p-space-lg md:p-space-xl">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md mb-space-lg">
             <div>
                 <h3 class="font-headline-sm text-headline-sm text-on-surface">Tìm kiếm và lọc chấm công</h3>
@@ -234,7 +234,7 @@
                         <span id="attendanceRateCount" class="font-headline-xl text-headline-xl text-green-600 font-bold"><%= overview.attendanceRate %></span>
                         <span class="font-headline-md text-headline-md text-green-600">%</span>
                     </span>
-                    <span id="attendanceRateDetail" class="font-body-sm text-body-sm text-on-surface-variant"><%= overview.attended %> / <%= records.length %> lượt đi làm</span>
+                    <span id="attendanceRateDetail" class="font-body-sm text-body-sm text-on-surface-variant"><%= overview.attended %> / <%= records.length %> nhân viên</span>
                 </div>
                 <div class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
                     <span class="material-symbols-outlined text-[24px]">percent</span>
@@ -259,7 +259,7 @@
             <div>
                 <h3 class="font-headline-sm text-headline-sm text-on-surface">Danh sách chấm công</h3>
                 <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
-                    Thông tin giờ vào, giờ ra và trạng thái làm việc.
+                    Mỗi nhân viên hiển thị một dòng với bản ghi chấm công gần nhất.
                 </p>
             </div>
             <span id="attendanceCount" class="font-body-sm text-body-sm text-on-surface-variant" aria-live="polite"></span>
@@ -270,7 +270,7 @@
                 <caption class="sr-only">Danh sách thời gian chấm công của nhân viên</caption>
                 <thead>
                     <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
-                        <th class="py-space-md px-space-lg font-semibold">Mã NV</th>
+                        <th class="py-space-md px-space-lg font-semibold sticky left-0 z-[2] bg-surface-container-low">Mã NV</th>
                         <th class="py-space-md px-space-md font-semibold">Nhân viên</th>
                         <th class="py-space-md px-space-md font-semibold">Ngày</th>
                         <th class="py-space-md px-space-md font-semibold">Ca làm</th>
@@ -280,7 +280,7 @@
                         <th class="py-space-md px-space-md font-semibold">Về sớm</th>
                         <th class="py-space-md px-space-md font-semibold">Số giờ</th>
                         <th class="py-space-md px-space-md font-semibold">Trạng thái</th>
-                        <th class="py-space-md px-space-lg font-semibold text-right">Thao tác</th>
+                        <th class="py-space-md px-space-lg font-semibold text-right sticky right-0 z-[2] bg-surface-container-low">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody id="attendanceBody" class="divide-y divide-surface-container-low text-body-sm text-on-surface">
@@ -372,6 +372,40 @@
     </div>
 </div>
 
+<div id="attendance-history-modal" class="fixed inset-0 z-[60] hidden">
+    <div class="absolute inset-0 bg-black/40" data-close-history-modal></div>
+    <div class="relative min-h-full flex items-center justify-center p-space-lg overflow-y-auto">
+        <section class="w-full max-w-6xl max-h-[calc(100vh-2rem)] overflow-hidden bg-surface-container-lowest rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.18)]" role="dialog" aria-modal="true">
+            <div class="flex items-center justify-between px-space-xl py-space-lg border-b border-surface-container-high">
+                <div>
+                    <h3 id="attendance-history-title" class="font-headline-md text-headline-md text-primary font-semibold">Lịch sử chấm công</h3>
+                    <p id="attendance-history-description" class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs"></p>
+                </div>
+                <button class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-history-modal type="button" aria-label="Đóng">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="overflow-auto max-h-[calc(100vh-8rem)] p-space-lg">
+                <table class="w-full min-w-[960px] text-left">
+                    <thead class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase">
+                        <tr>
+                            <th class="px-space-md py-space-sm">Ngày</th>
+                            <th class="px-space-md py-space-sm">Ca làm</th>
+                            <th class="px-space-md py-space-sm">Giờ vào</th>
+                            <th class="px-space-md py-space-sm">Giờ ra</th>
+                            <th class="px-space-md py-space-sm">Đi muộn</th>
+                            <th class="px-space-md py-space-sm">Về sớm</th>
+                            <th class="px-space-md py-space-sm">Số giờ</th>
+                            <th class="px-space-md py-space-sm">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-history-body" class="divide-y divide-surface-container-low text-body-md text-on-surface"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
     const modal = document.getElementById("attendance-modal");
@@ -384,6 +418,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const checkInInput = document.getElementById("attendance-check-in");
     const checkOutInput = document.getElementById("attendance-check-out");
     const statusSelect = document.getElementById("attendance-status");
+    const historyModal = document.getElementById("attendance-history-modal");
+    const historyTitle = document.getElementById("attendance-history-title");
+    const historyDescription = document.getElementById("attendance-history-description");
+    const historyBody = document.getElementById("attendance-history-body");
 
     const showError = (message) => {
         errorText.textContent = message;
@@ -428,6 +466,78 @@ document.addEventListener("DOMContentLoaded", () => {
         clearError();
     };
 
+    const closeHistoryModal = () => {
+        historyModal.classList.add("hidden");
+        document.body.classList.remove("shift-modal-open");
+    };
+
+    window.openAttendanceHistory = async (button) => {
+        historyTitle.textContent = `${button.dataset.employeeCode} - ${button.dataset.employeeName}`;
+        historyDescription.textContent = "Đang tải tất cả ngày chấm công...";
+        historyBody.innerHTML = '<tr><td colspan="8" class="px-space-md py-space-xl text-center text-on-surface-variant">Đang tải...</td></tr>';
+        historyModal.classList.remove("hidden");
+        document.body.classList.add("shift-modal-open");
+
+        try {
+            const response = await fetch(`/admin/attendance/employee/${button.dataset.employeeId}/history`, {
+                headers: { Accept: "application/json" },
+                cache: "no-store"
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Không thể tải lịch sử chấm công.");
+
+            historyDescription.textContent = `${data.records.length} ngày chấm công đã ghi nhận`;
+            const statusLabels = { present: "Đúng giờ", late: "Đi muộn", absent: "Vắng mặt" };
+            historyBody.innerHTML = data.records.length
+                ? data.records.map((record) => `
+                    <tr>
+                        <td class="px-space-md py-space-sm font-data-mono">${record.work_date}</td>
+                        <td class="px-space-md py-space-sm">
+                            ${record.has_schedule
+                                ? `<div class="flex flex-col"><span class="font-label-md text-label-md text-on-surface">${record.shift_code ? `<span class="font-data-mono text-primary mr-1">${record.shift_code}</span>` : ""}${record.shift_name || "—"}</span><span class="font-body-sm text-body-sm text-on-surface-variant">${record.scheduled_start || "—"} – ${record.scheduled_end || "—"}</span></div>`
+                                : '<span class="font-body-sm text-body-sm text-outline">Không có ca áp dụng</span>'}
+                        </td>
+                        <td class="px-space-md py-space-sm font-data-mono">${record.check_in || "—"}</td>
+                        <td class="px-space-md py-space-sm font-data-mono">${record.check_out || "—"}</td>
+                        <td class="px-space-md py-space-sm">
+                            ${record.status === "absent"
+                                ? '<span class="text-outline">—</span>'
+                                : record.late_minutes > 0
+                                    ? `<span class="font-label-md text-label-md text-orange-700">Trễ ${record.late_minutes} phút</span>`
+                                    : record.status === "late"
+                                        ? '<span class="font-label-md text-label-md text-orange-700">Đi muộn</span>'
+                                        : record.has_schedule
+                                            ? '<span class="font-body-sm text-body-sm text-green-700">Đúng giờ</span>'
+                                            : '<span class="text-outline">—</span>'}
+                        </td>
+                        <td class="px-space-md py-space-sm">
+                            ${record.status === "absent"
+                                ? '<span class="text-outline">—</span>'
+                                : record.early_leave_minutes > 0
+                                    ? `<span class="font-label-md text-label-md text-red-700">Sớm ${record.early_leave_minutes} phút</span>`
+                                    : record.has_schedule && record.check_out
+                                        ? '<span class="font-body-sm text-body-sm text-green-700">Đủ giờ</span>'
+                                        : '<span class="text-outline">—</span>'}
+                        </td>
+                        <td class="px-space-md py-space-sm font-data-mono">${Number(record.total_hours || 0)} giờ</td>
+                        <td class="px-space-md py-space-sm">
+                            ${record.status === "present"
+                                ? '<span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Đúng giờ</span>'
+                                : record.status === "late"
+                                    ? '<span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-orange-50 text-orange-700 text-xs font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>Đi muộn</span>'
+                                    : record.status === "absent"
+                                        ? '<span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-red-50 text-red-700 text-xs font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Vắng mặt</span>'
+                                        : `<span class="inline-flex px-space-sm py-1 rounded-full bg-surface-container-high text-on-surface-variant text-xs font-semibold">${statusLabels[record.status] || record.status}</span>`}
+                        </td>
+                    </tr>
+                `).join("")
+                : '<tr><td colspan="8" class="px-space-md py-space-xl text-center text-on-surface-variant">Chưa có lịch sử chấm công.</td></tr>';
+        } catch (error) {
+            historyDescription.textContent = "Không thể tải lịch sử";
+            historyBody.innerHTML = `<tr><td colspan="8" class="px-space-md py-space-xl text-center text-error">${error.message}</td></tr>`;
+        }
+    };
+
     const resetForm = () => {
         form.reset();
         resetSubmitButton();
@@ -456,10 +566,19 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-close-attendance-modal]").forEach((button) => {
         button.addEventListener("click", closeModal);
     });
+    document.querySelectorAll("[data-close-history-modal]").forEach((button) => {
+        button.addEventListener("click", closeHistoryModal);
+    });
 
     document.getElementById("attendanceBody").addEventListener("click", (event) => {
         const button = event.target.closest("[data-edit-attendance]");
-        if (!button) return;
+        const historyButton = event.target.closest("[data-view-attendance-history]");
+        if (!button && !historyButton) return;
+
+        if (historyButton) {
+            window.openAttendanceHistory(historyButton);
+            return;
+        }
 
         const data = button.dataset;
         form.reset();
@@ -483,6 +602,9 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && !modal.classList.contains("hidden")) {
             closeModal();
+        }
+        if (event.key === "Escape" && !historyModal.classList.contains("hidden")) {
+            closeHistoryModal();
         }
     });
 
@@ -557,7 +679,7 @@ function filterRecords() {
 
     document.getElementById("attendanceRateCount").textContent = attendanceRate;
     document.getElementById("attendanceRateDetail").textContent =
-        `${attendedRows} / ${visible} lượt đi làm`;
+        `${attendedRows} / ${visible} nhân viên`;
     document.getElementById("absenceOverviewCount").textContent = `${absentRows} lượt`;
     document.getElementById("absenceOverviewRate").textContent =
         `${absenceRate}% tổng lượt ghi nhận`;
@@ -566,7 +688,7 @@ function filterRecords() {
     document.getElementById("unassignedOverviewCount").textContent = unassignedRows;
 
     document.getElementById("emptyMessage").classList.toggle("hidden", visible !== 0);
-    document.getElementById("attendanceCount").textContent = `Hiển thị ${visible} / ${rows.length} bản ghi`;
+    document.getElementById("attendanceCount").textContent = `Hiển thị ${visible} / ${rows.length} nhân viên`;
     document.getElementById("export-attendance").disabled = visible === 0;
 }
 
@@ -734,8 +856,39 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("keyword").focus();
     });
 
+    document.querySelectorAll("[data-attendance-status-filter]").forEach((button) => {
+        button.addEventListener("click", () => {
+            const statusFilter = document.getElementById("statusFilter");
+            statusFilter.value = button.dataset.attendanceStatusFilter;
+            filterRecords();
+            document.getElementById("statusFilter").closest("section").scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+        });
+    });
+
     lastUpdated.textContent = `Trang tải lúc ${formatRefreshTime(new Date())}`;
     refreshButton.addEventListener("click", () => refreshAttendance(true));
+    document.getElementById("export-attendance").addEventListener("click", async () => {
+        const exportButton = document.getElementById("export-attendance");
+        exportButton.disabled = true;
+        try {
+            const response = await fetch("/admin/attendance/export-csv", { cache: "no-store" });
+            if (!response.ok) throw new Error("Không thể xuất CSV lịch sử chấm công.");
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "lich-su-cham-cong.csv";
+            link.click();
+            window.setTimeout(() => URL.revokeObjectURL(url), 0);
+        } catch (error) {
+            window.alert(error.message);
+        } finally {
+            exportButton.disabled = false;
+        }
+    });
     const startAttendanceAutoSync = () => {
         window.clearInterval(attendanceAutoSyncTimer);
         attendanceAutoSyncTimer = window.setInterval(() => refreshAttendance(), 30000);
