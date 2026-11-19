@@ -1,0 +1,2144 @@
+<%- include("../partials/adminHead", { pageTitle: pageTitle || "Quản lý khuôn mặt", activePage: activePage || "faces", user: user }) %>
+
+<style>
+    .face-modal-open {
+        overflow: hidden;
+    }
+
+    @keyframes face-toast-in {
+        from {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.98);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .face-toast-in {
+        animation: face-toast-in 0.2s ease-out;
+    }
+
+    @keyframes face-modal-in {
+        from {
+            opacity: 0;
+            transform: translateY(8px) scale(0.98);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .face-modal-in {
+        animation: face-modal-in 0.18s ease-out;
+    }
+
+    @keyframes face-scan {
+        0% {
+            top: 0;
+            opacity: 0;
+        }
+        12% {
+            opacity: 1;
+        }
+        88% {
+            opacity: 1;
+        }
+        100% {
+            top: 100%;
+            opacity: 0;
+        }
+    }
+
+    .face-scan-line {
+        animation: face-scan 2.4s ease-in-out infinite;
+    }
+</style>
+
+<!-- Tiêu đề trang -->
+<section class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+    <div class="flex flex-col gap-space-xs">
+        <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
+            <span class="flex h-2 w-2 rounded-full bg-primary"></span>
+            <span class="uppercase tracking-wider">Sinh trắc học &amp; bảo mật</span>
+        </div>
+        <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">
+            Quản lý khuôn mặt nhân viên
+        </h2>
+        <p class="font-body-md text-body-md text-on-surface-variant max-w-3xl">
+            Theo dõi trạng thái đăng ký khuôn mặt, xem chi tiết hồ sơ và quản lý dữ liệu sinh trắc học của nhân viên.
+        </p>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-space-sm">
+        <span class="inline-flex items-center gap-space-xs px-space-md py-space-sm rounded-xl bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm">
+            <span class="material-symbols-outlined text-[18px] text-primary">verified_user</span>
+            Chỉ quản trị viên
+        </span>
+
+        <button
+            id="face-refresh"
+            class="flex items-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            type="button"
+        >
+            <span id="face-refresh-icon" class="material-symbols-outlined text-[18px] text-on-surface-variant">refresh</span>
+            <span>Làm mới</span>
+        </button>
+    </div>
+</section>
+
+<!-- Thống kê -->
+<section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-lg">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-md">
+        <div class="flex flex-col min-w-0">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng nhân viên</span>
+            <span id="face-stat-total" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">—</span>
+            <span class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Toàn bộ nhân viên</span>
+        </div>
+        <div class="w-11 h-11 rounded-xl bg-surface-container-low text-primary flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[24px]">groups</span>
+        </div>
+    </div>
+
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-md">
+        <div class="flex flex-col min-w-0">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đã đăng ký</span>
+            <span id="face-stat-registered" class="font-headline-xl text-headline-xl text-secondary font-bold mt-space-xs">—</span>
+            <span class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Có dữ liệu khuôn mặt</span>
+        </div>
+        <div class="w-11 h-11 rounded-xl bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[24px]">face</span>
+        </div>
+    </div>
+
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-md">
+        <div class="flex flex-col min-w-0">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Chưa đăng ký</span>
+            <span id="face-stat-unregistered" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">—</span>
+            <span class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Cần bổ sung dữ liệu</span>
+        </div>
+        <div class="w-11 h-11 rounded-xl bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[24px]">person_off</span>
+        </div>
+    </div>
+
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between gap-space-sm">
+        <div class="flex items-start justify-between gap-space-md">
+            <div class="flex flex-col min-w-0">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tỷ lệ đăng ký</span>
+                <span id="face-stat-rate" class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs">—</span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-primary-fixed text-on-primary-fixed flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[24px]">verified_user</span>
+            </div>
+        </div>
+        <div class="w-full bg-surface-container-high rounded-full h-1.5 overflow-hidden">
+            <div id="face-stat-rate-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+    </div>
+</section>
+
+<!-- Ghi chú quy trình -->
+<section class="flex items-start gap-space-md p-space-lg rounded-xl bg-primary-fixed border border-surface-container-high">
+    <div class="w-9 h-9 rounded-xl bg-primary text-on-primary flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-[20px]">info</span>
+    </div>
+    <div class="flex flex-col gap-space-xs">
+        <p class="font-label-md text-label-md text-primary font-semibold">Quy trình đăng ký khuôn mặt</p>
+        <p class="font-body-sm text-body-sm text-on-surface-variant">
+            Chọn nhân viên → Đăng ký khuôn mặt → Xác nhận. Hệ thống chỉ lưu Face Descriptor 128 chiều, không lưu ảnh khuôn mặt.
+            Dữ liệu chỉ được thu thập khi nhân viên đã đồng ý.
+        </p>
+    </div>
+</section>
+
+<!-- Danh sách nhân viên -->
+<section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+    <div class="p-space-lg border-b border-surface-container-high">
+        <div class="flex flex-col xl:flex-row xl:items-end gap-space-md">
+            <div class="flex-1 min-w-0">
+                <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="face-search">
+                    Tìm kiếm nhân viên
+                </label>
+                <div class="relative">
+                    <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px] pointer-events-none">search</span>
+                    <input
+                        id="face-search"
+                        class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-8 pr-space-md py-space-sm rounded-xl outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/20 transition-all"
+                        name="search"
+                        type="search"
+                        autocomplete="off"
+                        placeholder="Nhập mã nhân viên hoặc họ tên..."
+                    >
+                </div>
+            </div>
+
+            <div class="w-full xl:w-56">
+                <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="face-status">
+                    Trạng thái đăng ký
+                </label>
+                <div class="relative">
+                    <select
+                        id="face-status"
+                        class="w-full appearance-none bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-space-md pr-space-xl py-space-sm rounded-xl outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                        name="status"
+                    >
+                        <option value="all">Tất cả trạng thái</option>
+                        <option value="registered">Đã đăng ký</option>
+                        <option value="unregistered">Chưa đăng ký</option>
+                    </select>
+                    <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-space-sm">
+                <button
+                    id="face-apply-filter"
+                    class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md shadow-md transition-all"
+                    type="button"
+                >
+                    <span class="material-symbols-outlined text-[18px]">filter_alt</span>
+                    <span>Lọc</span>
+                </button>
+                <button
+                    id="face-reset-filter"
+                    class="px-space-md py-space-sm text-on-surface-variant hover:text-on-surface font-label-md text-label-md rounded-xl hover:bg-surface-container-low transition-colors"
+                    type="button"
+                >
+                    Xóa lọc
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                    <th class="py-space-md px-space-lg font-semibold">Nhân viên</th>
+                    <th class="py-space-md px-space-md font-semibold">Phòng ban</th>
+                    <th class="py-space-md px-space-md font-semibold">Trạng thái</th>
+                    <th class="py-space-md px-space-md font-semibold">Ngày đăng ký</th>
+                    <th class="py-space-md px-space-lg font-semibold text-right">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody id="face-table-body" class="divide-y divide-surface-container-low text-body-sm text-on-surface"></tbody>
+        </table>
+    </div>
+
+    <div class="p-space-lg bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-sm text-body-sm text-on-surface-variant">
+        <span id="face-table-summary">Đang tải dữ liệu...</span>
+        <span id="face-table-total"></span>
+    </div>
+</section>
+
+<!-- Modal chi tiết -->
+<div
+    id="face-detail-modal"
+    class="fixed inset-0 z-[60] hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="face-detail-title"
+    aria-hidden="true"
+>
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-close-modal="detail"></div>
+
+    <div class="relative flex min-h-full items-center justify-center p-space-lg">
+        <div class="w-full max-w-2xl bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden face-modal-in">
+            <div class="flex items-start justify-between gap-space-md px-space-xl py-space-lg border-b border-surface-container-high">
+                <div class="flex items-center gap-space-md min-w-0">
+                    <div id="face-detail-avatar" class="w-12 h-12 rounded-full bg-primary-fixed text-on-primary-fixed font-semibold flex items-center justify-center shrink-0">
+                        —
+                    </div>
+                    <div class="min-w-0">
+                        <h3 id="face-detail-title" class="font-headline-sm text-headline-sm text-primary font-semibold truncate">
+                            Chi tiết hồ sơ khuôn mặt
+                        </h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant truncate">
+                            <span id="face-detail-name">Đang tải...</span>
+                            <span class="mx-1">•</span>
+                            <span id="face-detail-code" class="font-data-mono text-data-mono">—</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-space-sm shrink-0">
+                    <span id="face-detail-status" class="inline-flex">
+                        <span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-semibold">
+                            Đang tải
+                        </span>
+                    </span>
+                    <button
+                        class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                        data-close-modal="detail"
+                        data-autofocus
+                        type="button"
+                        aria-label="Đóng"
+                    >
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-space-xl">
+                <div id="face-detail-loading" class="flex flex-col items-center justify-center gap-space-sm py-space-2xl">
+                    <span class="material-symbols-outlined animate-spin text-primary text-[28px]">progress_activity</span>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant">Đang tải thông tin hồ sơ...</p>
+                </div>
+
+                <div id="face-detail-error" class="hidden">
+                    <div class="flex flex-col items-center justify-center gap-space-sm py-space-2xl text-center">
+                        <div class="w-14 h-14 rounded-full bg-error-container text-on-error-container flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[28px]">cloud_off</span>
+                        </div>
+                        <p class="font-label-md text-label-md text-on-surface">Không tải được hồ sơ</p>
+                        <p id="face-detail-error-message" class="font-body-sm text-body-sm text-on-surface-variant max-w-sm"></p>
+                    </div>
+                </div>
+
+                <div id="face-detail-content" class="hidden">
+                    <div class="flex flex-col gap-space-lg">
+                        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+                            <div class="flex flex-col gap-space-xs">
+                                <dt class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Mã nhân viên</dt>
+                                <dd id="face-detail-employee-code" class="font-data-mono text-data-mono text-on-surface">—</dd>
+                            </div>
+
+                            <div class="flex flex-col gap-space-xs">
+                                <dt class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Phòng ban</dt>
+                                <dd id="face-detail-department" class="font-body-md text-body-md text-on-surface">—</dd>
+                            </div>
+
+                            <div class="flex flex-col gap-space-xs">
+                                <dt class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Email</dt>
+                                <dd id="face-detail-email" class="font-body-md text-body-md text-on-surface truncate">—</dd>
+                            </div>
+
+                            <div class="flex flex-col gap-space-xs">
+                                <dt class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Số điện thoại</dt>
+                                <dd id="face-detail-phone" class="font-body-md text-body-md text-on-surface">—</dd>
+                            </div>
+
+                            <div class="flex flex-col gap-space-xs">
+                                <dt class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Mã hồ sơ khuôn mặt</dt>
+                                <dd id="face-detail-profile-id" class="font-data-mono text-data-mono text-on-surface">—</dd>
+                            </div>
+
+                            <div class="flex flex-col gap-space-xs">
+                                <dt class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Ngày đăng ký</dt>
+                                <dd id="face-detail-registered-at" class="font-data-mono text-data-mono text-on-surface">—</dd>
+                            </div>
+
+                            <div class="flex flex-col gap-space-xs sm:col-span-2">
+                                <dt class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Ngày đồng ý xử lý dữ liệu</dt>
+                                <dd id="face-detail-consent-at" class="font-data-mono text-data-mono text-on-surface">—</dd>
+                            </div>
+                        </dl>
+
+                        <div class="flex items-start gap-space-sm p-space-md rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
+                            <span class="material-symbols-outlined text-[20px] shrink-0">shield_lock</span>
+                            <p class="font-body-sm text-body-sm">
+                                Hệ thống chỉ lưu Face Descriptor 128 chiều để đối chiếu. Không lưu ảnh khuôn mặt và không hiển thị dữ liệu sinh trắc học ra trình duyệt.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-space-sm px-space-xl py-space-lg border-t border-surface-container-high bg-surface-container-low">
+                <button
+                    class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-container text-on-surface font-label-md text-label-md rounded-xl transition-colors"
+                    data-close-modal="detail"
+                    type="button"
+                >
+                    Đóng
+                </button>
+
+                <div class="flex flex-col sm:flex-row gap-space-sm">
+                    <button
+                        id="face-detail-register-btn"
+                        class="hidden items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors"
+                        type="button"
+                    >
+                        <span class="material-symbols-outlined text-[18px]">add_a_photo</span>
+                        <span>Đăng ký khuôn mặt</span>
+                    </button>
+
+                    <button
+                        id="face-detail-update-btn"
+                        class="hidden items-center justify-center gap-space-xs bg-secondary-fixed text-on-secondary-fixed hover:bg-secondary hover:text-white px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors"
+                        type="button"
+                    >
+                        <span class="material-symbols-outlined text-[18px]">sync</span>
+                        <span>Cập nhật khuôn mặt</span>
+                    </button>
+
+                    <button
+                        id="face-detail-delete-btn"
+                        class="hidden items-center justify-center gap-space-xs bg-error-container text-on-error-container hover:bg-error hover:text-white px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors"
+                        type="button"
+                    >
+                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                        <span>Xóa dữ liệu</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal xác nhận xóa -->
+<div
+    id="face-delete-modal"
+    class="fixed inset-0 z-[70] hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="face-delete-title"
+    aria-hidden="true"
+>
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-close-modal="delete"></div>
+
+    <div class="relative flex min-h-full items-center justify-center p-space-lg">
+        <div class="w-full max-w-md bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden face-modal-in">
+            <div class="p-space-xl flex flex-col gap-space-md">
+                <div class="w-12 h-12 rounded-full bg-error-container text-on-error-container flex items-center justify-center">
+                    <span class="material-symbols-outlined text-[26px]">delete_forever</span>
+                </div>
+
+                <div>
+                    <h3 id="face-delete-title" class="font-headline-sm text-headline-sm text-on-surface font-semibold">
+                        Xóa dữ liệu khuôn mặt?
+                    </h3>
+                    <p class="font-body-md text-body-md text-on-surface-variant mt-space-xs">
+                        Bạn có chắc chắn muốn xóa dữ liệu khuôn mặt của
+                        <strong id="face-delete-name" class="text-on-surface">nhân viên này</strong>
+                        (<span id="face-delete-code" class="font-data-mono text-data-mono">—</span>)?
+                    </p>
+                </div>
+
+                <div class="flex items-start gap-space-sm p-space-md rounded-xl bg-error-container/50 border border-error/20 text-on-error-container">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">warning</span>
+                    <p class="font-body-sm text-body-sm">
+                        Hành động này không thể hoàn tác. Nhân viên sẽ không thể chấm công bằng khuôn mặt cho đến khi đăng ký lại.
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-space-sm px-space-xl py-space-lg border-t border-surface-container-high bg-surface-container-low">
+                <button
+                    class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-container text-on-surface font-label-md text-label-md rounded-xl transition-colors disabled:opacity-60"
+                    data-close-modal="delete"
+                    type="button"
+                >
+                    Hủy
+                </button>
+                <button
+                    id="face-delete-confirm"
+                    class="flex items-center justify-center gap-space-xs bg-error text-white hover:bg-red-700 px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    type="button"
+                >
+                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                    <span>Xóa dữ liệu</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal đăng ký / cập nhật khuôn mặt -->
+<div
+    id="face-capture-modal"
+    class="fixed inset-0 z-[75] hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="face-capture-title"
+    aria-hidden="true"
+>
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" data-close-modal="capture"></div>
+
+    <div class="relative flex min-h-full items-center justify-center p-space-lg">
+        <div class="w-full max-w-3xl bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden face-modal-in max-h-[92vh] flex flex-col">
+            <div class="flex items-start justify-between gap-space-md px-space-xl py-space-lg border-b border-surface-container-high shrink-0">
+                <div class="flex items-center gap-space-md min-w-0">
+                    <div id="face-capture-employee-avatar" class="w-11 h-11 rounded-full bg-primary-fixed text-on-primary-fixed font-semibold flex items-center justify-center shrink-0">
+                        —
+                    </div>
+                    <div class="min-w-0">
+                        <h3 id="face-capture-title" class="font-headline-sm text-headline-sm text-primary font-semibold truncate">
+                            Đăng ký khuôn mặt
+                        </h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant truncate">
+                            <span id="face-capture-employee-name">—</span>
+                            <span class="mx-1">•</span>
+                            <span id="face-capture-employee-code" class="font-data-mono text-data-mono">—</span>
+                        </p>
+                    </div>
+                </div>
+
+                <button
+                    class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                    data-close-modal="capture"
+                    type="button"
+                    aria-label="Đóng"
+                >
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="px-space-xl pt-space-lg shrink-0">
+                <div class="flex items-center gap-space-sm">
+                    <div data-capture-step="consent" class="flex items-center gap-space-xs px-space-sm py-1 rounded-full font-label-sm text-label-sm bg-primary text-on-primary">
+                        <span class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px]">1</span>
+                        <span class="hidden sm:inline">Đồng ý</span>
+                    </div>
+                    <div class="h-px flex-1 bg-surface-container-high"></div>
+                    <div data-capture-step="camera" class="flex items-center gap-space-xs px-space-sm py-1 rounded-full font-label-sm text-label-sm bg-surface-container-high text-on-surface-variant">
+                        <span class="w-4 h-4 rounded-full bg-white/60 flex items-center justify-center text-[10px]">2</span>
+                        <span class="hidden sm:inline">Chụp khuôn mặt</span>
+                    </div>
+                    <div class="h-px flex-1 bg-surface-container-high"></div>
+                    <div data-capture-step="review" class="flex items-center gap-space-xs px-space-sm py-1 rounded-full font-label-sm text-label-sm bg-surface-container-high text-on-surface-variant">
+                        <span class="w-4 h-4 rounded-full bg-white/60 flex items-center justify-center text-[10px]">3</span>
+                        <span class="hidden sm:inline">Xác nhận</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-space-xl overflow-y-auto">
+                <div id="face-capture-error" class="hidden flex items-start gap-space-sm p-space-md rounded-xl bg-error-container border border-error/20 text-on-error-container mb-space-md">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">error</span>
+                    <p id="face-capture-error-message" class="font-body-sm text-body-sm"></p>
+                </div>
+
+                <div id="face-capture-consent-step" class="flex flex-col gap-space-lg">
+                    <div class="flex items-start gap-space-md p-space-md rounded-xl bg-surface-container-low">
+                        <div class="w-10 h-10 rounded-xl bg-primary-fixed text-primary flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined text-[22px]">verified_user</span>
+                        </div>
+                        <div class="flex flex-col gap-space-xs">
+                            <p class="font-label-md text-label-md text-on-surface font-semibold">Xác nhận sự đồng ý của nhân viên</p>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant">
+                                Trước khi thu thập dữ liệu khuôn mặt, quản trị viên cần xác nhận nhân viên đã được thông báo và đồng ý.
+                            </p>
+                        </div>
+                    </div>
+
+                    <label class="flex items-start gap-space-sm p-space-md rounded-xl border border-surface-container-high cursor-pointer hover:bg-surface-container-low transition-colors">
+                        <input
+                            id="face-capture-consent"
+                            class="mt-0.5 h-4 w-4 rounded border-outline text-primary focus:ring-2 focus:ring-primary/20"
+                            type="checkbox"
+                        >
+                        <span class="font-body-sm text-body-sm text-on-surface">
+                            Tôi xác nhận <strong>nhân viên đã được thông báo và đồng ý</strong> cho việc thu thập, lưu trữ descriptor khuôn mặt 128 chiều để phục vụ chấm công.
+                        </span>
+                    </label>
+
+                    <div class="flex items-start gap-space-sm p-space-md rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
+                        <span class="material-symbols-outlined text-[20px] shrink-0">shield_lock</span>
+                        <p class="font-body-sm text-body-sm">
+                            Hệ thống chỉ lưu descriptor 128 chiều, không lưu ảnh khuôn mặt. Dữ liệu được dùng để đối chiếu khi chấm công.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-space-sm pt-space-sm">
+                        <button
+                            class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-container text-on-surface font-label-md text-label-md rounded-xl transition-colors"
+                            data-close-modal="capture"
+                            type="button"
+                        >
+                            Hủy
+                        </button>
+                        <button
+                            id="face-capture-continue"
+                            class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            type="button"
+                            disabled
+                        >
+                            <span class="material-symbols-outlined text-[18px]">videocam</span>
+                            <span>Tiếp tục và bật camera</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="face-capture-camera-step" class="hidden flex flex-col gap-space-md">
+                    <div class="relative w-full aspect-video bg-surface-container-high rounded-xl overflow-hidden">
+                        <video
+                            id="face-capture-video"
+                            class="w-full h-full object-cover scale-x-[-1]"
+                            autoplay
+                            muted
+                            playsinline
+                        ></video>
+
+                        <div id="face-capture-placeholder" class="absolute inset-0 flex flex-col items-center justify-center gap-space-sm text-on-surface-variant bg-surface-container-high">
+                            <span class="material-symbols-outlined text-[36px]">videocam_off</span>
+                            <p class="font-body-sm text-body-sm">Camera chưa bật</p>
+                        </div>
+
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div class="w-[38%] h-[74%] border-2 border-white/80 rounded-[50%] shadow-[0_0_0_9999px_rgba(0,0,0,0.28)]"></div>
+                        </div>
+
+                        <div class="absolute left-0 right-0 top-0 h-0.5 bg-primary/80 face-scan-line pointer-events-none"></div>
+
+                        <div class="absolute bottom-space-md left-1/2 -translate-x-1/2 flex items-center gap-space-xs px-space-md py-space-sm rounded-full bg-black/60 text-white backdrop-blur-sm max-w-[90%]">
+                            <span id="face-capture-status-icon" class="material-symbols-outlined text-[18px]">progress_activity</span>
+                            <span id="face-capture-status-text" class="font-body-sm text-body-sm text-center">Đang khởi động camera...</span>
+                        </div>
+                    </div>
+
+                    <p id="face-capture-hint" class="font-body-sm text-body-sm text-on-surface-variant text-center">
+                        Giữ khuôn mặt trong khung oval, nhìn thẳng vào camera và chỉ để một người trong khung hình.
+                    </p>
+
+                    <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-space-sm">
+                        <button
+                            class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-container text-on-surface font-label-md text-label-md rounded-xl transition-colors"
+                            data-close-modal="capture"
+                            type="button"
+                        >
+                            Hủy
+                        </button>
+                        <div class="flex flex-col sm:flex-row gap-space-sm">
+                            <button
+                                id="face-capture-retry"
+                                class="hidden items-center justify-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors"
+                                type="button"
+                            >
+                                <span class="material-symbols-outlined text-[18px]">refresh</span>
+                                <span>Thử lại camera</span>
+                            </button>
+                            <button
+                                id="face-capture-shot"
+                                class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                type="button"
+                                disabled
+                            >
+                                <span class="material-symbols-outlined text-[18px]">photo_camera</span>
+                                <span>Chụp khuôn mặt</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="face-capture-review-step" class="hidden flex flex-col gap-space-lg">
+                    <div class="flex flex-col items-center justify-center gap-space-md py-space-xl text-center">
+                        <div class="w-16 h-16 rounded-full bg-green-50 border border-green-200 text-green-600 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[34px]">face_retouching_natural</span>
+                        </div>
+                        <div class="flex flex-col gap-space-xs">
+                            <p class="font-headline-sm text-headline-sm text-on-surface font-semibold">Đã trích xuất dữ liệu khuôn mặt</p>
+                            <p id="face-capture-review-name" class="font-body-md text-body-md text-on-surface-variant"></p>
+                            <p id="face-capture-review-message" class="font-body-sm text-body-sm text-on-surface-variant max-w-md">
+                                Descriptor 128 chiều đã sẵn sàng. Không có ảnh nào được lưu.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-center gap-space-sm">
+                        <button
+                            id="face-capture-retake"
+                            class="flex items-center justify-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors"
+                            type="button"
+                        >
+                            <span class="material-symbols-outlined text-[18px]">restart_alt</span>
+                            <span>Chụp lại</span>
+                        </button>
+                        <button
+                            id="face-capture-save"
+                            class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            type="button"
+                        >
+                            <span class="material-symbols-outlined text-[18px]">save</span>
+                            <span>Xác nhận đăng ký</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Thông báo -->
+<div
+    id="face-toast-container"
+    class="fixed top-20 right-4 z-[80] flex flex-col gap-space-sm w-80 max-w-[90vw]"
+    aria-live="polite"
+    aria-atomic="false"
+></div>
+
+<script>
+    (() => {
+        "use strict";
+
+        const API_BASE = "/admin/faces";
+
+        const state = {
+            search: "",
+            status: "all",
+            employees: [],
+            stats: {
+                total: 0,
+                registered: 0,
+                unregistered: 0,
+                registrationRate: 0
+            },
+            requestId: 0,
+            detailEmployee: null,
+            deleteEmployee: null,
+            deleting: false,
+            lastFocused: null
+        };
+
+        const elements = {
+            refreshBtn: document.getElementById("face-refresh"),
+            refreshIcon: document.getElementById("face-refresh-icon"),
+            searchInput: document.getElementById("face-search"),
+            statusSelect: document.getElementById("face-status"),
+            applyFilterBtn: document.getElementById("face-apply-filter"),
+            resetFilterBtn: document.getElementById("face-reset-filter"),
+            statTotal: document.getElementById("face-stat-total"),
+            statRegistered: document.getElementById("face-stat-registered"),
+            statUnregistered: document.getElementById("face-stat-unregistered"),
+            statRate: document.getElementById("face-stat-rate"),
+            statRateBar: document.getElementById("face-stat-rate-bar"),
+            tableBody: document.getElementById("face-table-body"),
+            tableSummary: document.getElementById("face-table-summary"),
+            tableTotal: document.getElementById("face-table-total"),
+            detailModal: document.getElementById("face-detail-modal"),
+            detailAvatar: document.getElementById("face-detail-avatar"),
+            detailName: document.getElementById("face-detail-name"),
+            detailCode: document.getElementById("face-detail-code"),
+            detailStatus: document.getElementById("face-detail-status"),
+            detailLoading: document.getElementById("face-detail-loading"),
+            detailError: document.getElementById("face-detail-error"),
+            detailErrorMessage: document.getElementById("face-detail-error-message"),
+            detailContent: document.getElementById("face-detail-content"),
+            detailEmployeeCode: document.getElementById("face-detail-employee-code"),
+            detailDepartment: document.getElementById("face-detail-department"),
+            detailEmail: document.getElementById("face-detail-email"),
+            detailPhone: document.getElementById("face-detail-phone"),
+            detailProfileId: document.getElementById("face-detail-profile-id"),
+            detailRegisteredAt: document.getElementById("face-detail-registered-at"),
+            detailConsentAt: document.getElementById("face-detail-consent-at"),
+            detailRegisterBtn: document.getElementById("face-detail-register-btn"),
+            detailUpdateBtn: document.getElementById("face-detail-update-btn"),
+            detailDeleteBtn: document.getElementById("face-detail-delete-btn"),
+            deleteModal: document.getElementById("face-delete-modal"),
+            deleteName: document.getElementById("face-delete-name"),
+            deleteCode: document.getElementById("face-delete-code"),
+            deleteConfirmBtn: document.getElementById("face-delete-confirm"),
+            captureModal: document.getElementById("face-capture-modal"),
+            captureTitle: document.getElementById("face-capture-title"),
+            captureEmployeeName: document.getElementById("face-capture-employee-name"),
+            captureEmployeeCode: document.getElementById("face-capture-employee-code"),
+            captureEmployeeAvatar: document.getElementById("face-capture-employee-avatar"),
+            captureStepConsent: document.getElementById("face-capture-consent-step"),
+            captureStepCamera: document.getElementById("face-capture-camera-step"),
+            captureStepReview: document.getElementById("face-capture-review-step"),
+            captureStepIndicators: document.querySelectorAll("[data-capture-step]"),
+            captureConsent: document.getElementById("face-capture-consent"),
+            captureContinueBtn: document.getElementById("face-capture-continue"),
+            captureVideo: document.getElementById("face-capture-video"),
+            capturePlaceholder: document.getElementById("face-capture-placeholder"),
+            captureStatusIcon: document.getElementById("face-capture-status-icon"),
+            captureStatusText: document.getElementById("face-capture-status-text"),
+            captureHint: document.getElementById("face-capture-hint"),
+            captureShotBtn: document.getElementById("face-capture-shot"),
+            captureRetryBtn: document.getElementById("face-capture-retry"),
+            captureError: document.getElementById("face-capture-error"),
+            captureErrorMessage: document.getElementById("face-capture-error-message"),
+            captureReviewName: document.getElementById("face-capture-review-name"),
+            captureReviewMessage: document.getElementById("face-capture-review-message"),
+            captureRetakeBtn: document.getElementById("face-capture-retake"),
+            captureSaveBtn: document.getElementById("face-capture-save"),
+            toastContainer: document.getElementById("face-toast-container")
+        };
+
+        const captureState = {
+            open: false,
+            employee: null,
+            mode: "register",
+            step: "consent",
+            stream: null,
+            faceapi: null,
+            detectionTimer: null,
+            detecting: false,
+            descriptor: null,
+            saving: false,
+            starting: false,
+            capturing: false,
+            requestId: 0
+        };
+
+        let faceApiModelsPromise = null;
+        let faceApiScriptPromise = null;
+
+        const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        }[character]));
+
+        const setText = (element, value) => {
+            if (element) {
+                element.textContent = value === null || value === undefined || value === "" ? "—" : value;
+            }
+        };
+
+        const formatDate = (value) => {
+            if (!value) return "—";
+
+            const date = new Date(value);
+
+            if (Number.isNaN(date.getTime())) return "—";
+
+            return new Intl.DateTimeFormat("vi-VN", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric"
+            }).format(date);
+        };
+
+        const formatDateTime = (value) => {
+            if (!value) return "—";
+
+            const date = new Date(value);
+
+            if (Number.isNaN(date.getTime())) return "—";
+
+            return new Intl.DateTimeFormat("vi-VN", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false
+            }).format(date);
+        };
+
+        const getInitials = (name) => {
+            const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+
+            if (parts.length === 0) return "?";
+
+            return parts
+                .slice(-2)
+                .map((part) => part.charAt(0))
+                .join("")
+                .toUpperCase();
+        };
+
+        const statusBadgeHtml = (registered) => registered
+            ? `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Đã đăng ký</span>`
+            : `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-outline"></span>Chưa đăng ký</span>`;
+
+        const showToast = (type, message) => {
+            const config = {
+                success: {
+                    icon: "check_circle",
+                    classes: "bg-green-50 border-green-200 text-green-700"
+                },
+                error: {
+                    icon: "error",
+                    classes: "bg-error-container border-error/30 text-on-error-container"
+                },
+                info: {
+                    icon: "info",
+                    classes: "bg-surface-container-lowest border-surface-container-high text-on-surface"
+                }
+            };
+
+            const toastConfig = config[type] || config.info;
+            const toast = document.createElement("div");
+
+            toast.className = `face-toast-in flex items-start gap-space-sm p-space-md rounded-xl border shadow-lg ${toastConfig.classes}`;
+            toast.setAttribute("role", type === "error" ? "alert" : "status");
+            toast.innerHTML = `
+                <span class="material-symbols-outlined text-[20px] shrink-0">${toastConfig.icon}</span>
+                <p class="font-body-sm text-body-sm flex-1">${escapeHtml(message)}</p>
+                <button class="p-0.5 rounded-lg opacity-70 hover:opacity-100 transition-opacity shrink-0" type="button" aria-label="Đóng thông báo" data-dismiss-toast>
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+            `;
+
+            toast.querySelector("[data-dismiss-toast]").addEventListener("click", () => toast.remove());
+            elements.toastContainer.appendChild(toast);
+
+            window.setTimeout(() => {
+                toast.style.transition = "opacity 0.2s ease, transform 0.2s ease";
+                toast.style.opacity = "0";
+                toast.style.transform = "translateY(-6px)";
+                window.setTimeout(() => toast.remove(), 200);
+            }, 4500);
+        };
+
+        const syncBodyScroll = () => {
+            const hasOpenModal = !elements.detailModal.classList.contains("hidden")
+                || !elements.deleteModal.classList.contains("hidden")
+                || !elements.captureModal.classList.contains("hidden");
+
+            document.body.classList.toggle("face-modal-open", hasOpenModal);
+        };
+
+        const openModal = (modal) => {
+            state.lastFocused = document.activeElement;
+            modal.classList.remove("hidden");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyScroll();
+
+            const focusTarget = modal.querySelector("[data-autofocus]") || modal.querySelector("button");
+
+            if (focusTarget) {
+                focusTarget.focus();
+            }
+        };
+
+        const closeModal = (modal, restoreFocus = true) => {
+            modal.classList.add("hidden");
+            modal.setAttribute("aria-hidden", "true");
+            syncBodyScroll();
+
+            if (restoreFocus && state.lastFocused && typeof state.lastFocused.focus === "function") {
+                state.lastFocused.focus();
+                state.lastFocused = null;
+            }
+        };
+
+        const closeDetailModal = () => {
+            closeModal(elements.detailModal);
+        };
+
+        const closeDeleteModal = () => {
+            if (state.deleting) return;
+
+            closeModal(elements.deleteModal);
+        };
+
+        const closeCaptureModal = () => {
+            if (captureState.saving) return;
+
+            captureState.open = false;
+            captureState.requestId += 1;
+            captureState.descriptor = null;
+            captureState.capturing = false;
+            stopDetectionLoop();
+            stopCaptureCamera();
+            closeModal(elements.captureModal);
+        };
+
+        const renderSkeleton = () => {
+            elements.tableBody.innerHTML = Array.from({ length: 5 }, () => `
+                <tr class="animate-pulse">
+                    <td class="py-space-md px-space-lg">
+                        <div class="flex items-center gap-space-md">
+                            <div class="w-9 h-9 rounded-full bg-surface-container-high shrink-0"></div>
+                            <div class="flex flex-col gap-1.5 flex-1">
+                                <div class="h-3 bg-surface-container-high rounded w-32 max-w-full"></div>
+                                <div class="h-2.5 bg-surface-container-high rounded w-24 max-w-full"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-space-md px-space-md"><div class="h-3 bg-surface-container-high rounded w-20"></div></td>
+                    <td class="py-space-md px-space-md"><div class="h-5 bg-surface-container-high rounded-full w-24"></div></td>
+                    <td class="py-space-md px-space-md"><div class="h-3 bg-surface-container-high rounded w-24"></div></td>
+                    <td class="py-space-md px-space-lg"><div class="h-7 bg-surface-container-high rounded-lg w-28 ml-auto"></div></td>
+                </tr>
+            `).join("");
+        };
+
+        const renderStats = () => {
+            const { total, registered, unregistered, registrationRate } = state.stats;
+            const safeRate = Math.min(100, Math.max(0, Number(registrationRate) || 0));
+
+            setText(elements.statTotal, total);
+            setText(elements.statRegistered, registered);
+            setText(elements.statUnregistered, unregistered);
+            setText(elements.statRate, `${safeRate}%`);
+            elements.statRateBar.style.width = `${safeRate}%`;
+        };
+
+        const updateSummary = () => {
+            elements.tableSummary.textContent = `Hiển thị ${state.employees.length} nhân viên`;
+            elements.tableTotal.textContent = `Tổng ${state.stats.total} nhân viên trong hệ thống`;
+        };
+
+        const renderRow = (employee) => {
+            const registered = Boolean(employee.face_profile_id);
+            const initials = getInitials(employee.full_name);
+            const registeredAt = registered ? formatDate(employee.face_created_at) : "—";
+            const safeName = escapeHtml(employee.full_name);
+            const safeCode = escapeHtml(employee.employee_code);
+
+            const actions = registered
+                ? `
+                    <button
+                        class="flex items-center gap-1 px-space-sm py-1 bg-secondary-fixed text-on-secondary-fixed hover:bg-secondary hover:text-white font-label-sm text-label-sm rounded-lg transition-colors"
+                        data-capture-id="${escapeHtml(employee.id)}"
+                        data-capture-mode="update"
+                        data-employee-name="${safeName}"
+                        data-employee-code="${safeCode}"
+                        data-employee-department="${escapeHtml(employee.department || "")}"
+                        data-face-profile-id="${escapeHtml(employee.face_profile_id || "")}"
+                        type="button"
+                        title="Cập nhật khuôn mặt"
+                    >
+                        <span class="material-symbols-outlined text-[16px]">sync</span>
+                        <span>Cập nhật</span>
+                    </button>
+                    <button
+                        class="flex items-center gap-1 px-space-sm py-1 bg-error-container text-on-error-container hover:bg-error hover:text-white font-label-sm text-label-sm rounded-lg transition-colors"
+                        data-delete-id="${escapeHtml(employee.id)}"
+                        data-employee-name="${safeName}"
+                        data-employee-code="${safeCode}"
+                        type="button"
+                        title="Xóa dữ liệu khuôn mặt"
+                    >
+                        <span class="material-symbols-outlined text-[16px]">delete</span>
+                        <span>Xóa</span>
+                    </button>
+                `
+                : `
+                    <button
+                        class="flex items-center gap-1 px-space-sm py-1 bg-primary text-on-primary hover:bg-primary-container font-label-sm text-label-sm rounded-lg transition-colors"
+                        data-capture-id="${escapeHtml(employee.id)}"
+                        data-capture-mode="register"
+                        data-employee-name="${safeName}"
+                        data-employee-code="${safeCode}"
+                        data-employee-department="${escapeHtml(employee.department || "")}"
+                        data-face-profile-id=""
+                        type="button"
+                        title="Đăng ký khuôn mặt"
+                    >
+                        <span class="material-symbols-outlined text-[16px]">add_a_photo</span>
+                        <span>Đăng ký</span>
+                    </button>
+                `;
+
+            return `
+                <tr class="hover:bg-surface-container-low/70 align-middle transition-colors">
+                    <td class="py-space-md px-space-lg">
+                        <div class="flex items-center gap-space-md">
+                            <div class="w-9 h-9 rounded-full bg-primary-fixed text-on-primary-fixed font-semibold flex items-center justify-center text-sm shrink-0">
+                                ${escapeHtml(initials)}
+                            </div>
+                            <div class="flex flex-col min-w-0">
+                                <span class="font-label-md text-label-md text-on-surface font-semibold truncate">${safeName}</span>
+                                <span class="font-data-mono text-[11px] text-on-surface-variant truncate">
+                                    ${safeCode}${employee.email ? ` • ${escapeHtml(employee.email)}` : ""}
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-space-md px-space-md text-on-surface-variant">
+                        ${escapeHtml(employee.department || "—")}
+                    </td>
+                    <td class="py-space-md px-space-md">
+                        ${statusBadgeHtml(registered)}
+                    </td>
+                    <td class="py-space-md px-space-md text-on-surface-variant font-data-mono text-data-mono whitespace-nowrap">
+                        ${escapeHtml(registeredAt)}
+                    </td>
+                    <td class="py-space-md px-space-lg">
+                        <div class="flex items-center justify-end gap-space-xs flex-wrap">
+                            <button
+                                class="flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-container text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
+                                data-detail-id="${escapeHtml(employee.id)}"
+                                type="button"
+                                title="Xem chi tiết"
+                            >
+                                <span class="material-symbols-outlined text-[16px]">visibility</span>
+                                <span>Chi tiết</span>
+                            </button>
+                            ${actions}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        };
+
+        const renderTable = () => {
+            if (state.employees.length === 0) {
+                elements.tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-space-2xl px-space-lg">
+                            <div class="flex flex-col items-center justify-center gap-space-sm text-center">
+                                <div class="w-14 h-14 rounded-full bg-surface-container-low text-on-surface-variant flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-[28px]">group_off</span>
+                                </div>
+                                <p class="font-label-md text-label-md text-on-surface">Không tìm thấy nhân viên phù hợp</p>
+                                <p class="font-body-sm text-body-sm text-on-surface-variant">Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc trạng thái.</p>
+                                <button
+                                    class="mt-space-xs flex items-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-label-sm text-label-sm transition-colors"
+                                    data-reset-filter
+                                    type="button"
+                                >
+                                    <span class="material-symbols-outlined text-[18px]">filter_alt_off</span>
+                                    <span>Xóa bộ lọc</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            elements.tableBody.innerHTML = state.employees.map(renderRow).join("");
+        };
+
+        const renderErrorState = (message) => {
+            elements.tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="py-space-2xl px-space-lg">
+                        <div class="flex flex-col items-center justify-center gap-space-sm text-center">
+                            <div class="w-14 h-14 rounded-full bg-error-container text-on-error-container flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[28px]">cloud_off</span>
+                            </div>
+                            <p class="font-label-md text-label-md text-on-surface">Không tải được dữ liệu</p>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant max-w-md">${escapeHtml(message)}</p>
+                            <button
+                                class="mt-space-xs flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-md py-space-sm rounded-xl font-label-sm text-label-sm transition-colors"
+                                data-retry
+                                type="button"
+                            >
+                                <span class="material-symbols-outlined text-[18px]">refresh</span>
+                                <span>Thử lại</span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        };
+
+        const setLoading = (loading) => {
+            elements.refreshBtn.disabled = loading;
+            elements.refreshIcon.classList.toggle("animate-spin", loading);
+
+            if (loading) {
+                elements.tableSummary.textContent = "Đang tải dữ liệu...";
+
+                if (state.employees.length === 0) {
+                    renderSkeleton();
+                }
+
+                elements.tableBody.classList.toggle("opacity-60", state.employees.length > 0);
+            } else {
+                elements.tableBody.classList.remove("opacity-60");
+            }
+        };
+
+        const loadData = async () => {
+            const requestId = ++state.requestId;
+
+            setLoading(true);
+
+            try {
+                const params = new URLSearchParams();
+
+                if (state.search) {
+                    params.set("search", state.search);
+                }
+
+                if (state.status && state.status !== "all") {
+                    params.set("status", state.status);
+                }
+
+                const query = params.toString();
+                const response = await fetch(`${API_BASE}/data${query ? `?${query}` : ""}`, {
+                    headers: {
+                        Accept: "application/json"
+                    }
+                });
+
+                let payload = {};
+
+                try {
+                    payload = await response.json();
+                } catch {
+                    payload = {};
+                }
+
+                if (requestId !== state.requestId) return;
+
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.message || "Không thể lấy danh sách nhân viên.");
+                }
+
+                state.employees = Array.isArray(payload.employees) ? payload.employees : [];
+                state.stats = {
+                    total: Number(payload.stats?.total || 0),
+                    registered: Number(payload.stats?.registered || 0),
+                    unregistered: Number(payload.stats?.unregistered || 0),
+                    registrationRate: Number(payload.stats?.registrationRate || 0)
+                };
+
+                renderStats();
+                renderTable();
+                updateSummary();
+            } catch (error) {
+                if (requestId !== state.requestId) return;
+
+                state.employees = [];
+                renderErrorState(error.message);
+                elements.tableSummary.textContent = "Không tải được dữ liệu";
+                elements.tableTotal.textContent = "";
+                showToast("error", error.message);
+            } finally {
+                if (requestId === state.requestId) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        const hideDetailActions = () => {
+            [elements.detailRegisterBtn, elements.detailUpdateBtn, elements.detailDeleteBtn].forEach((button) => {
+                button.classList.add("hidden");
+                button.classList.remove("flex");
+            });
+        };
+
+        const showDetailLoading = () => {
+            elements.detailLoading.classList.remove("hidden");
+            elements.detailContent.classList.add("hidden");
+            elements.detailError.classList.add("hidden");
+            hideDetailActions();
+
+            setText(elements.detailAvatar, "…");
+            setText(elements.detailName, "Đang tải...");
+            setText(elements.detailCode, "—");
+            elements.detailStatus.innerHTML = `
+                <span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-semibold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-outline animate-pulse"></span>
+                    Đang tải
+                </span>
+            `;
+        };
+
+        const showDetailError = (message) => {
+            elements.detailLoading.classList.add("hidden");
+            elements.detailContent.classList.add("hidden");
+            elements.detailError.classList.remove("hidden");
+            elements.detailErrorMessage.textContent = message;
+            hideDetailActions();
+
+            setText(elements.detailAvatar, "!");
+            setText(elements.detailName, "Không tải được hồ sơ");
+            setText(elements.detailCode, "—");
+            elements.detailStatus.innerHTML = `
+                <span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-error-container text-on-error-container text-[11px] font-semibold">
+                    Lỗi
+                </span>
+            `;
+        };
+
+        const populateDetail = (employee) => {
+            const registered = Boolean(employee.face_profile_id);
+
+            state.detailEmployee = employee;
+
+            setText(elements.detailAvatar, getInitials(employee.full_name));
+            setText(elements.detailName, employee.full_name);
+            setText(elements.detailCode, employee.employee_code);
+            setText(elements.detailEmployeeCode, employee.employee_code);
+            setText(elements.detailDepartment, employee.department);
+            setText(elements.detailEmail, employee.email);
+            setText(elements.detailPhone, employee.phone);
+            setText(elements.detailProfileId, registered ? `#${employee.face_profile_id}` : "Chưa có hồ sơ");
+            setText(elements.detailRegisteredAt, registered ? formatDateTime(employee.face_created_at) : "—");
+            setText(elements.detailConsentAt, registered ? formatDateTime(employee.consent_at) : "—");
+            elements.detailStatus.innerHTML = statusBadgeHtml(registered);
+
+            elements.detailRegisterBtn.classList.toggle("hidden", registered);
+            elements.detailRegisterBtn.classList.toggle("flex", !registered);
+            elements.detailUpdateBtn.classList.toggle("hidden", !registered);
+            elements.detailUpdateBtn.classList.toggle("flex", registered);
+            elements.detailDeleteBtn.classList.toggle("hidden", !registered);
+            elements.detailDeleteBtn.classList.toggle("flex", registered);
+        };
+
+        const openDetailModal = async (rawEmployeeId) => {
+            const employeeId = Number(rawEmployeeId);
+
+            if (!Number.isInteger(employeeId) || employeeId <= 0) {
+                showToast("error", "ID nhân viên không hợp lệ.");
+                return;
+            }
+
+            state.detailEmployee = null;
+            showDetailLoading();
+            openModal(elements.detailModal);
+
+            try {
+                const response = await fetch(`${API_BASE}/${employeeId}`, {
+                    headers: {
+                        Accept: "application/json"
+                    }
+                });
+
+                let payload = {};
+
+                try {
+                    payload = await response.json();
+                } catch {
+                    payload = {};
+                }
+
+                if (!response.ok || !payload.success || !payload.employee) {
+                    throw new Error(payload.message || "Không tải được chi tiết hồ sơ.");
+                }
+
+                populateDetail(payload.employee);
+                elements.detailLoading.classList.add("hidden");
+                elements.detailError.classList.add("hidden");
+                elements.detailContent.classList.remove("hidden");
+            } catch (error) {
+                showDetailError(error.message);
+            }
+        };
+
+        const resetDeleteButton = () => {
+            state.deleting = false;
+            elements.deleteConfirmBtn.disabled = false;
+            elements.deleteConfirmBtn.innerHTML = `
+                <span class="material-symbols-outlined text-[18px]">delete</span>
+                <span>Xóa dữ liệu</span>
+            `;
+        };
+
+        const openDeleteModal = (employee) => {
+            if (!employee) return;
+
+            state.deleteEmployee = employee;
+            setText(elements.deleteName, employee.full_name);
+            setText(elements.deleteCode, employee.employee_code);
+            resetDeleteButton();
+            openModal(elements.deleteModal);
+        };
+
+        const confirmDelete = async () => {
+            if (!state.deleteEmployee || state.deleting) return;
+
+            const employee = state.deleteEmployee;
+
+            state.deleting = true;
+            elements.deleteConfirmBtn.disabled = true;
+            elements.deleteConfirmBtn.innerHTML = `
+                <span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                <span>Đang xóa...</span>
+            `;
+
+            try {
+                const response = await fetch(`${API_BASE}/${employee.id}`, {
+                    method: "DELETE",
+                    headers: {
+                        Accept: "application/json"
+                    }
+                });
+
+                let payload = {};
+
+                try {
+                    payload = await response.json();
+                } catch {
+                    payload = {};
+                }
+
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.message || "Không thể xóa hồ sơ khuôn mặt.");
+                }
+
+                state.deleting = false;
+                state.lastFocused = null;
+                closeModal(elements.deleteModal, false);
+                closeModal(elements.detailModal, false);
+                elements.refreshBtn.focus();
+                showToast("success", payload.message || "Đã xóa hồ sơ khuôn mặt thành công.");
+                await loadData();
+            } catch (error) {
+                state.deleting = false;
+                resetDeleteButton();
+                showToast("error", error.message);
+            }
+        };
+
+        const resetFilters = () => {
+            window.clearTimeout(searchTimer);
+            elements.searchInput.value = "";
+            elements.statusSelect.value = "all";
+            state.search = "";
+            state.status = "all";
+            loadData();
+        };
+
+        const FACE_API_SCRIPT_URL = "/vendor/face-api/face-api.js";
+        const FACE_API_MODEL_URL = "/vendor/face-api/models";
+
+        const loadFaceApiScript = () => {
+            if (window.faceapi) {
+                return Promise.resolve(window.faceapi);
+            }
+
+            if (faceApiScriptPromise) {
+                return faceApiScriptPromise;
+            }
+
+            faceApiScriptPromise = new Promise((resolve, reject) => {
+                const script = document.createElement("script");
+
+                script.src = FACE_API_SCRIPT_URL;
+                script.async = true;
+                script.onload = () => {
+                    if (window.faceapi) {
+                        resolve(window.faceapi);
+                    } else {
+                        faceApiScriptPromise = null;
+                        reject(new Error("Thư viện nhận diện khuôn mặt không khả dụng."));
+                    }
+                };
+                script.onerror = () => {
+                    faceApiScriptPromise = null;
+                    reject(new Error("Không tải được thư viện nhận diện khuôn mặt."));
+                };
+                document.head.appendChild(script);
+            });
+
+            return faceApiScriptPromise;
+        };
+
+        const ensureFaceApiModels = () => {
+            if (faceApiModelsPromise) {
+                return faceApiModelsPromise;
+            }
+
+            faceApiModelsPromise = (async () => {
+                const faceapi = await loadFaceApiScript();
+
+                if (faceapi.tf && faceapi.tf.setBackend) {
+                    try {
+                        await faceapi.tf.setBackend("webgl");
+                    } catch {
+                        // Trình duyệt không hỗ trợ WebGL thì dùng backend mặc định.
+                    }
+
+                    await faceapi.tf.ready();
+                }
+
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(FACE_API_MODEL_URL),
+                    faceapi.nets.faceLandmark68TinyNet.loadFromUri(FACE_API_MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(FACE_API_MODEL_URL)
+                ]);
+
+                return faceapi;
+            })().catch((error) => {
+                faceApiModelsPromise = null;
+                throw error;
+            });
+
+            return faceApiModelsPromise;
+        };
+
+        const setCaptureStep = (step) => {
+            captureState.step = step;
+
+            const sections = {
+                consent: elements.captureStepConsent,
+                camera: elements.captureStepCamera,
+                review: elements.captureStepReview
+            };
+
+            Object.values(sections).forEach((section) => {
+                section.classList.add("hidden");
+                section.classList.remove("flex");
+            });
+
+            const activeSection = sections[step];
+
+            if (activeSection) {
+                activeSection.classList.remove("hidden");
+                activeSection.classList.add("flex");
+            }
+
+            elements.captureStepIndicators.forEach((indicator) => {
+                const key = indicator.getAttribute("data-capture-step");
+                const isActive = key === step;
+                const isDone = (step === "camera" && key === "consent")
+                    || (step === "review" && (key === "consent" || key === "camera"));
+
+                indicator.classList.toggle("bg-primary", isActive);
+                indicator.classList.toggle("text-on-primary", isActive);
+                indicator.classList.toggle("bg-primary-fixed", isDone);
+                indicator.classList.toggle("text-primary", isDone);
+                indicator.classList.toggle("bg-surface-container-high", !isActive && !isDone);
+                indicator.classList.toggle("text-on-surface-variant", !isActive && !isDone);
+            });
+        };
+
+        const setCaptureStatus = (text, type = "info") => {
+            const icons = {
+                info: "info",
+                loading: "progress_activity",
+                searching: "person_search",
+                success: "check_circle",
+                warning: "warning",
+                error: "error"
+            };
+
+            elements.captureStatusText.textContent = text;
+            elements.captureStatusIcon.textContent = icons[type] || "info";
+            elements.captureStatusIcon.classList.toggle("animate-spin", type === "loading");
+            elements.captureStatusIcon.classList.toggle("text-green-400", type === "success");
+            elements.captureStatusIcon.classList.toggle("text-amber-300", type === "warning");
+            elements.captureStatusIcon.classList.toggle("text-red-300", type === "error");
+        };
+
+        const showCaptureError = (message) => {
+            elements.captureErrorMessage.textContent = message;
+            elements.captureError.classList.remove("hidden");
+        };
+
+        const hideCaptureError = () => {
+            elements.captureError.classList.add("hidden");
+            elements.captureErrorMessage.textContent = "";
+        };
+
+        const stopCaptureCamera = () => {
+            if (captureState.stream) {
+                captureState.stream.getTracks().forEach((track) => track.stop());
+                captureState.stream = null;
+            }
+
+            if (elements.captureVideo) {
+                elements.captureVideo.pause();
+                elements.captureVideo.srcObject = null;
+            }
+
+            elements.capturePlaceholder.classList.remove("hidden");
+        };
+
+        const stopDetectionLoop = () => {
+            if (captureState.detectionTimer) {
+                window.clearTimeout(captureState.detectionTimer);
+                captureState.detectionTimer = null;
+            }
+
+            captureState.detecting = false;
+        };
+
+        const updateDetectionState = (detections) => {
+            const video = elements.captureVideo;
+
+            if (!video.videoWidth) {
+                setCaptureStatus("Đang chuẩn bị camera...", "loading");
+                elements.captureShotBtn.disabled = true;
+                return;
+            }
+
+            if (detections.length === 0) {
+                setCaptureStatus("Không phát hiện khuôn mặt", "searching");
+                elements.captureHint.textContent = "Đưa khuôn mặt vào giữa khung oval và đảm bảo đủ ánh sáng.";
+                elements.captureShotBtn.disabled = true;
+                return;
+            }
+
+            if (detections.length > 1) {
+                setCaptureStatus("Có nhiều khuôn mặt trong khung hình", "warning");
+                elements.captureHint.textContent = "Chỉ để một người trong khung hình trước khi chụp.";
+                elements.captureShotBtn.disabled = true;
+                return;
+            }
+
+            const box = detections[0].box;
+            const widthRatio = box.width / video.videoWidth;
+            const centerX = box.x + box.width / 2;
+            const centerY = box.y + box.height / 2;
+            const offsetX = Math.abs(centerX - video.videoWidth / 2) / video.videoWidth;
+            const offsetY = Math.abs(centerY - video.videoHeight / 2) / video.videoHeight;
+
+            if (widthRatio < 0.15) {
+                setCaptureStatus("Khuôn mặt quá nhỏ", "warning");
+                elements.captureHint.textContent = "Đưa khuôn mặt lại gần camera hơn.";
+                elements.captureShotBtn.disabled = true;
+                return;
+            }
+
+            if (offsetX > 0.22 || offsetY > 0.22) {
+                setCaptureStatus("Khuôn mặt chưa ở giữa khung", "warning");
+                elements.captureHint.textContent = "Di chuyển khuôn mặt vào giữa khung oval.";
+                elements.captureShotBtn.disabled = true;
+                return;
+            }
+
+            setCaptureStatus("Đã phát hiện khuôn mặt", "success");
+            elements.captureHint.textContent = "Giữ yên, nhìn thẳng vào camera và bấm Chụp khuôn mặt.";
+            elements.captureShotBtn.disabled = false;
+        };
+
+        const startDetectionLoop = () => {
+            stopDetectionLoop();
+
+            const loopId = captureState.requestId;
+
+            const scheduleNext = () => {
+                if (captureState.capturing) return;
+                if (loopId !== captureState.requestId) return;
+                if (!captureState.open || captureState.step !== "camera") return;
+
+                captureState.detectionTimer = window.setTimeout(runDetection, 350);
+            };
+
+            const runDetection = async () => {
+                if (captureState.capturing) return;
+                if (loopId !== captureState.requestId) return;
+
+                if (
+                    !captureState.open
+                    || captureState.step !== "camera"
+                    || captureState.detecting
+                    || !captureState.faceapi
+                ) {
+                    scheduleNext();
+                    return;
+                }
+
+                captureState.detecting = true;
+
+                try {
+                    const options = new captureState.faceapi.TinyFaceDetectorOptions({
+                        inputSize: 224,
+                        scoreThreshold: 0.5
+                    });
+                    const detections = await captureState.faceapi.detectAllFaces(elements.captureVideo, options);
+
+                    if (captureState.capturing) return;
+                    if (loopId !== captureState.requestId) return;
+                    if (!captureState.open || captureState.step !== "camera") return;
+
+                    updateDetectionState(detections);
+                } catch (error) {
+                    if (captureState.capturing) return;
+                    if (loopId !== captureState.requestId) return;
+
+                    console.error("Lỗi nhận diện khuôn mặt:", error);
+                    setCaptureStatus("Không thể nhận diện khuôn mặt", "error");
+                    showCaptureError("Không thể nhận diện khuôn mặt từ camera. Vui lòng thử lại.");
+                    elements.captureShotBtn.disabled = true;
+                    elements.captureRetryBtn.classList.remove("hidden");
+                    elements.captureRetryBtn.classList.add("flex");
+                } finally {
+                    if (loopId === captureState.requestId) {
+                        captureState.detecting = false;
+                        scheduleNext();
+                    }
+                }
+            };
+
+            runDetection();
+        };
+
+        const startCaptureCamera = async () => {
+            if (captureState.starting) return;
+
+            captureState.starting = true;
+            captureState.capturing = false;
+            stopDetectionLoop();
+            stopCaptureCamera();
+            captureState.requestId += 1;
+            const requestId = captureState.requestId;
+
+            hideCaptureError();
+            setCaptureStep("camera");
+            elements.capturePlaceholder.classList.remove("hidden");
+            elements.captureRetryBtn.classList.add("hidden");
+            elements.captureRetryBtn.classList.remove("flex");
+            elements.captureShotBtn.disabled = true;
+            setCaptureStatus("Đang khởi động camera...", "loading");
+
+            try {
+                if (!window.isSecureContext) {
+                    throw new Error("Camera chỉ hoạt động trên HTTPS hoặc localhost. Vui lòng mở ứng dụng qua http://localhost hoặc HTTPS.");
+                }
+
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error("Trình duyệt không hỗ trợ truy cập camera. Vui lòng dùng Chrome, Edge hoặc Firefox mới nhất.");
+                }
+
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: "user",
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    },
+                    audio: false
+                });
+
+                if (
+                    !captureState.open
+                    || captureState.step !== "camera"
+                    || requestId !== captureState.requestId
+                ) {
+                    stream.getTracks().forEach((track) => track.stop());
+                    return;
+                }
+
+                captureState.stream = stream;
+                elements.captureVideo.srcObject = stream;
+
+                stream.getVideoTracks().forEach((track) => {
+                    track.addEventListener("ended", () => {
+                        if (requestId !== captureState.requestId) return;
+                        if (!captureState.open || captureState.step !== "camera") return;
+
+                        stopDetectionLoop();
+                        stopCaptureCamera();
+                        setCaptureStatus("Camera đã bị ngắt", "error");
+                        showCaptureError("Camera đã bị ngắt. Vui lòng thử lại.");
+                        elements.captureShotBtn.disabled = true;
+                        elements.captureRetryBtn.classList.remove("hidden");
+                        elements.captureRetryBtn.classList.add("flex");
+                    });
+                });
+
+                await new Promise((resolve) => {
+                    if (elements.captureVideo.readyState >= 1) {
+                        resolve();
+                        return;
+                    }
+
+                    elements.captureVideo.onloadedmetadata = () => resolve();
+                });
+
+                await elements.captureVideo.play();
+
+                if (
+                    !captureState.open
+                    || captureState.step !== "camera"
+                    || requestId !== captureState.requestId
+                ) {
+                    return;
+                }
+
+                elements.capturePlaceholder.classList.add("hidden");
+                setCaptureStatus("Đang tải mô hình nhận diện...", "loading");
+
+                const faceapi = await ensureFaceApiModels();
+
+                if (
+                    !captureState.open
+                    || captureState.step !== "camera"
+                    || requestId !== captureState.requestId
+                ) {
+                    return;
+                }
+
+                captureState.faceapi = faceapi;
+                setCaptureStatus("Đang tìm khuôn mặt...", "searching");
+                startDetectionLoop();
+            } catch (error) {
+                console.error("Lỗi khởi động camera:", error);
+
+                if (requestId !== captureState.requestId) return;
+
+                stopCaptureCamera();
+
+                let message = "Không thể khởi động camera. Vui lòng thử lại.";
+
+                if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+                    message = "Bạn đã từ chối quyền truy cập camera. Hãy cấp quyền camera trong trình duyệt rồi thử lại.";
+                } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+                    message = "Không tìm thấy camera trên thiết bị. Vui lòng kiểm tra kết nối camera.";
+                } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+                    message = "Camera đang được ứng dụng khác sử dụng. Vui lòng đóng ứng dụng đó và thử lại.";
+                } else if (error.message) {
+                    message = error.message;
+                }
+
+                setCaptureStatus("Không thể khởi động camera", "error");
+                showCaptureError(message);
+                elements.captureShotBtn.disabled = true;
+                elements.captureRetryBtn.classList.remove("hidden");
+                elements.captureRetryBtn.classList.add("flex");
+            } finally {
+                if (requestId === captureState.requestId) {
+                    captureState.starting = false;
+                }
+            }
+        };
+
+        const captureFaceDescriptor = async () => {
+            if (!captureState.faceapi || !captureState.stream) return;
+
+            const captureRequestId = captureState.requestId;
+
+            stopDetectionLoop();
+            captureState.capturing = true;
+            elements.captureShotBtn.disabled = true;
+            hideCaptureError();
+            setCaptureStatus("Đang trích xuất dữ liệu khuôn mặt...", "loading");
+
+            try {
+                const options = new captureState.faceapi.TinyFaceDetectorOptions({
+                    inputSize: 320,
+                    scoreThreshold: 0.5
+                });
+                const detections = await captureState.faceapi
+                    .detectAllFaces(elements.captureVideo, options)
+                    .withFaceLandmarks(true)
+                    .withFaceDescriptors();
+
+                if (captureRequestId !== captureState.requestId) return;
+                if (!captureState.open || captureState.step !== "camera") return;
+
+                if (detections.length === 0) {
+                    throw new Error("Không phát hiện khuôn mặt. Vui lòng nhìn thẳng vào camera và thử lại.");
+                }
+
+                if (detections.length > 1) {
+                    throw new Error("Có nhiều khuôn mặt trong khung hình. Chỉ để một người và thử lại.");
+                }
+
+                const detection = detections[0];
+                const descriptor = Array.from(detection.descriptor);
+                const box = detection.detection.box;
+
+                if (descriptor.length !== 128 || !descriptor.every((value) => Number.isFinite(value))) {
+                    throw new Error("Dữ liệu khuôn mặt không hợp lệ. Vui lòng chụp lại.");
+                }
+
+                if (box.width / elements.captureVideo.videoWidth < 0.15) {
+                    throw new Error("Khuôn mặt quá nhỏ. Vui lòng đưa khuôn mặt lại gần camera hơn.");
+                }
+
+                captureState.descriptor = descriptor;
+                stopDetectionLoop();
+                stopCaptureCamera();
+                setCaptureStep("review");
+                captureState.capturing = false;
+                setText(
+                    elements.captureReviewName,
+                    `${captureState.employee.full_name} (${captureState.employee.employee_code})`
+                );
+                setText(
+                    elements.captureReviewMessage,
+                    captureState.mode === "update"
+                        ? "Descriptor 128 chiều mới đã sẵn sàng. Hồ sơ cũ sẽ được cập nhật sau khi xác nhận."
+                        : "Descriptor 128 chiều đã sẵn sàng. Không có ảnh nào được lưu."
+                );
+            } catch (error) {
+                if (captureRequestId !== captureState.requestId) return;
+
+                console.error("Lỗi trích xuất khuôn mặt:", error);
+                captureState.capturing = false;
+                setCaptureStatus("Chưa thể chụp khuôn mặt", "error");
+                showCaptureError(error.message);
+                elements.captureShotBtn.disabled = false;
+
+                if (
+                    captureState.open
+                    && captureState.step === "camera"
+                    && captureState.stream
+                    && captureState.faceapi
+                ) {
+                    startDetectionLoop();
+                }
+            }
+        };
+
+        const saveCaptureDescriptor = async () => {
+            if (!captureState.employee || !captureState.descriptor || captureState.saving) return;
+
+            const employee = captureState.employee;
+            const mode = captureState.mode;
+            const endpoint = mode === "update"
+                ? `${API_BASE}/${employee.id}`
+                : `${API_BASE}/${employee.id}/register`;
+            const method = mode === "update" ? "PUT" : "POST";
+            const confirmLabel = mode === "update" ? "Xác nhận cập nhật" : "Xác nhận đăng ký";
+
+            captureState.saving = true;
+            hideCaptureError();
+            elements.captureSaveBtn.disabled = true;
+            elements.captureRetakeBtn.disabled = true;
+            elements.captureSaveBtn.innerHTML = `
+                <span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                <span>Đang lưu...</span>
+            `;
+
+            const controller = new AbortController();
+            const timeoutId = window.setTimeout(() => controller.abort(), 20000);
+
+            try {
+                const response = await fetch(endpoint, {
+                    method,
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json"
+                    },
+                    body: JSON.stringify({
+                        descriptor: captureState.descriptor,
+                        consent: true
+                    }),
+                    signal: controller.signal
+                });
+
+                let payload = {};
+
+                try {
+                    payload = await response.json();
+                } catch {
+                    payload = {};
+                }
+
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.message || "Không thể lưu dữ liệu khuôn mặt.");
+                }
+
+                captureState.saving = false;
+                closeCaptureModal();
+
+                if (!elements.detailModal.classList.contains("hidden")) {
+                    closeModal(elements.detailModal, false);
+                }
+
+                showToast("success", payload.message || "Đã lưu dữ liệu khuôn mặt thành công.");
+                await loadData();
+                elements.refreshBtn.focus();
+            } catch (error) {
+                console.error("Lỗi lưu dữ liệu khuôn mặt:", error);
+
+                const message = error.name === "AbortError"
+                    ? "Hết thời gian chờ phản hồi từ máy chủ. Vui lòng kiểm tra lại danh sách trước khi thử lại."
+                    : error.message;
+
+                captureState.saving = false;
+                elements.captureSaveBtn.disabled = false;
+                elements.captureRetakeBtn.disabled = false;
+                elements.captureSaveBtn.innerHTML = `
+                    <span class="material-symbols-outlined text-[18px]">save</span>
+                    <span>${confirmLabel}</span>
+                `;
+                showCaptureError(message);
+                showToast("error", message);
+            } finally {
+                window.clearTimeout(timeoutId);
+            }
+        };
+
+        const openCaptureModal = (employee, mode) => {
+            if (!employee || !employee.id) {
+                showToast("error", "Không xác định được nhân viên cần đăng ký.");
+                return;
+            }
+
+            captureState.open = true;
+            captureState.employee = employee;
+            captureState.mode = mode === "update" ? "update" : "register";
+            captureState.descriptor = null;
+            captureState.saving = false;
+            captureState.starting = false;
+            captureState.capturing = false;
+
+            const isUpdate = captureState.mode === "update";
+
+            elements.captureTitle.textContent = isUpdate
+                ? "Cập nhật khuôn mặt"
+                : "Đăng ký khuôn mặt";
+            setText(elements.captureEmployeeName, employee.full_name);
+            setText(elements.captureEmployeeCode, employee.employee_code);
+            setText(elements.captureEmployeeAvatar, getInitials(employee.full_name));
+            setText(
+                elements.captureReviewName,
+                `${employee.full_name} (${employee.employee_code})`
+            );
+            setText(
+                elements.captureReviewMessage,
+                isUpdate
+                    ? "Descriptor 128 chiều mới đã sẵn sàng. Hồ sơ cũ sẽ được cập nhật sau khi xác nhận."
+                    : "Descriptor 128 chiều đã sẵn sàng. Không có ảnh nào được lưu."
+            );
+            elements.captureSaveBtn.innerHTML = `
+                <span class="material-symbols-outlined text-[18px]">save</span>
+                <span>${isUpdate ? "Xác nhận cập nhật" : "Xác nhận đăng ký"}</span>
+            `;
+
+            elements.captureConsent.checked = false;
+            elements.captureContinueBtn.disabled = true;
+            elements.captureShotBtn.disabled = true;
+            elements.captureSaveBtn.disabled = false;
+            elements.captureRetakeBtn.disabled = false;
+            elements.captureRetryBtn.classList.add("hidden");
+            elements.captureRetryBtn.classList.remove("flex");
+            hideCaptureError();
+            elements.capturePlaceholder.classList.remove("hidden");
+            elements.captureHint.textContent = "Giữ khuôn mặt trong khung oval, nhìn thẳng vào camera và chỉ để một người trong khung hình.";
+            setCaptureStatus("Đang khởi động camera...", "loading");
+
+            setCaptureStep("consent");
+            openModal(elements.captureModal);
+            elements.captureConsent.focus();
+        };
+
+        let searchTimer = null;
+
+        elements.refreshBtn.addEventListener("click", loadData);
+
+        elements.applyFilterBtn.addEventListener("click", () => {
+            window.clearTimeout(searchTimer);
+            state.search = elements.searchInput.value.trim();
+            state.status = elements.statusSelect.value;
+            loadData();
+        });
+
+        elements.resetFilterBtn.addEventListener("click", resetFilters);
+
+        elements.searchInput.addEventListener("input", () => {
+            window.clearTimeout(searchTimer);
+            searchTimer = window.setTimeout(() => {
+                state.search = elements.searchInput.value.trim();
+                loadData();
+            }, 350);
+        });
+
+        elements.searchInput.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+
+            event.preventDefault();
+            window.clearTimeout(searchTimer);
+            state.search = elements.searchInput.value.trim();
+            state.status = elements.statusSelect.value;
+            loadData();
+        });
+
+        elements.statusSelect.addEventListener("change", () => {
+            state.status = elements.statusSelect.value;
+            loadData();
+        });
+
+        elements.tableBody.addEventListener("click", (event) => {
+            const detailButton = event.target.closest("[data-detail-id]");
+
+            if (detailButton) {
+                openDetailModal(detailButton.getAttribute("data-detail-id"));
+                return;
+            }
+
+            const deleteButton = event.target.closest("[data-delete-id]");
+
+            if (deleteButton) {
+                openDeleteModal({
+                    id: deleteButton.getAttribute("data-delete-id"),
+                    full_name: deleteButton.getAttribute("data-employee-name"),
+                    employee_code: deleteButton.getAttribute("data-employee-code")
+                });
+                return;
+            }
+
+            const captureButton = event.target.closest("[data-capture-id]");
+
+            if (captureButton) {
+                openCaptureModal({
+                    id: captureButton.getAttribute("data-capture-id"),
+                    full_name: captureButton.getAttribute("data-employee-name"),
+                    employee_code: captureButton.getAttribute("data-employee-code"),
+                    department: captureButton.getAttribute("data-employee-department") || "",
+                    face_profile_id: captureButton.getAttribute("data-face-profile-id") || null
+                }, captureButton.getAttribute("data-capture-mode") === "update" ? "update" : "register");
+                return;
+            }
+
+            if (event.target.closest("[data-reset-filter]")) {
+                resetFilters();
+                return;
+            }
+
+            if (event.target.closest("[data-retry]")) {
+                loadData();
+            }
+        });
+
+        elements.detailRegisterBtn.addEventListener("click", () => {
+            if (state.detailEmployee) {
+                openCaptureModal(state.detailEmployee, "register");
+            }
+        });
+
+        elements.detailUpdateBtn.addEventListener("click", () => {
+            if (state.detailEmployee) {
+                openCaptureModal(state.detailEmployee, "update");
+            }
+        });
+        elements.detailDeleteBtn.addEventListener("click", () => {
+            if (state.detailEmployee) {
+                openDeleteModal(state.detailEmployee);
+            }
+        });
+
+        elements.deleteConfirmBtn.addEventListener("click", confirmDelete);
+
+        elements.captureConsent.addEventListener("change", () => {
+            elements.captureContinueBtn.disabled = !elements.captureConsent.checked;
+        });
+
+        elements.captureContinueBtn.addEventListener("click", () => {
+            if (!elements.captureConsent.checked) return;
+
+            startCaptureCamera();
+        });
+
+        elements.captureRetryBtn.addEventListener("click", () => {
+            startCaptureCamera();
+        });
+
+        elements.captureShotBtn.addEventListener("click", captureFaceDescriptor);
+
+        elements.captureRetakeBtn.addEventListener("click", () => {
+            if (captureState.saving) return;
+
+            captureState.descriptor = null;
+            hideCaptureError();
+            startCaptureCamera();
+        });
+
+        elements.captureSaveBtn.addEventListener("click", saveCaptureDescriptor);
+
+        document.querySelectorAll('[data-close-modal="detail"]').forEach((element) => {
+            element.addEventListener("click", closeDetailModal);
+        });
+
+        document.querySelectorAll('[data-close-modal="delete"]').forEach((element) => {
+            element.addEventListener("click", closeDeleteModal);
+        });
+
+        document.querySelectorAll('[data-close-modal="capture"]').forEach((element) => {
+            element.addEventListener("click", closeCaptureModal);
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape") return;
+
+            if (!elements.captureModal.classList.contains("hidden")) {
+                closeCaptureModal();
+                return;
+            }
+
+            if (!elements.deleteModal.classList.contains("hidden")) {
+                closeDeleteModal();
+                return;
+            }
+
+            if (!elements.detailModal.classList.contains("hidden")) {
+                closeDetailModal();
+            }
+        });
+
+        renderSkeleton();
+        loadData();
+    })();
+</script>
+
+<%- include("../partials/adminFoot") %>

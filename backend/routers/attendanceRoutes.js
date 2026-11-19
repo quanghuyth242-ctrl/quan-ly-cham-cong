@@ -1,15 +1,31 @@
-
 import express from "express";
-import { login, logout } from "../controllers/authController.js";
+
+import {
+    renderAttendancePage,
+    getAttendanceData,
+    faceAttendance,
+    manualAttendance
+} from "../controllers/attendanceController.js";
+import { requireAdmin, requireAdminApi } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/login", (req, res) => {
-    res.render("auth", { error: null });
+// Dữ liệu chấm công không nên bị lưu cache ở trình duyệt/proxy.
+router.use((req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    next();
 });
 
-router.post("/login", login);
+// Hiển thị giao diện bảng chấm công
+router.get("/", requireAdmin, renderAttendancePage);
 
-router.get("/logout", logout);
+// API bảng chấm công theo ngày
+router.get("/data", requireAdminApi, getAttendanceData);
+
+// API chấm công bằng khuôn mặt
+router.post("/face", requireAdminApi, faceAttendance);
+
+// API chấm công thủ công (phương thức dự phòng)
+router.post("/manual", requireAdminApi, manualAttendance);
 
 export default router;

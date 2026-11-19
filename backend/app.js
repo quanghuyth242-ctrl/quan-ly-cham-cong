@@ -3,10 +3,16 @@ import express from "express";
 import path from "path";
 import session from "express-session";
 import { fileURLToPath } from "url";
+
+import { db } from "./config/db.js";
 import AuthRouter from "./routers/AuthRouter.js";
 import WorkShiftRouter from "./routers/WorkShiftRouter.js";
 import ShiftAssignmentRouter from "./routers/ShiftAssignmentRouter.js";
+import FaceRouter from "./routers/FaceRouter.js";
+import AttendanceRouter from "./routers/attendanceRoutes.js";
+
 import { requireAdmin } from "./middlewares/authMiddleware.js";
+import { getOverviewNotifications } from "./services/notificationService.js";
 
 const app = express();
 
@@ -15,6 +21,22 @@ const __dirname = path.dirname(__filename);
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "../frontend/views"));
+
+// Thư viện và model nhận diện khuôn mặt được phục vụ cục bộ.
+app.use(
+    "/vendor/face-api/models",
+    express.static(
+        path.join(__dirname, "../node_modules/@vladmandic/face-api/model"),
+        { maxAge: "7d" }
+    )
+);
+app.use(
+    "/vendor/face-api",
+    express.static(
+        path.join(__dirname, "../node_modules/@vladmandic/face-api/dist"),
+        { maxAge: "1d" }
+    )
+);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -32,20 +54,63 @@ app.use(session({
 
 app.use("/", AuthRouter);
 
-// Quản lý ca làm việc & phân ca nhân viên (chỉ dành cho Admin)
 app.use("/admin/shifts", requireAdmin, WorkShiftRouter);
+
 app.use("/admin/shift-assignments", requireAdmin, ShiftAssignmentRouter);
 
-app.get("/", (req, res) => {
+app.use("/admin/faces", requireAdmin, FaceRouter);
+
+app.use("/admin/attendance", AttendanceRouter);
+
+app.get("/", async (req, res) => {
     if (!req.session.user) {
         return res.redirect("/login");
     }
 
-    res.render("home", { user: req.session.user });
+    try {
+        const overview = await getOverviewNotifications();
+
+        res.render("home", {
+            user: req.session.user,
+            notifications: overview.notifications,
+            leaveNotifications: overview.leaveNotifications,
+            attendanceNotifications: overview.attendanceNotifications,
+            unreadNotificationCount: overview.unreadCount
+        });
+    } catch (error) {
+        console.error("Lỗi tải thông báo:", error);
+
+        res.render("home", {
+            user: req.session.user,
+            notifications: [],
+            leaveNotifications: [],
+            attendanceNotifications: [],
+            unreadNotificationCount: 0
+        });
+    }
 });
 
-const PORT = 3000;
+// Kiểm tra MySQL trước khi chạy server
+const startServer = async () => {
+    try {
+        const connection = await db.getConnection();
 
-app.listen(PORT, () => {
-    console.log(`Server running: http://localhost:${PORT}`);
-});
+        console.log("Kết nối MySQL thành công!");
+
+        connection.release();
+
+        const PORT = 3000;
+
+        app.listen(PORT, () => {
+            console.log(`Server running: http://localhost:${PORT}`);
+        });
+
+    } catch (error) {
+        console.error("KHÔNG THỂ KẾT NỐI MYSQL!");
+        console.error("Mã lỗi:", error.code);
+        console.error("Thông báo:", error.message);
+        console.error("Chi tiết:", error);
+    }
+};
+
+startServer();
