@@ -35,7 +35,10 @@
         <td class="py-space-md px-space-md">
             <% if (record.has_schedule) { %>
                 <div class="flex flex-col">
-                    <span class="font-label-md text-label-md text-on-surface"><%= record.shift_name %></span>
+                    <span class="font-label-md text-label-md text-on-surface">
+                        <% if (record.shift_code) { %><span class="font-data-mono text-primary mr-1"><%= record.shift_code %></span><% } %>
+                        <%= record.shift_name %>
+                    </span>
                     <span class="font-body-sm text-body-sm text-on-surface-variant"><%= record.scheduled_start %> – <%= record.scheduled_end %></span>
                 </div>
             <% } else { %>
@@ -75,7 +78,7 @@
             <% } %>
         </td>
         <td class="py-space-md px-space-md font-data-mono text-data-mono"><%= record.total_hours %> giờ</td>
-        <td class="py-space-md px-space-lg sticky right-0 z-[1] bg-surface-container-lowest">
+        <td class="py-space-md px-space-lg">
             <% if (record.status === "present") { %>
                 <span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
@@ -95,7 +98,7 @@
                 <span class="inline-flex px-space-sm py-1 rounded-full bg-surface-container-high text-on-surface-variant text-xs font-semibold"><%= record.status_label %></span>
             <% } %>
         </td>
-        <td class="py-space-md px-space-lg">
+        <td class="py-space-md px-space-lg sticky right-0 z-[1] bg-surface-container-lowest">
             <div class="flex justify-end">
                 <button
                     class="flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
@@ -111,6 +114,18 @@
                 >
                     <span class="material-symbols-outlined text-[16px]">edit</span>
                     <span>Điều chỉnh</span>
+                </button>
+                <button
+                    class="flex items-center gap-1 px-space-sm py-1 bg-primary-fixed hover:bg-primary-fixed/80 text-primary font-label-sm text-label-sm rounded-lg transition-colors"
+                    data-view-attendance-history
+                    data-employee-id="<%= record.employee_id %>"
+                    data-employee-code="<%= record.employee_code %>"
+                    data-employee-name="<%= record.employee_name %>"
+                    type="button"
+                    title="Xem tất cả ngày chấm công của nhân viên"
+                >
+                    <span class="material-symbols-outlined text-[16px]">history</span>
+                    <span>Xem lịch sử</span>
                 </button>
             </div>
         </td>

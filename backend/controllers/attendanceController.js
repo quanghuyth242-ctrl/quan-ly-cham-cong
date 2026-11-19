@@ -218,6 +218,58 @@ export const refresh = async (_req, res) => {
     }
 };
 
+export const history = async (req, res) => {
+    const employeeId = parseId(req.params.employeeId);
+    if (!employeeId) {
+        return res.status(400).json({ error: "Mã nhân viên không hợp lệ." });
+    }
+
+    try {
+        const [records, employee] = await Promise.all([
+            AttendanceModel.findHistoryByEmployee(employeeId),
+            AttendanceModel.findEmployeeDetailsById(employeeId)
+        ]);
+
+        if (!employee) {
+            return res.status(404).json({ error: "Không tìm thấy nhân viên." });
+        }
+        return res.json({ employeeId, records });
+    } catch (error) {
+        console.error("Lỗi tải lịch sử chấm công:", error);
+        return res.status(500).json({ error: "Không thể tải lịch sử chấm công." });
+    }
+};
+
+export const exportCsv = async (req, res) => {
+    try {
+        const [rows] = await AttendanceModel.exportAllHistory(
+            String(req.query.from_date || "").trim() || null,
+            String(req.query.to_date || "").trim() || null
+        );
+        const data = [
+            ["Mã nhân viên", "Nhân viên", "Ngày", "Giờ vào", "Giờ ra", "Trạng thái"],
+            ...rows.map((row) => [
+                row.employee_code,
+                row.full_name,
+                row.work_date,
+                row.check_in || "",
+                row.check_out || "",
+                { present: "Đúng giờ", late: "Đi muộn", absent: "Vắng mặt" }[row.status] || row.status
+            ])
+        ];
+        const csv = "\uFEFF" + data.map((row) =>
+            row.map((value) => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",")
+        ).join("\n");
+
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", 'attachment; filename="lich-su-cham-cong.csv"');
+        return res.send(csv);
+    } catch (error) {
+        console.error("Lỗi xuất CSV lịch sử chấm công:", error);
+        return res.status(500).json({ error: "Không thể xuất CSV lịch sử chấm công." });
+    }
+};
+
 export const report = async (req, res) => {
     const today = getToday();
     const defaultFromDate = `${today.slice(0, 7)}-01`;

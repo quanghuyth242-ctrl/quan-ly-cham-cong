@@ -34,34 +34,28 @@
             </button>
             <button
                 id="open-create-employee"
-                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md shadow-md transition-colors"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md shadow-md transition-all active:scale-[0.98]"
                 type="button"
             >
                 <span class="material-symbols-outlined text-[20px]">person_add</span>
                 <span>Thêm nhân viên</span>
             </button>
-            <a
-                href="/admin/shift-assignments"
-                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md shadow-md transition-colors"
-            >
-                <span class="material-symbols-outlined text-[20px]">assignment_ind</span>
-                <span>Phân ca nhân viên</span>
-            </a>
             <button
                 id="export-employees"
-                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                class="flex items-center justify-center w-10 h-10 bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 type="button"
                 onclick="exportEmployeesCSV()"
                 <%= employees.length === 0 ? "disabled" : "" %>
+                title="Xuất danh sách CSV"
+                aria-label="Xuất danh sách CSV"
             >
                 <span class="material-symbols-outlined text-[20px]">download</span>
-                <span>Xuất CSV</span>
             </button>
         </div>
     </section>
 
     <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-space-lg" aria-label="Thống kê nhân sự">
-        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <a href="/admin/employees" class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-primary/10 transition-all">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng nhân viên</span>
                 <span id="employee-stat-total" class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= stats.total %></span>
@@ -69,8 +63,8 @@
             <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
                 <span class="material-symbols-outlined text-[24px]">groups</span>
             </div>
-        </article>
-        <a href="/admin/employees?status=active" class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between hover:ring-2 hover:ring-green-200 transition-all">
+        </a>
+        <a href="/admin/employees?status=active" class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-green-200 transition-all">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đang hoạt động</span>
                 <span id="employee-stat-active" class="font-headline-xl text-headline-xl text-green-700 font-bold mt-space-xs"><%= stats.active %></span>
@@ -79,7 +73,7 @@
                 <span class="material-symbols-outlined text-[24px]">person_check</span>
             </div>
         </a>
-        <a href="/admin/employees?status=inactive" class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between hover:ring-2 hover:ring-red-200 transition-all">
+        <a href="/admin/employees?status=inactive" class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-red-200 transition-all">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Ngừng hoạt động</span>
                 <span id="employee-stat-inactive" class="font-headline-xl text-headline-xl text-red-700 font-bold mt-space-xs"><%= stats.inactive %></span>
@@ -91,7 +85,7 @@
         <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Phòng ban</span>
-                <span class="font-headline-xl text-headline-xl text-secondary font-bold mt-space-xs"><%= stats.departments %></span>
+                <span id="employee-stat-departments" class="font-headline-xl text-headline-xl text-secondary font-bold mt-space-xs"><%= stats.departments %></span>
             </div>
             <div class="w-11 h-11 rounded-xl bg-secondary-fixed text-secondary flex items-center justify-center">
                 <span class="material-symbols-outlined text-[24px]">domain</span>
@@ -100,7 +94,7 @@
         <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Chưa phân phòng ban</span>
-                <span class="font-headline-xl text-headline-xl text-orange-600 font-bold mt-space-xs"><%= stats.unassignedDepartment %></span>
+                <span id="employee-stat-unassigned" class="font-headline-xl text-headline-xl text-orange-600 font-bold mt-space-xs"><%= stats.unassignedDepartment %></span>
             </div>
             <div class="w-11 h-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
                 <span class="material-symbols-outlined text-[24px]">person_search</span>
@@ -180,12 +174,12 @@
             </form>
         </div>
 
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm p-space-lg md:px-space-xl border-b border-surface-container-low">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm p-space-lg md:px-space-xl border-b border-surface-container-low bg-surface-container-lowest">
             <div>
                 <h3 class="font-headline-sm text-headline-sm text-on-surface">Danh sách nhân viên</h3>
                 <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Thông tin liên hệ và phòng ban của nhân sự.</p>
             </div>
-            <span class="font-body-sm text-body-sm text-on-surface-variant" aria-live="polite">
+            <span id="employee-result-count" class="font-body-sm text-body-sm text-on-surface-variant" aria-live="polite">
                 Hiển thị <strong class="text-on-surface"><%= employees.length %></strong> / <%= stats.total %> nhân viên
             </span>
         </div>
@@ -218,9 +212,9 @@
     data-available-codes="<%= JSON.stringify(availableEmployeeCodes) %>"
 >
     <div class="absolute inset-0 bg-black/40" data-close-employee-modal></div>
-    <div class="relative min-h-full flex items-center justify-center p-space-lg">
+    <div class="relative min-h-full flex items-center justify-center p-space-lg overflow-y-auto">
         <section
-            class="w-full max-w-xl bg-surface-container-lowest rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.18)] overflow-hidden"
+            class="w-full max-w-xl max-h-[calc(100vh-2rem)] overflow-y-auto bg-surface-container-lowest rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.18)]"
             role="dialog"
             aria-modal="true"
             aria-labelledby="employee-modal-title"
@@ -371,6 +365,8 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     const openCreateModal = () => {
         form.reset();
+        submitButton.disabled = false;
+        submitButton.removeAttribute("aria-busy");
         form.action = "/admin/employees";
         form.dataset.mode = "create";
         modalTitle.textContent = "Thêm nhân viên";
@@ -386,6 +382,8 @@ document.addEventListener("DOMContentLoaded", () => {
         openModal();
     };
     const openEditModal = (button) => {
+        submitButton.disabled = false;
+        submitButton.removeAttribute("aria-busy");
         form.action = `/admin/employees/${button.dataset.id}/update`;
         form.dataset.mode = "edit";
         modalTitle.textContent = "Cập nhật nhân viên";
@@ -403,6 +401,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const closeModal = () => {
         modal.classList.add("hidden");
         document.body.classList.remove("shift-modal-open");
+    };
+    const resetSubmitButton = () => {
+        submitButton.disabled = false;
+        submitButton.removeAttribute("aria-busy");
+        submitLabel.textContent = form.dataset.mode === "edit"
+            ? "Lưu thay đổi"
+            : "Lưu nhân viên";
     };
 
     form.addEventListener("submit", () => {
@@ -437,15 +442,6 @@ document.addEventListener("DOMContentLoaded", () => {
         employeeSearch.value = "";
         clearEmployeeSearch.classList.add("hidden");
         document.getElementById("employee-filter-form").submit();
-    });
-    document.querySelectorAll("[data-toggle-employee-status]").forEach((toggleForm) => {
-        toggleForm.addEventListener("submit", (event) => {
-            const isDeactivate = toggleForm.dataset.action === "deactivate";
-            const message = isDeactivate
-                ? `Ngừng hoạt động nhân viên "${toggleForm.dataset.name}"? Dữ liệu chấm công và phân ca hiện có sẽ được giữ nguyên.`
-                : `Khôi phục hoạt động nhân viên "${toggleForm.dataset.name}"?`;
-            if (!window.confirm(message)) event.preventDefault();
-        });
     });
     modal.querySelectorAll("[data-close-employee-modal]").forEach((button) => {
         button.addEventListener("click", closeModal);
@@ -525,9 +521,14 @@ async function refreshEmployees(manual = false) {
         if (!response.ok) throw new Error(data.error || "Không thể đồng bộ danh sách nhân viên.");
 
         document.getElementById("employees-table-body").innerHTML = data.rowsHtml;
+        const visibleRows = document.querySelectorAll("#employees-table-body .employee-row").length;
+        document.getElementById("employee-result-count").innerHTML =
+            `Hiển thị <strong class="text-on-surface">${visibleRows}</strong> / ${data.stats.total} nhân viên`;
         document.getElementById("employee-stat-total").textContent = data.stats.total;
         document.getElementById("employee-stat-active").textContent = data.stats.active;
         document.getElementById("employee-stat-inactive").textContent = data.stats.inactive;
+        document.getElementById("employee-stat-departments").textContent = data.stats.departments;
+        document.getElementById("employee-stat-unassigned").textContent = data.stats.unassignedDepartment;
         modal.dataset.availableCodes = JSON.stringify(data.availableEmployeeCodes);
 
         bindEmployeeRowActions();
