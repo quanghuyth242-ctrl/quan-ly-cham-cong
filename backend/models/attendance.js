@@ -1,20 +1,218 @@
-import { createHash } from "node:crypto";
 import { db } from "../config/db.js";
+
+const ATTENDANCE_STATUS_FILTERS = [
+    "all",
+    "checked_in",
+    "checked_out",
+    "not_checked_in",
+    "late",
+    "early_leave"
+];
+
+export const normalizeAttendanceStatus = (status) => {
+    const value = String(status || "all").toLowerCase();
+
+    return ATTENDANCE_STATUS_FILTERS.includes(value) ? value : "all";
+};
+
+const buildStatusCondition = (status) => {
+    switch (status) {
+        case "checked_in":
+            return "a.check_in IS NOT NULL";
+        case "checked_out":
+            return "a.check_out IS NOT NULL";
+        case "not_checked_in":
+            return "a.check_in IS NULL";
+        case "late":
+            return "a.status LIKE '%late%'";
+        case "early_leave":
+            return "a.status LIKE '%early_leave%'";
+        default:
+            return null;
+    }
+};
+
+export const findEmployeeFullById = async (employeeId) => {
+    const [rows] = await db.execute(
+        `SELECT id,
+                employee_code,
+                full_name,
+                department,
+                email,
+                phone
+           FROM employees
+          WHERE id = ?
+          LIMIT 1`,
+        [employeeId]
+    );
+
+    return rows[0] || null;
+};
+
+export const getDepartments = async () => {
+    const [rows] = await db.execute(
+        `SELECT DISTINCT department
+           FROM employees
+          WHERE department IS NOT NULL
+            AND department <> ''
+          ORDER BY department ASC`
+    );
+
+    return rows.map((row) => row.department);
+};
+
+/**
+ * Danh s├ích nh├ón vi├¬n k├¿m bß║ún ghi chß║Ñm c├┤ng cß╗ºa mß╗Öt ng├áy.
+ * Nh├ón vi├¬n ch╞░a chß║Ñm c├┤ng vß║½n xuß║Ñt hiß╗çn ─æß╗â quß║ún trß╗ï vi├¬n c├│ thß╗â
+ * chß║Ñm c├┤ng thß╗º c├┤ng khi camera/nhß║¡n diß╗çn gß║╖p sß╗▒ cß╗æ.
+ */
+export const getRosterForDate = async ({
+    date,
+    search = "",
+    department = "",
+    status = "all"
+} = {}) => {
+    const conditions = [];
+    const params = [date];
+
+    const keyword = String(search || "").trim();
+
+    if (keyword) {
+        conditions.push("(e.full_name LIKE ? OR e.employee_code LIKE ?)");
+
+        const like = `%${keyword}%`;
+        params.push(like, like);
+    }
+
+    const departmentValue = String(department || "").trim();
+
+    if (departmentValue) {
+        conditions.push("e.department = ?");
+        params.push(departmentValue);
+    }
+
+    const statusCondition = buildStatusCondition(
+        normalizeAttendanceStatus(status)
+    );
+
+    if (statusCondition) {
+        conditions.push(statusCondition);
+    }
+
+    const whereClause = conditions.length > 0
+        ? `WHERE ${conditions.join(" AND ")}`
+        : "";
+
+    const sql = `
+        SELECT e.id AS employee_id,
+               e.employee_code,
+               e.full_name,
+               e.department,
+               e.email,
+               e.phone,
+               fp.id AS face_profile_id,
+               a.id AS attendance_id,
+               DATE_FORMAT(a.work_date, '%Y-%m-%d') AS work_date,
+               a.check_in,
+               a.check_out,
+               a.status
+          FROM employees e
+          LEFT JOIN attendance a
+            ON a.employee_id = e.id
+           AND a.work_date = ?
+          LEFT JOIN face_profiles fp
+            ON fp.employee_id = e.id
+          ${whereClause}
+         ORDER BY e.employee_code ASC, e.id ASC
+    `;
+
+    const [rows] = await db.execute(sql, params);
+
+    return rows;
+};
+
+export const findByEmployeeAndDateForUpdate = async (
+    connection,
+    employeeId,
+    workDate
+) => {
+    const [rows] = await connection.execute(
+        `SELECT id,
+                employee_id,
+                DATE_FORMAT(work_date, '%Y-%m-%d') AS work_date,
+                check_in,
+                check_out,
+                status
+           FROM attendance
+          WHERE employee_id = ?
+            AND work_date = ?
+          FOR UPDATE`,
+        [employeeId, workDate]
+    );
+
+    return rows[0] || null;
+};
+
+const findAttendanceById = async (connection, attendanceId) => {
+    const [rows] = await connection.execute(
+        `SELECT id,
+                employee_id,
+                DATE_FORMAT(work_date, '%Y-%m-%d') AS work_date,
+                check_in,
+                check_out,
+                status
+           FROM attendance
+          WHERE id = ?
+          LIMIT 1`,
+        [attendanceId]
+    );
+
+    return rows[0] || null;
+};
+
+export const insertCheckIn = async (
+    connection,
+    { employeeId, workDate, checkIn, status }
+) => {
+    const [result] = await connection.execute(
+        `INSERT INTO attendance (employee_id, work_date, check_in, check_out, status)
+         VALUES (?, ?, ?, NULL, ?)`,
+        [employeeId, workDate, checkIn, status]
+    );
+
+    return findAttendanceById(connection, result.insertId);
+};
+
+export const updateCheckOut = async (
+    connection,
+    { attendanceId, checkOut, status }
+) => {
+    await connection.execute(
+        `UPDATE attendance
+            SET check_out = ?,
+                status = ?
+          WHERE id = ?`,
+        [checkOut, status, attendanceId]
+    );
+
+    return findAttendanceById(connection, attendanceId);
+};
+import { createHash } from "node:crypto";
 
 const STATUS_VALUES = {
     present: "present",
     on_time: "present",
-    "đúng giờ": "present",
+    "─æ├║ng giß╗¥": "present",
     late: "late",
-    "đi muộn": "late",
+    "─æi muß╗Ön": "late",
     absent: "absent",
-    "vắng mặt": "absent"
+    "vß║»ng mß║╖t": "absent"
 };
 
 const STATUS_LABELS = {
-    present: "Đúng giờ",
-    late: "Đi muộn",
-    absent: "Vắng mặt"
+    present: "─É├║ng giß╗¥",
+    late: "─Éi muß╗Ön",
+    absent: "Vß║»ng mß║╖t"
 };
 
 const BASE_SELECT = `
@@ -38,7 +236,7 @@ const BASE_SELECT = `
            CASE
                WHEN sw.shift_id IS NOT NULL
                 AND a.check_in IS NOT NULL
-                AND LOWER(COALESCE(a.status, '')) NOT IN ('absent', 'vắng mặt')
+                AND LOWER(COALESCE(a.status, '')) NOT IN ('absent', 'vß║»ng mß║╖t')
                THEN GREATEST(
                    TIMESTAMPDIFF(MINUTE, TIMESTAMP(a.work_date, ws.morning_start), a.check_in),
                    0
@@ -48,7 +246,7 @@ const BASE_SELECT = `
            CASE
                WHEN sw.shift_id IS NOT NULL
                 AND a.check_out IS NOT NULL
-                AND LOWER(COALESCE(a.status, '')) NOT IN ('absent', 'vắng mặt')
+                AND LOWER(COALESCE(a.status, '')) NOT IN ('absent', 'vß║»ng mß║╖t')
                THEN GREATEST(
                    TIMESTAMPDIFF(MINUTE, a.check_out, TIMESTAMP(a.work_date, ws.afternoon_end)),
                    0
@@ -76,7 +274,7 @@ const mapRecord = (row) => {
     return {
         ...row,
         status: normalizedStatus,
-        status_label: STATUS_LABELS[normalizedStatus] || rawStatus || "Chưa xác định",
+        status_label: STATUS_LABELS[normalizedStatus] || rawStatus || "Ch╞░a x├íc ─æß╗ïnh",
         total_hours: Number(row.total_hours || 0),
         has_schedule: Boolean(Number(row.has_schedule)),
         late_minutes: row.late_minutes === null ? null : Number(row.late_minutes),
@@ -141,14 +339,14 @@ export const findHistoryByEmployee = async (employeeId) => {
                 CASE
                     WHEN sw.shift_id IS NOT NULL
                      AND a.check_in IS NOT NULL
-                     AND LOWER(COALESCE(a.status, '')) NOT IN ('absent', 'vắng mặt')
+                     AND LOWER(COALESCE(a.status, '')) NOT IN ('absent', 'vß║»ng mß║╖t')
                     THEN GREATEST(TIMESTAMPDIFF(MINUTE, TIMESTAMP(a.work_date, ws.morning_start), a.check_in), 0)
                     ELSE NULL
                 END AS late_minutes,
                 CASE
                     WHEN sw.shift_id IS NOT NULL
                      AND a.check_out IS NOT NULL
-                     AND LOWER(COALESCE(a.status, '')) NOT IN ('absent', 'vắng mặt')
+                     AND LOWER(COALESCE(a.status, '')) NOT IN ('absent', 'vß║»ng mß║╖t')
                     THEN GREATEST(TIMESTAMPDIFF(MINUTE, a.check_out, TIMESTAMP(a.work_date, ws.afternoon_end)), 0)
                     ELSE NULL
                 END AS early_leave_minutes
@@ -175,7 +373,7 @@ export const findHistoryByEmployee = async (employeeId) => {
         return {
             ...row,
             status,
-            status_label: STATUS_LABELS[status] || rawStatus || "Chưa xác định",
+            status_label: STATUS_LABELS[status] || rawStatus || "Ch╞░a x├íc ─æß╗ïnh",
             total_hours: Number(row.total_hours || 0),
             has_schedule: Boolean(Number(row.has_schedule)),
             late_minutes: row.late_minutes === null ? null : Number(row.late_minutes),
@@ -262,9 +460,9 @@ export const getScheduledAttendanceStatus = async (employeeId, workDate, checkIn
 export const getReportSummary = async (fromDate, toDate) => {
     const [rows] = await db.execute(
         `SELECT COUNT(*) AS total_records,
-                COALESCE(SUM(LOWER(COALESCE(status, '')) IN ('present', 'on_time', 'đúng giờ')), 0) AS present,
-                COALESCE(SUM(LOWER(COALESCE(status, '')) IN ('late', 'đi muộn')), 0) AS late,
-                COALESCE(SUM(LOWER(COALESCE(status, '')) IN ('absent', 'vắng mặt')), 0) AS absent,
+                COALESCE(SUM(LOWER(COALESCE(status, '')) IN ('present', 'on_time', '─æ├║ng giß╗¥')), 0) AS present,
+                COALESCE(SUM(LOWER(COALESCE(status, '')) IN ('late', '─æi muß╗Ön')), 0) AS late,
+                COALESCE(SUM(LOWER(COALESCE(status, '')) IN ('absent', 'vß║»ng mß║╖t')), 0) AS absent,
                 COALESCE(ROUND(SUM(
                     CASE
                         WHEN check_in IS NOT NULL AND check_out IS NOT NULL
@@ -293,9 +491,9 @@ export const getEmployeeReport = async (fromDate, toDate) => {
                 e.full_name,
                 e.department,
                 COUNT(a.id) AS total_records,
-                COALESCE(SUM(LOWER(COALESCE(a.status, '')) IN ('present', 'on_time', 'đúng giờ')), 0) AS present,
-                COALESCE(SUM(LOWER(COALESCE(a.status, '')) IN ('late', 'đi muộn')), 0) AS late,
-                COALESCE(SUM(LOWER(COALESCE(a.status, '')) IN ('absent', 'vắng mặt')), 0) AS absent,
+                COALESCE(SUM(LOWER(COALESCE(a.status, '')) IN ('present', 'on_time', '─æ├║ng giß╗¥')), 0) AS present,
+                COALESCE(SUM(LOWER(COALESCE(a.status, '')) IN ('late', '─æi muß╗Ön')), 0) AS late,
+                COALESCE(SUM(LOWER(COALESCE(a.status, '')) IN ('absent', 'vß║»ng mß║╖t')), 0) AS absent,
                 COALESCE(ROUND(SUM(
                     CASE
                         WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL
@@ -391,7 +589,7 @@ export const syncDeviceRecords = async (deviceId, records) => {
         );
 
         if (unknownEmployeeCodes.length > 0) {
-            const error = new Error("Một hoặc nhiều mã nhân viên không tồn tại.");
+            const error = new Error("Mß╗Öt hoß║╖c nhiß╗üu m├ú nh├ón vi├¬n kh├┤ng tß╗ôn tß║íi.");
             error.code = "UNKNOWN_EMPLOYEES";
             error.employeeCodes = unknownEmployeeCodes;
             throw error;
@@ -558,7 +756,7 @@ export const syncDeviceEvents = async (deviceId, events) => {
         );
 
         if (unknownEmployeeCodes.length > 0) {
-            const error = new Error("Một hoặc nhiều mã nhân viên không tồn tại.");
+            const error = new Error("Mß╗Öt hoß║╖c nhiß╗üu m├ú nh├ón vi├¬n kh├┤ng tß╗ôn tß║íi.");
             error.code = "UNKNOWN_EMPLOYEES";
             error.employeeCodes = unknownEmployeeCodes;
             throw error;

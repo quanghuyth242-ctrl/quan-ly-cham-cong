@@ -1,924 +1,1921 @@
-<%- include("../partials/adminHead", {
-    pageTitle: "Bảng chấm công",
-    activePage: "attendance"
-}) %>
+<%- include("../partials/adminHead", { pageTitle: pageTitle || "Bß║úng chß║Ñm c├┤ng", activePage: activePage || "attendance", user: user }) %>
 
-<section class="flex flex-col gap-space-xl">
-    <%- include("../partials/alerts", { success: success, error: error }) %>
+<style>
+    .att-modal-open {
+        overflow: hidden;
+    }
 
-    <section class="relative overflow-hidden flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-lg md:p-space-xl rounded-xl border border-surface-container-high/60 shadow-sm">
-        <div class="absolute inset-y-0 left-0 w-1 bg-primary"></div>
-        <div class="flex flex-col gap-space-xs">
-            <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
-                <span class="flex h-2 w-2 rounded-full bg-primary-container"></span>
-                <span class="uppercase tracking-wider">Theo dõi thời gian làm việc</span>
-            </div>
-            <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Bảng chấm công</h2>
-            <p class="font-body-md text-body-md text-on-surface-variant">
-                Theo dõi giờ vào, giờ ra và tình trạng chấm công của nhân viên.
-            </p>
-            <div class="flex flex-wrap items-center gap-x-space-md gap-y-space-xs mt-space-sm font-body-sm text-body-sm">
-                <span class="inline-flex items-center gap-space-xs text-green-700" role="status" aria-live="polite">
-                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                    <span id="attendance-sync-status">Tự đồng bộ mỗi 30 giây</span>
-                </span>
-                <span id="attendance-last-updated" class="text-on-surface-variant">Đang tải thời gian cập nhật...</span>
-            </div>
+    @keyframes att-toast-in {
+        from {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.98);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .att-toast-in {
+        animation: att-toast-in 0.2s ease-out;
+    }
+
+    @keyframes att-modal-in {
+        from {
+            opacity: 0;
+            transform: translateY(8px) scale(0.98);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .att-modal-in {
+        animation: att-modal-in 0.18s ease-out;
+    }
+
+    @keyframes att-scan {
+        0% {
+            top: 0;
+            opacity: 0;
+        }
+        12% {
+            opacity: 1;
+        }
+        88% {
+            opacity: 1;
+        }
+        100% {
+            top: 100%;
+            opacity: 0;
+        }
+    }
+
+    .att-scan-line {
+        animation: att-scan 2.4s ease-in-out infinite;
+    }
+
+    @keyframes att-pulse-ring {
+        0% {
+            transform: scale(0.9);
+            opacity: 0.6;
+        }
+        100% {
+            transform: scale(1.5);
+            opacity: 0;
+        }
+    }
+
+    .att-pulse-ring::before {
+        content: "";
+        position: absolute;
+        inset: -4px;
+        border-radius: 50%;
+        border: 2px solid currentColor;
+        animation: att-pulse-ring 1.5s ease-out infinite;
+    }
+</style>
+
+<!-- Ti├¬u ─æß╗ü trang -->
+<section class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+    <div class="flex flex-col gap-space-xs">
+        <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
+            <span class="flex h-2 w-2 rounded-full bg-primary"></span>
+            <span class="uppercase tracking-wider">Chß║Ñm c├┤ng &amp; theo d├╡i</span>
         </div>
+        <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">
+            Bß║úng chß║Ñm c├┤ng
+        </h2>
+        <p class="font-body-md text-body-md text-on-surface-variant max-w-3xl">
+            Theo d├╡i trß║íng th├íi chß║Ñm c├┤ng h├áng ng├áy, hß╗ù trß╗ú chß║Ñm c├┤ng bß║▒ng nhß║¡n diß╗çn khu├┤n mß║╖t v├á ph╞░╞íng thß╗⌐c thß╗º c├┤ng khi cß║ºn.
+        </p>
+    </div>
 
-        <div class="flex flex-wrap items-center gap-space-sm">
-            <button
-                id="open-create-attendance"
-                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md shadow-md transition-colors"
-                type="button"
-            >
-                <span class="material-symbols-outlined text-[20px]">edit_calendar</span>
-                <span>Điều chỉnh chấm công</span>
-            </button>
-            <a
-                href="/admin/attendance/reports"
-                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors"
-            >
-                <span class="material-symbols-outlined text-[20px]">bar_chart</span>
-                <span>Xem báo cáo</span>
-            </a>
-            <button
-                id="export-attendance"
-                class="flex items-center justify-center w-10 h-10 bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                type="button"
-                title="Xuất bảng chấm công CSV"
-                aria-label="Xuất bảng chấm công CSV"
-            >
-                <span class="material-symbols-outlined text-[20px]">download</span>
-            </button>
-            <button
-                id="refresh-attendance"
-                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                type="button"
-            >
-                <span class="material-symbols-outlined text-[20px]">sync</span>
-                <span>Đồng bộ ngay</span>
-            </button>
-            <button
-                id="toggle-auto-sync-attendance"
-                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary-fixed text-primary rounded-xl font-label-md text-label-md transition-colors"
-                type="button"
-                aria-pressed="true"
-            >
-                <span id="auto-sync-attendance-icon" class="material-symbols-outlined text-[20px]">pause_circle</span>
-                <span id="auto-sync-attendance-label">Tạm dừng tự động</span>
-            </button>
-        </div>
-    </section>
-
-    <section class="flex flex-col gap-space-md" aria-label="Thống kê toàn hệ thống">
-        <div>
-            <h3 class="font-headline-sm text-headline-sm text-primary">Số liệu toàn hệ thống</h3>
-            <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
-                Tổng hợp một bản ghi gần nhất cho mỗi nhân viên, không thay đổi theo bộ lọc danh sách.
-            </p>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-lg">
-        <button type="button" data-attendance-status-filter="" class="text-left bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-primary/10 transition-all">
-            <div class="flex flex-col">
-                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng nhân viên</span>
-                <span id="totalEmployeesCount" class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= stats.total_employees %></span>
-            </div>
-            <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
-                <span class="material-symbols-outlined text-[24px]">groups</span>
-            </div>
+    <div class="flex flex-wrap items-center gap-space-sm">
+        <button
+            id="att-face-checkin"
+            class="flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md shadow-md transition-all"
+            type="button"
+        >
+            <span class="material-symbols-outlined text-[18px]">face</span>
+            <span>Chß║Ñm c├┤ng khu├┤n mß║╖t</span>
         </button>
 
-        <button type="button" data-attendance-status-filter="present" class="text-left bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-green-100 transition-all">
-            <div class="flex flex-col">
-                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Có mặt</span>
-                <span id="totalPresentCount" class="font-headline-xl text-headline-xl text-green-600 font-bold mt-space-xs"><%= stats.present %></span>
-            </div>
-            <div class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[24px]">task_alt</span>
-            </div>
+        <button
+            id="att-refresh"
+            class="flex items-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            type="button"
+        >
+            <span id="att-refresh-icon" class="material-symbols-outlined text-[18px] text-on-surface-variant">refresh</span>
+            <span>L├ám mß╗¢i</span>
         </button>
-
-        <button type="button" data-attendance-status-filter="late" class="text-left bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-orange-100 transition-all">
-            <div class="flex flex-col">
-                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đi muộn</span>
-                <span id="totalLateCount" class="font-headline-xl text-headline-xl text-orange-500 font-bold mt-space-xs"><%= stats.late %></span>
-            </div>
-            <div class="w-11 h-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[24px]">schedule</span>
-            </div>
-        </button>
-
-        <button type="button" data-attendance-status-filter="absent" class="text-left bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-red-100 transition-all">
-            <div class="flex flex-col">
-                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Vắng mặt</span>
-                <span id="totalAbsentCount" class="font-headline-xl text-headline-xl text-red-500 font-bold mt-space-xs"><%= stats.absent %></span>
-            </div>
-            <div class="w-11 h-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[24px]">person_off</span>
-            </div>
-        </button>
-        </div>
-    </section>
-
-    <section class="bg-surface-container-lowest rounded-xl border border-surface-container-high/60 shadow-sm p-space-lg md:p-space-xl">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md mb-space-lg">
-            <div>
-                <h3 class="font-headline-sm text-headline-sm text-on-surface">Tìm kiếm và lọc chấm công</h3>
-                <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Lọc danh sách theo nhân viên, ngày hoặc trạng thái.</p>
-            </div>
-            <button
-                id="clear-attendance-filters"
-                class="inline-flex items-center justify-center gap-space-xs px-space-md py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors"
-                type="button"
-            >
-                <span class="material-symbols-outlined text-[18px]">restart_alt</span>
-                <span>Xóa bộ lọc</span>
-            </button>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
-            <label class="flex flex-col gap-space-xs">
-                <span class="font-label-sm text-label-sm text-on-surface-variant">Nhân viên</span>
-                <span class="relative">
-                    <span class="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">search</span>
-                    <input
-                        id="keyword"
-                        type="search"
-                        placeholder="Tên hoặc mã nhân viên..."
-                        class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md pl-11 pr-space-md py-space-md rounded-xl outline-none focus:ring-2 focus:ring-primary-container transition-shadow"
-                        oninput="scheduleFilterRecords()"
-                    >
-                    <button
-                        id="clear-attendance-search"
-                        type="button"
-                        class="hidden absolute right-space-sm top-1/2 -translate-y-1/2 p-1 text-on-surface-variant hover:text-primary rounded-md"
-                        aria-label="Xóa từ khóa tìm kiếm"
-                    >
-                        <span class="material-symbols-outlined text-[18px]">close</span>
-                    </button>
-                </span>
-            </label>
-
-            <label class="flex flex-col gap-space-xs">
-                <span class="font-label-sm text-label-sm text-on-surface-variant">Ngày chấm công</span>
-                <input
-                    id="dateFilter"
-                    type="date"
-                    class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-md rounded-xl outline-none focus:ring-2 focus:ring-primary-container transition-shadow"
-                    onchange="filterRecords()"
-                >
-            </label>
-
-            <label class="flex flex-col gap-space-xs">
-                <span class="font-label-sm text-label-sm text-on-surface-variant">Trạng thái</span>
-                <select
-                    id="statusFilter"
-                    class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-md rounded-xl outline-none focus:ring-2 focus:ring-primary-container transition-shadow"
-                    onchange="filterRecords()"
-                >
-                    <option value="">Tất cả trạng thái</option>
-                    <option value="present">Đúng giờ</option>
-                    <option value="late">Đi muộn</option>
-                    <option value="absent">Vắng mặt</option>
-                </select>
-            </label>
-        </div>
-    </section>
-
-    <section class="flex flex-col gap-space-md" aria-label="Tổng quan chấm công theo bộ lọc">
-        <div>
-            <h3 class="font-headline-sm text-headline-sm text-primary">Tổng quan theo bộ lọc</h3>
-            <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
-                Tỷ lệ chuyên cần tính số lượt đúng giờ và đi muộn trên tổng lượt ghi nhận.
-            </p>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-space-lg">
-            <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đi muộn</span>
-                    <span id="lateOverviewCount" class="font-headline-xl text-headline-xl text-orange-600 font-bold mt-space-xs"><%= overview.late %></span>
-                    <span class="font-body-sm text-body-sm text-on-surface-variant">Theo giờ ca hoặc trạng thái ghi nhận</span>
-                </div>
-                <div class="w-11 h-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[24px]">more_time</span>
-                </div>
-            </article>
-
-            <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Về sớm</span>
-                    <span id="earlyOverviewCount" class="font-headline-xl text-headline-xl text-red-600 font-bold mt-space-xs"><%= overview.early %></span>
-                    <span class="font-body-sm text-body-sm text-on-surface-variant">Ra trước giờ kết thúc ca</span>
-                </div>
-                <div class="w-11 h-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[24px]">logout</span>
-                </div>
-            </article>
-
-            <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Chưa có ca đối chiếu</span>
-                    <span id="unassignedOverviewCount" class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= overview.unassigned %></span>
-                    <span class="font-body-sm text-body-sm text-on-surface-variant">Không thể xác định đi muộn/về sớm</span>
-                </div>
-                <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[24px]">event_busy</span>
-                </div>
-            </article>
-
-            <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tỷ lệ chuyên cần</span>
-                    <span class="mt-space-xs">
-                        <span id="attendanceRateCount" class="font-headline-xl text-headline-xl text-green-600 font-bold"><%= overview.attendanceRate %></span>
-                        <span class="font-headline-md text-headline-md text-green-600">%</span>
-                    </span>
-                    <span id="attendanceRateDetail" class="font-body-sm text-body-sm text-on-surface-variant"><%= overview.attended %> / <%= records.length %> nhân viên</span>
-                </div>
-                <div class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[24px]">percent</span>
-                </div>
-            </article>
-
-            <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
-                <div class="flex flex-col">
-                    <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tình hình vắng mặt</span>
-                    <span id="absenceOverviewCount" class="font-headline-xl text-headline-xl text-red-600 font-bold mt-space-xs"><%= overview.absent %> lượt</span>
-                    <span id="absenceOverviewRate" class="font-body-sm text-body-sm text-on-surface-variant"><%= overview.absenceRate %>% tổng lượt ghi nhận</span>
-                </div>
-                <div class="w-11 h-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[24px]">person_off</span>
-                </div>
-            </article>
-        </div>
-    </section>
-
-    <section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-        <div class="p-space-lg md:p-space-xl border-b border-surface-container-high flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
-            <div>
-                <h3 class="font-headline-sm text-headline-sm text-on-surface">Danh sách chấm công</h3>
-                <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
-                    Mỗi nhân viên hiển thị một dòng với bản ghi chấm công gần nhất.
-                </p>
-            </div>
-            <span id="attendanceCount" class="font-body-sm text-body-sm text-on-surface-variant" aria-live="polite"></span>
-        </div>
-
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse min-w-[1200px]">
-                <caption class="sr-only">Danh sách thời gian chấm công của nhân viên</caption>
-                <thead>
-                    <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
-                        <th class="py-space-md px-space-lg font-semibold sticky left-0 z-[2] bg-surface-container-low">Mã NV</th>
-                        <th class="py-space-md px-space-md font-semibold">Nhân viên</th>
-                        <th class="py-space-md px-space-md font-semibold">Ngày</th>
-                        <th class="py-space-md px-space-md font-semibold">Ca làm</th>
-                        <th class="py-space-md px-space-md font-semibold">Giờ vào</th>
-                        <th class="py-space-md px-space-md font-semibold">Giờ ra</th>
-                        <th class="py-space-md px-space-md font-semibold">Đi muộn</th>
-                        <th class="py-space-md px-space-md font-semibold">Về sớm</th>
-                        <th class="py-space-md px-space-md font-semibold">Số giờ</th>
-                        <th class="py-space-md px-space-md font-semibold">Trạng thái</th>
-                        <th class="py-space-md px-space-lg font-semibold text-right sticky right-0 z-[2] bg-surface-container-low">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody id="attendanceBody" class="divide-y divide-surface-container-low text-body-sm text-on-surface">
-                    <%- include("attendanceRows", { records: records }) %>
-                </tbody>
-            </table>
-        </div>
-    </section>
+    </div>
 </section>
 
-<div id="attendance-modal" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0 bg-black/40" data-close-attendance-modal></div>
-    <div class="relative min-h-full flex items-center justify-center p-space-lg overflow-y-auto">
-        <div class="w-full max-w-xl bg-surface-container-lowest rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.18)] overflow-hidden max-h-[calc(100vh-2rem)] overflow-y-auto">
-            <div class="flex items-center justify-between px-space-xl py-space-lg border-b border-surface-container-high">
-                <div>
-                    <h3 id="attendance-modal-title" class="font-headline-md text-headline-md text-primary font-semibold">Điều chỉnh chấm công</h3>
-                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Cập nhật nhân viên, ngày, giờ và trạng thái chấm công.</p>
+<!-- Thß╗æng k├¬ -->
+<section class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-space-lg">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
+        <div class="flex flex-col min-w-0">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tß╗òng NV</span>
+            <span id="att-stat-total" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">ΓÇö</span>
+        </div>
+        <div class="w-9 h-9 rounded-xl bg-surface-container-low text-primary flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[20px]">groups</span>
+        </div>
+    </div>
+
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
+        <div class="flex flex-col min-w-0">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">─É├ú v├áo</span>
+            <span id="att-stat-checkedin" class="font-headline-xl text-headline-xl text-secondary font-bold mt-space-xs">ΓÇö</span>
+        </div>
+        <div class="w-9 h-9 rounded-xl bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[20px]">login</span>
+        </div>
+    </div>
+
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
+        <div class="flex flex-col min-w-0">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">─É├ú ra</span>
+            <span id="att-stat-checkedout" class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs">ΓÇö</span>
+        </div>
+        <div class="w-9 h-9 rounded-xl bg-primary-fixed text-primary flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[20px]">logout</span>
+        </div>
+    </div>
+
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
+        <div class="flex flex-col min-w-0">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">─Éi muß╗Ön</span>
+            <span id="att-stat-late" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">ΓÇö</span>
+        </div>
+        <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[20px]">schedule</span>
+        </div>
+    </div>
+
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
+        <div class="flex flex-col min-w-0">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Vß╗ü sß╗¢m</span>
+            <span id="att-stat-early" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">ΓÇö</span>
+        </div>
+        <div class="w-9 h-9 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[20px]">directions_run</span>
+        </div>
+    </div>
+
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
+        <div class="flex flex-col min-w-0">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Ch╞░a v├áo</span>
+            <span id="att-stat-notcheckedin" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">ΓÇö</span>
+        </div>
+        <div class="w-9 h-9 rounded-xl bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[20px]">person_off</span>
+        </div>
+    </div>
+</section>
+
+<!-- Danh s├ích chß║Ñm c├┤ng -->
+<section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+    <div class="p-space-lg border-b border-surface-container-high">
+        <div class="flex flex-col xl:flex-row xl:items-end gap-space-md">
+            <div class="w-full xl:w-48">
+                <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-date">
+                    Ng├áy chß║Ñm c├┤ng
+                </label>
+                <input
+                    id="att-date"
+                    class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm px-space-md py-space-sm rounded-xl outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/20 transition-all"
+                    name="date"
+                    type="date"
+                >
+            </div>
+
+            <div class="flex-1 min-w-0">
+                <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-search">
+                    T├¼m kiß║┐m nh├ón vi├¬n
+                </label>
+                <div class="relative">
+                    <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px] pointer-events-none">search</span>
+                    <input
+                        id="att-search"
+                        class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-8 pr-space-md py-space-sm rounded-xl outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/20 transition-all"
+                        name="search"
+                        type="search"
+                        autocomplete="off"
+                        placeholder="Nhß║¡p m├ú nh├ón vi├¬n hoß║╖c hß╗ì t├¬n..."
+                    >
                 </div>
-                <button class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-attendance-modal type="button" aria-label="Đóng">
+            </div>
+
+            <div class="w-full xl:w-48">
+                <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-department">
+                    Ph├▓ng ban
+                </label>
+                <div class="relative">
+                    <select
+                        id="att-department"
+                        class="w-full appearance-none bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-space-md pr-space-xl py-space-sm rounded-xl outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                        name="department"
+                    >
+                        <option value="">Tß║Ñt cß║ú ph├▓ng ban</option>
+                    </select>
+                    <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
+                </div>
+            </div>
+
+            <div class="w-full xl:w-48">
+                <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-status">
+                    Trß║íng th├íi
+                </label>
+                <div class="relative">
+                    <select
+                        id="att-status"
+                        class="w-full appearance-none bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-space-md pr-space-xl py-space-sm rounded-xl outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                        name="status"
+                    >
+                        <option value="all">Tß║Ñt cß║ú trß║íng th├íi</option>
+                        <option value="checked_in">─É├ú check-in</option>
+                        <option value="checked_out">─É├ú check-out</option>
+                        <option value="not_checked_in">Ch╞░a check-in</option>
+                        <option value="late">─Éi muß╗Ön</option>
+                        <option value="early_leave">Vß╗ü sß╗¢m</option>
+                    </select>
+                    <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-space-sm">
+                <button
+                    id="att-apply-filter"
+                    class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md shadow-md transition-all"
+                    type="button"
+                >
+                    <span class="material-symbols-outlined text-[18px]">filter_alt</span>
+                    <span>Lß╗ìc</span>
+                </button>
+                <button
+                    id="att-reset-filter"
+                    class="px-space-md py-space-sm text-on-surface-variant hover:text-on-surface font-label-md text-label-md rounded-xl hover:bg-surface-container-low transition-colors"
+                    type="button"
+                >
+                    X├│a lß╗ìc
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                    <th class="py-space-md px-space-lg font-semibold">Nh├ón vi├¬n</th>
+                    <th class="py-space-md px-space-md font-semibold">Ph├▓ng ban</th>
+                    <th class="py-space-md px-space-md font-semibold">Ca l├ám</th>
+                    <th class="py-space-md px-space-md font-semibold">Check-in</th>
+                    <th class="py-space-md px-space-md font-semibold">Check-out</th>
+                    <th class="py-space-md px-space-md font-semibold">Trß║íng th├íi</th>
+                    <th class="py-space-md px-space-lg font-semibold text-right">Thao t├íc</th>
+                </tr>
+            </thead>
+            <tbody id="att-table-body" class="divide-y divide-surface-container-low text-body-sm text-on-surface"></tbody>
+        </table>
+    </div>
+
+    <div class="p-space-lg bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-sm text-body-sm text-on-surface-variant">
+        <span id="att-table-summary">─Éang tß║úi dß╗» liß╗çu...</span>
+        <span id="att-table-date"></span>
+    </div>
+</section>
+
+<!-- Modal chß║Ñm c├┤ng khu├┤n mß║╖t -->
+<div
+    id="att-face-modal"
+    class="fixed inset-0 z-[60] hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="att-face-title"
+    aria-hidden="true"
+>
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" data-close-modal="face"></div>
+
+    <div class="relative flex min-h-full items-center justify-center p-space-lg">
+        <div class="w-full max-w-3xl bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden att-modal-in max-h-[92vh] flex flex-col">
+            <div class="flex items-start justify-between gap-space-md px-space-xl py-space-lg border-b border-surface-container-high shrink-0">
+                <div class="flex items-center gap-space-md min-w-0">
+                    <div class="w-11 h-11 rounded-full bg-primary text-on-primary font-semibold flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[24px]">face</span>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 id="att-face-title" class="font-headline-sm text-headline-sm text-primary font-semibold truncate">
+                            Chß║Ñm c├┤ng bß║▒ng khu├┤n mß║╖t
+                        </h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">
+                            Nhß║¡n diß╗çn tß╗▒ ─æß╗Öng ΓÇö kh├┤ng cß║ºn chß╗ìn nh├ón vi├¬n
+                        </p>
+                    </div>
+                </div>
+
+                <button
+                    class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                    data-close-modal="face"
+                    type="button"
+                    aria-label="─É├│ng"
+                >
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
 
-            <form id="attendance-form" action="/admin/attendance/create" method="POST" class="p-space-xl flex flex-col gap-space-lg">
-                <div id="attendance-form-error" class="hidden items-start gap-space-sm p-space-md rounded-xl bg-error-container/60 border border-error/30 text-on-error-container text-body-md" role="alert">
-                    <span class="material-symbols-outlined text-[20px]">error</span>
-                    <span id="attendance-form-error-text"></span>
-                </div>
-
-                <div class="flex flex-col gap-space-xs">
-                    <label class="font-label-sm text-label-sm text-on-surface" for="attendance-employee">Nhân viên <span class="text-error">*</span></label>
-                    <select id="attendance-employee" name="employee_id" class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" required>
-                        <option value="">-- Chọn nhân viên --</option>
-                        <% employees.forEach((employee) => { %>
-                            <option value="<%= employee.id %>">
-                                <%= employee.employee_code %> - <%= employee.full_name %><%= employee.department ? ` (${employee.department})` : "" %>
-                            </option>
-                        <% }) %>
-                    </select>
-                    <p id="attendance-employee-lock-note" class="hidden text-body-sm text-on-surface-variant">
-                        Nhân viên được cố định khi điều chỉnh bản ghi chấm công.
-                    </p>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
-                    <div class="flex flex-col gap-space-xs">
-                        <label class="font-label-sm text-label-sm text-on-surface" for="attendance-date">Ngày chấm công <span class="text-error">*</span></label>
-                        <input id="attendance-date" name="work_date" type="date" class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" required>
-                    </div>
-                    <div class="flex flex-col gap-space-xs">
-                        <label class="font-label-sm text-label-sm text-on-surface" for="attendance-status">Trạng thái <span class="text-error">*</span></label>
-                        <select id="attendance-status" name="status" class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" required>
-                            <option value="auto">Tự xác định theo ca</option>
-                            <option value="present">Đúng giờ</option>
-                            <option value="late">Đi muộn</option>
-                            <option value="absent">Vắng mặt</option>
-                        </select>
+            <div class="p-space-xl overflow-y-auto flex flex-col gap-space-lg">
+                <!-- Chß╗ìn loß║íi chß║Ñm c├┤ng -->
+                <div class="flex items-center gap-space-sm">
+                    <label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider shrink-0">Loß║íi:</label>
+                    <div class="flex gap-space-sm">
+                        <button
+                            id="att-face-action-checkin"
+                            class="flex items-center gap-space-xs px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors bg-primary text-on-primary"
+                            type="button"
+                            data-action="check_in"
+                        >
+                            <span class="material-symbols-outlined text-[18px]">login</span>
+                            <span>Check-in</span>
+                        </button>
+                        <button
+                            id="att-face-action-checkout"
+                            class="flex items-center gap-space-xs px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors bg-surface-container-high text-on-surface-variant hover:bg-surface-container"
+                            type="button"
+                            data-action="check_out"
+                        >
+                            <span class="material-symbols-outlined text-[18px]">logout</span>
+                            <span>Check-out</span>
+                        </button>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
-                    <div class="flex flex-col gap-space-xs">
-                        <label class="font-label-sm text-label-sm text-on-surface" for="attendance-check-in">Giờ vào</label>
-                        <input id="attendance-check-in" name="check_in" type="time" class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+                <!-- Lß╗ùi -->
+                <div id="att-face-error" class="hidden flex items-start gap-space-sm p-space-md rounded-xl bg-error-container border border-error/20 text-on-error-container">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">error</span>
+                    <p id="att-face-error-message" class="font-body-sm text-body-sm"></p>
+                </div>
+
+                <!-- Camera -->
+                <div class="relative w-full aspect-video bg-surface-container-high rounded-xl overflow-hidden">
+                    <video
+                        id="att-face-video"
+                        class="w-full h-full object-cover scale-x-[-1]"
+                        autoplay
+                        muted
+                        playsinline
+                    ></video>
+
+                    <div id="att-face-placeholder" class="absolute inset-0 flex flex-col items-center justify-center gap-space-sm text-on-surface-variant bg-surface-container-high">
+                        <span class="material-symbols-outlined text-[36px]">videocam_off</span>
+                        <p class="font-body-sm text-body-sm">Camera ch╞░a bß║¡t</p>
                     </div>
-                    <div class="flex flex-col gap-space-xs">
-                        <label class="font-label-sm text-label-sm text-on-surface" for="attendance-check-out">Giờ ra</label>
-                        <input id="attendance-check-out" name="check_out" type="time" class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div class="w-[38%] h-[74%] border-2 border-white/80 rounded-[50%] shadow-[0_0_0_9999px_rgba(0,0,0,0.28)]"></div>
+                    </div>
+
+                    <div class="absolute left-0 right-0 top-0 h-0.5 bg-primary/80 att-scan-line pointer-events-none"></div>
+
+                    <div class="absolute bottom-space-md left-1/2 -translate-x-1/2 flex items-center gap-space-xs px-space-md py-space-sm rounded-full bg-black/60 text-white backdrop-blur-sm max-w-[90%]">
+                        <span id="att-face-status-icon" class="material-symbols-outlined text-[18px]">progress_activity</span>
+                        <span id="att-face-status-text" class="font-body-sm text-body-sm text-center">Bß║Ñm n├║t b├¬n d╞░ß╗¢i ─æß╗â bß║»t ─æß║ºu</span>
                     </div>
                 </div>
 
-                <p class="font-body-sm text-on-surface-variant">
-                    Trạng thái tự xác định theo giờ bắt đầu ca được phân, không áp dụng thời gian ân hạn.
-                    Chọn trạng thái thủ công nếu cần ghi đè; vắng mặt thì để trống giờ vào và giờ ra.
+                <!-- Kß║┐t quß║ú nhß║¡n diß╗çn -->
+                <div id="att-face-result" class="hidden">
+                    <div class="flex items-center gap-space-md p-space-lg rounded-xl bg-green-50 border border-green-200">
+                        <div class="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center shrink-0 relative att-pulse-ring">
+                            <span class="material-symbols-outlined text-[26px]">check_circle</span>
+                        </div>
+                        <div class="flex flex-col gap-space-xs min-w-0">
+                            <p id="att-face-result-message" class="font-label-md text-label-md text-green-700 font-semibold"></p>
+                            <p id="att-face-result-employee" class="font-body-sm text-body-sm text-green-600"></p>
+                            <p id="att-face-result-detail" class="font-body-sm text-body-sm text-on-surface-variant"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- H╞░ß╗¢ng dß║½n -->
+                <p id="att-face-hint" class="font-body-sm text-body-sm text-on-surface-variant text-center">
+                    Nh├¼n thß║│ng v├áo camera, giß╗» khu├┤n mß║╖t trong khung oval. Hß╗ç thß╗æng sß║╜ tß╗▒ ─æß╗Öng nhß║¡n diß╗çn.
                 </p>
 
-                <div class="flex items-center justify-end gap-space-sm pt-space-md border-t border-surface-container-high">
-                    <button class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md rounded-xl transition-colors" data-close-attendance-modal type="button">
-                        Hủy
+                <!-- N├║t ─æiß╗üu khiß╗ân -->
+                <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-space-sm">
+                    <button
+                        class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-container text-on-surface font-label-md text-label-md rounded-xl transition-colors"
+                        data-close-modal="face"
+                        type="button"
+                    >
+                        ─É├│ng
                     </button>
-                    <button id="attendance-submit" class="flex items-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl shadow-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed" type="submit">
-                        <span class="material-symbols-outlined text-[18px]">save</span>
-                        <span id="attendance-submit-label">Lưu dữ liệu</span>
-                    </button>
+                    <div class="flex flex-col sm:flex-row gap-space-sm">
+                        <button
+                            id="att-face-start"
+                            class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors"
+                            type="button"
+                        >
+                            <span class="material-symbols-outlined text-[18px]">videocam</span>
+                            <span>Bß║»t ─æß║ºu camera</span>
+                        </button>
+                        <button
+                            id="att-face-capture"
+                            class="hidden items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            type="button"
+                            disabled
+                        >
+                            <span class="material-symbols-outlined text-[18px]">photo_camera</span>
+                            <span>Chß║Ñm c├┤ng</span>
+                        </button>
+                        <button
+                            id="att-face-retry"
+                            class="hidden items-center justify-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors"
+                            type="button"
+                        >
+                            <span class="material-symbols-outlined text-[18px]">refresh</span>
+                            <span>Thß╗¡ lß║íi</span>
+                        </button>
+                    </div>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
 
-<div id="attendance-history-modal" class="fixed inset-0 z-[60] hidden">
-    <div class="absolute inset-0 bg-black/40" data-close-history-modal></div>
-    <div class="relative min-h-full flex items-center justify-center p-space-lg overflow-y-auto">
-        <section class="w-full max-w-6xl max-h-[calc(100vh-2rem)] overflow-hidden bg-surface-container-lowest rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.18)]" role="dialog" aria-modal="true">
-            <div class="flex items-center justify-between px-space-xl py-space-lg border-b border-surface-container-high">
-                <div>
-                    <h3 id="attendance-history-title" class="font-headline-md text-headline-md text-primary font-semibold">Lịch sử chấm công</h3>
-                    <p id="attendance-history-description" class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs"></p>
+<!-- Modal chß║Ñm c├┤ng thß╗º c├┤ng -->
+<div
+    id="att-manual-modal"
+    class="fixed inset-0 z-[65] hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="att-manual-title"
+    aria-hidden="true"
+>
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-close-modal="manual"></div>
+
+    <div class="relative flex min-h-full items-center justify-center p-space-lg">
+        <div class="w-full max-w-lg bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden att-modal-in">
+            <div class="flex items-start justify-between gap-space-md px-space-xl py-space-lg border-b border-surface-container-high">
+                <div class="flex items-center gap-space-md min-w-0">
+                    <div class="w-11 h-11 rounded-full bg-secondary-fixed text-on-secondary-fixed font-semibold flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[24px]">edit_note</span>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 id="att-manual-title" class="font-headline-sm text-headline-sm text-primary font-semibold truncate">
+                            Chß║Ñm c├┤ng thß╗º c├┤ng
+                        </h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant truncate">
+                            <span id="att-manual-employee-name">ΓÇö</span>
+                            <span class="mx-1">ΓÇó</span>
+                            <span id="att-manual-employee-code" class="font-data-mono text-data-mono">ΓÇö</span>
+                        </p>
+                    </div>
                 </div>
-                <button class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-history-modal type="button" aria-label="Đóng">
+
+                <button
+                    class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                    data-close-modal="manual"
+                    type="button"
+                    aria-label="─É├│ng"
+                >
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
-            <div class="overflow-auto max-h-[calc(100vh-8rem)] p-space-lg">
-                <table class="w-full min-w-[960px] text-left">
-                    <thead class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase">
-                        <tr>
-                            <th class="px-space-md py-space-sm">Ngày</th>
-                            <th class="px-space-md py-space-sm">Ca làm</th>
-                            <th class="px-space-md py-space-sm">Giờ vào</th>
-                            <th class="px-space-md py-space-sm">Giờ ra</th>
-                            <th class="px-space-md py-space-sm">Đi muộn</th>
-                            <th class="px-space-md py-space-sm">Về sớm</th>
-                            <th class="px-space-md py-space-sm">Số giờ</th>
-                            <th class="px-space-md py-space-sm">Trạng thái</th>
-                        </tr>
-                    </thead>
-                    <tbody id="attendance-history-body" class="divide-y divide-surface-container-low text-body-md text-on-surface"></tbody>
-                </table>
+
+            <div class="p-space-xl flex flex-col gap-space-lg">
+                <div id="att-manual-error" class="hidden flex items-start gap-space-sm p-space-md rounded-xl bg-error-container border border-error/20 text-on-error-container">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">error</span>
+                    <p id="att-manual-error-message" class="font-body-sm text-body-sm"></p>
+                </div>
+
+                <div class="flex flex-col gap-space-md">
+                    <div>
+                        <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs">Loß║íi chß║Ñm c├┤ng</label>
+                        <div class="flex gap-space-sm">
+                            <button
+                                id="att-manual-action-checkin"
+                                class="flex-1 flex items-center justify-center gap-space-xs px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors bg-primary text-on-primary"
+                                type="button"
+                                data-action="check_in"
+                            >
+                                <span class="material-symbols-outlined text-[18px]">login</span>
+                                <span>Check-in</span>
+                            </button>
+                            <button
+                                id="att-manual-action-checkout"
+                                class="flex-1 flex items-center justify-center gap-space-xs px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors bg-surface-container-high text-on-surface-variant hover:bg-surface-container"
+                                type="button"
+                                data-action="check_out"
+                            >
+                                <span class="material-symbols-outlined text-[18px]">logout</span>
+                                <span>Check-out</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-manual-reason">
+                            L├╜ do chß║Ñm c├┤ng thß╗º c├┤ng <span class="text-error">*</span>
+                        </label>
+                        <textarea
+                            id="att-manual-reason"
+                            class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm px-space-md py-space-sm rounded-xl outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+                            rows="3"
+                            placeholder="V├¡ dß╗Ñ: Camera hß╗Ång, nh├ón vi├¬n qu├¬n badge..."
+                            maxlength="255"
+                        ></textarea>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Tß╗½ 5 ─æß║┐n 255 k├╜ tß╗▒</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-space-sm p-space-md rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">info</span>
+                    <p class="font-body-sm text-body-sm">
+                        Chß║Ñm c├┤ng thß╗º c├┤ng chß╗ë sß╗¡ dß╗Ñng khi camera/nhß║¡n diß╗çn gß║╖p sß╗▒ cß╗æ. Mß╗ìi thao t├íc ─æß╗üu ─æ╞░ß╗úc ghi nhß║¡t k├╜ kiß╗âm to├ín.
+                    </p>
+                </div>
             </div>
-        </section>
+
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-space-sm px-space-xl py-space-lg border-t border-surface-container-high bg-surface-container-low">
+                <button
+                    class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-container text-on-surface font-label-md text-label-md rounded-xl transition-colors disabled:opacity-60"
+                    data-close-modal="manual"
+                    type="button"
+                >
+                    Hß╗ºy
+                </button>
+                <button
+                    id="att-manual-submit"
+                    class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    type="button"
+                >
+                    <span class="material-symbols-outlined text-[18px]">check</span>
+                    <span>X├íc nhß║¡n chß║Ñm c├┤ng</span>
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
+<!-- Th├┤ng b├ío -->
+<div
+    id="att-toast-container"
+    class="fixed top-20 right-4 z-[80] flex flex-col gap-space-sm w-80 max-w-[90vw]"
+    aria-live="polite"
+    aria-atomic="false"
+></div>
+
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-    const modal = document.getElementById("attendance-modal");
-    const form = document.getElementById("attendance-form");
-    const modalTitle = document.getElementById("attendance-modal-title");
-    const errorBox = document.getElementById("attendance-form-error");
-    const errorText = document.getElementById("attendance-form-error-text");
-    const employeeSelect = document.getElementById("attendance-employee");
-    const dateInput = document.getElementById("attendance-date");
-    const checkInInput = document.getElementById("attendance-check-in");
-    const checkOutInput = document.getElementById("attendance-check-out");
-    const statusSelect = document.getElementById("attendance-status");
-    const historyModal = document.getElementById("attendance-history-modal");
-    const historyTitle = document.getElementById("attendance-history-title");
-    const historyDescription = document.getElementById("attendance-history-description");
-    const historyBody = document.getElementById("attendance-history-body");
+    (() => {
+        "use strict";
 
-    const showError = (message) => {
-        errorText.textContent = message;
-        errorBox.classList.remove("hidden");
-        errorBox.classList.add("flex");
-    };
+        const API_BASE = "/admin/attendance";
 
-    const clearError = () => {
-        errorText.textContent = "";
-        errorBox.classList.add("hidden");
-        errorBox.classList.remove("flex");
-    };
+        const state = {
+            date: "",
+            search: "",
+            department: "",
+            status: "all",
+            employees: [],
+            departments: [],
+            stats: {
+                total: 0,
+                checkedIn: 0,
+                checkedOut: 0,
+                late: 0,
+                earlyLeave: 0,
+                notCheckedIn: 0
+            },
+            requestId: 0,
+            lastFocused: null
+        };
 
-    const resetSubmitButton = () => {
-        const submitButton = document.getElementById("attendance-submit");
-        const submitLabel = document.getElementById("attendance-submit-label");
-        submitButton.disabled = false;
-        submitButton.removeAttribute("aria-busy");
-        submitLabel.textContent = "Lưu dữ liệu";
-    };
+        const elements = {
+            refreshBtn: document.getElementById("att-refresh"),
+            refreshIcon: document.getElementById("att-refresh-icon"),
+            faceCheckinBtn: document.getElementById("att-face-checkin"),
+            dateInput: document.getElementById("att-date"),
+            searchInput: document.getElementById("att-search"),
+            departmentSelect: document.getElementById("att-department"),
+            statusSelect: document.getElementById("att-status"),
+            applyFilterBtn: document.getElementById("att-apply-filter"),
+            resetFilterBtn: document.getElementById("att-reset-filter"),
+            statTotal: document.getElementById("att-stat-total"),
+            statCheckedIn: document.getElementById("att-stat-checkedin"),
+            statCheckedOut: document.getElementById("att-stat-checkedout"),
+            statLate: document.getElementById("att-stat-late"),
+            statEarly: document.getElementById("att-stat-early"),
+            statNotCheckedIn: document.getElementById("att-stat-notcheckedin"),
+            tableBody: document.getElementById("att-table-body"),
+            tableSummary: document.getElementById("att-table-summary"),
+            tableDate: document.getElementById("att-table-date"),
+            faceModal: document.getElementById("att-face-modal"),
+            faceVideo: document.getElementById("att-face-video"),
+            facePlaceholder: document.getElementById("att-face-placeholder"),
+            faceStatusIcon: document.getElementById("att-face-status-icon"),
+            faceStatusText: document.getElementById("att-face-status-text"),
+            faceHint: document.getElementById("att-face-hint"),
+            faceError: document.getElementById("att-face-error"),
+            faceErrorMessage: document.getElementById("att-face-error-message"),
+            faceResult: document.getElementById("att-face-result"),
+            faceResultMessage: document.getElementById("att-face-result-message"),
+            faceResultEmployee: document.getElementById("att-face-result-employee"),
+            faceResultDetail: document.getElementById("att-face-result-detail"),
+            faceStartBtn: document.getElementById("att-face-start"),
+            faceCaptureBtn: document.getElementById("att-face-capture"),
+            faceRetryBtn: document.getElementById("att-face-retry"),
+            faceActionCheckin: document.getElementById("att-face-action-checkin"),
+            faceActionCheckout: document.getElementById("att-face-action-checkout"),
+            manualModal: document.getElementById("att-manual-modal"),
+            manualEmployeeName: document.getElementById("att-manual-employee-name"),
+            manualEmployeeCode: document.getElementById("att-manual-employee-code"),
+            manualActionCheckin: document.getElementById("att-manual-action-checkin"),
+            manualActionCheckout: document.getElementById("att-manual-action-checkout"),
+            manualReason: document.getElementById("att-manual-reason"),
+            manualError: document.getElementById("att-manual-error"),
+            manualErrorMessage: document.getElementById("att-manual-error-message"),
+            manualSubmitBtn: document.getElementById("att-manual-submit"),
+            toastContainer: document.getElementById("att-toast-container")
+        };
 
-    const syncStatusFields = () => {
-        const isAbsent = statusSelect.value === "absent";
-        checkInInput.disabled = isAbsent;
-        checkOutInput.disabled = isAbsent;
-        checkInInput.required = !isAbsent;
-        if (isAbsent) {
-            checkInInput.value = "";
-            checkOutInput.value = "";
-        }
-    };
+        const faceState = {
+            open: false,
+            action: "check_in",
+            stream: null,
+            faceapi: null,
+            detectionTimer: null,
+            detecting: false,
+            requestId: 0,
+            starting: false,
+            capturing: false
+        };
 
-    const openModal = () => {
-        modal.classList.remove("hidden");
-        document.body.classList.add("shift-modal-open");
-        (employeeSelect.disabled ? dateInput : employeeSelect).focus();
-    };
+        const manualState = {
+            open: false,
+            employee: null,
+            action: "check_in",
+            submitting: false
+        };
 
-    const closeModal = () => {
-        modal.classList.add("hidden");
-        document.body.classList.remove("shift-modal-open");
-        clearError();
-    };
+        let faceApiModelsPromise = null;
+        let faceApiScriptPromise = null;
 
-    const closeHistoryModal = () => {
-        historyModal.classList.add("hidden");
-        document.body.classList.remove("shift-modal-open");
-    };
+        const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        }[character]));
 
-    window.openAttendanceHistory = async (button) => {
-        historyTitle.textContent = `${button.dataset.employeeCode} - ${button.dataset.employeeName}`;
-        historyDescription.textContent = "Đang tải tất cả ngày chấm công...";
-        historyBody.innerHTML = '<tr><td colspan="8" class="px-space-md py-space-xl text-center text-on-surface-variant">Đang tải...</td></tr>';
-        historyModal.classList.remove("hidden");
-        document.body.classList.add("shift-modal-open");
+        const setText = (element, value) => {
+            if (element) {
+                element.textContent = value === null || value === undefined || value === "" ? "ΓÇö" : value;
+            }
+        };
 
-        try {
-            const response = await fetch(`/admin/attendance/employee/${button.dataset.employeeId}/history`, {
-                headers: { Accept: "application/json" },
-                cache: "no-store"
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || "Không thể tải lịch sử chấm công.");
+        const formatTime = (value) => {
+            if (!value) return "ΓÇö";
 
-            historyDescription.textContent = `${data.records.length} ngày chấm công đã ghi nhận`;
-            const statusLabels = { present: "Đúng giờ", late: "Đi muộn", absent: "Vắng mặt" };
-            historyBody.innerHTML = data.records.length
-                ? data.records.map((record) => `
+            const date = new Date(value);
+
+            if (Number.isNaN(date.getTime())) return "ΓÇö";
+
+            return new Intl.DateTimeFormat("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false
+            }).format(date);
+        };
+
+        const formatDate = (value) => {
+            if (!value) return "ΓÇö";
+
+            const date = new Date(value);
+
+            if (Number.isNaN(date.getTime())) return "ΓÇö";
+
+            return new Intl.DateTimeFormat("vi-VN", {
+                weekday: "long",
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric"
+            }).format(date);
+        };
+
+        const getInitials = (name) => {
+            const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+
+            if (parts.length === 0) return "?";
+
+            return parts
+                .slice(-2)
+                .map((part) => part.charAt(0))
+                .join("")
+                .toUpperCase();
+        };
+
+        const getTodayString = () => {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, "0");
+            const day = String(now.getDate()).padStart(2, "0");
+
+            return `${year}-${month}-${day}`;
+        };
+
+        const statusBadgeHtml = (employee) => {
+            if (!employee.check_in) {
+                return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-outline"></span>Ch╞░a chß║Ñm</span>`;
+            }
+
+            const evaluation = employee.evaluation;
+
+            if (!evaluation) {
+                if (employee.check_out) {
+                    return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>─É├ú xong</span>`;
+                }
+                return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>─Éang l├ám</span>`;
+            }
+
+            const badges = [];
+
+            if (evaluation.isLate) {
+                badges.push(`<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Muß╗Ön ${evaluation.lateMinutes}p</span>`);
+            }
+
+            if (evaluation.isEarlyLeave) {
+                badges.push(`<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>Sß╗¢m ${evaluation.earlyLeaveMinutes}p</span>`);
+            }
+
+            if (badges.length === 0) {
+                if (employee.check_out) {
+                    return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>─É├║ng giß╗¥</span>`;
+                }
+                return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>─Éang l├ám</span>`;
+            }
+
+            return badges.join(" ");
+        };
+
+        const showToast = (type, message) => {
+            const config = {
+                success: {
+                    icon: "check_circle",
+                    classes: "bg-green-50 border-green-200 text-green-700"
+                },
+                error: {
+                    icon: "error",
+                    classes: "bg-error-container border-error/30 text-on-error-container"
+                },
+                info: {
+                    icon: "info",
+                    classes: "bg-surface-container-lowest border-surface-container-high text-on-surface"
+                }
+            };
+
+            const toastConfig = config[type] || config.info;
+            const toast = document.createElement("div");
+
+            toast.className = `att-toast-in flex items-start gap-space-sm p-space-md rounded-xl border shadow-lg ${toastConfig.classes}`;
+            toast.setAttribute("role", type === "error" ? "alert" : "status");
+            toast.innerHTML = `
+                <span class="material-symbols-outlined text-[20px] shrink-0">${toastConfig.icon}</span>
+                <p class="font-body-sm text-body-sm flex-1">${escapeHtml(message)}</p>
+                <button class="p-0.5 rounded-lg opacity-70 hover:opacity-100 transition-opacity shrink-0" type="button" aria-label="─É├│ng th├┤ng b├ío" data-dismiss-toast>
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+            `;
+
+            toast.querySelector("[data-dismiss-toast]").addEventListener("click", () => toast.remove());
+            elements.toastContainer.appendChild(toast);
+
+            window.setTimeout(() => {
+                toast.style.transition = "opacity 0.2s ease, transform 0.2s ease";
+                toast.style.opacity = "0";
+                toast.style.transform = "translateY(-6px)";
+                window.setTimeout(() => toast.remove(), 200);
+            }, 4500);
+        };
+
+        const syncBodyScroll = () => {
+            const hasOpenModal = !elements.faceModal.classList.contains("hidden")
+                || !elements.manualModal.classList.contains("hidden");
+
+            document.body.classList.toggle("att-modal-open", hasOpenModal);
+        };
+
+        const openModal = (modal) => {
+            state.lastFocused = document.activeElement;
+            modal.classList.remove("hidden");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyScroll();
+
+            const focusTarget = modal.querySelector("[data-autofocus]") || modal.querySelector("button");
+
+            if (focusTarget) {
+                focusTarget.focus();
+            }
+        };
+
+        const closeModal = (modal, restoreFocus = true) => {
+            modal.classList.add("hidden");
+            modal.setAttribute("aria-hidden", "true");
+            syncBodyScroll();
+
+            if (restoreFocus && state.lastFocused && typeof state.lastFocused.focus === "function") {
+                state.lastFocused.focus();
+                state.lastFocused = null;
+            }
+        };
+
+        // ---- Render ----
+
+        const renderSkeleton = () => {
+            elements.tableBody.innerHTML = Array.from({ length: 5 }, () => `
+                <tr class="animate-pulse">
+                    <td class="py-space-md px-space-lg">
+                        <div class="flex items-center gap-space-md">
+                            <div class="w-9 h-9 rounded-full bg-surface-container-high shrink-0"></div>
+                            <div class="flex flex-col gap-1.5 flex-1">
+                                <div class="h-3 bg-surface-container-high rounded w-32 max-w-full"></div>
+                                <div class="h-2.5 bg-surface-container-high rounded w-24 max-w-full"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-space-md px-space-md"><div class="h-3 bg-surface-container-high rounded w-20"></div></td>
+                    <td class="py-space-md px-space-md"><div class="h-3 bg-surface-container-high rounded w-16"></div></td>
+                    <td class="py-space-md px-space-md"><div class="h-3 bg-surface-container-high rounded w-14"></div></td>
+                    <td class="py-space-md px-space-md"><div class="h-3 bg-surface-container-high rounded w-14"></div></td>
+                    <td class="py-space-md px-space-md"><div class="h-5 bg-surface-container-high rounded-full w-20"></div></td>
+                    <td class="py-space-md px-space-lg"><div class="h-7 bg-surface-container-high rounded-lg w-28 ml-auto"></div></td>
+                </tr>
+            `).join("");
+        };
+
+        const renderStats = () => {
+            const { total, checkedIn, checkedOut, late, earlyLeave, notCheckedIn } = state.stats;
+
+            setText(elements.statTotal, total);
+            setText(elements.statCheckedIn, checkedIn);
+            setText(elements.statCheckedOut, checkedOut);
+            setText(elements.statLate, late);
+            setText(elements.statEarly, earlyLeave);
+            setText(elements.statNotCheckedIn, notCheckedIn);
+        };
+
+        const updateSummary = () => {
+            elements.tableSummary.textContent = `Hiß╗ân thß╗ï ${state.employees.length} nh├ón vi├¬n`;
+            elements.tableDate.textContent = `Ng├áy: ${formatDate(state.date + "T00:00:00")}`;
+        };
+
+        const renderRow = (employee) => {
+            const initials = getInitials(employee.full_name);
+            const safeName = escapeHtml(employee.full_name);
+            const safeCode = escapeHtml(employee.employee_code);
+            const checkIn = employee.check_in ? formatTime(employee.check_in) : "ΓÇö";
+            const checkOut = employee.check_out ? formatTime(employee.check_out) : "ΓÇö";
+            const shiftName = employee.evaluation?.shift?.shift_name || "ΓÇö";
+            const expectedTime = employee.evaluation?.expectedStart && employee.evaluation?.expectedEnd
+                ? `${escapeHtml(employee.evaluation.expectedStart)} - ${escapeHtml(employee.evaluation.expectedEnd)}`
+                : "";
+            const faceRegistered = Boolean(employee.face_registered);
+
+            const canCheckIn = !employee.check_in;
+            const canCheckOut = employee.check_in && !employee.check_out;
+
+            let actions = "";
+
+            if (canCheckIn || canCheckOut) {
+                actions += `
+                    <button
+                        class="flex items-center gap-1 px-space-sm py-1 bg-secondary-fixed text-on-secondary-fixed hover:bg-secondary hover:text-white font-label-sm text-label-sm rounded-lg transition-colors"
+                        data-manual-id="${escapeHtml(employee.employee_id)}"
+                        data-manual-action="${canCheckIn ? "check_in" : "check_out"}"
+                        data-employee-name="${safeName}"
+                        data-employee-code="${safeCode}"
+                        type="button"
+                        title="${canCheckIn ? "Check-in thß╗º c├┤ng" : "Check-out thß╗º c├┤ng"}"
+                    >
+                        <span class="material-symbols-outlined text-[16px]">${canCheckIn ? "login" : "logout"}</span>
+                        <span>${canCheckIn ? "Check-in" : "Check-out"}</span>
+                    </button>
+                `;
+            }
+
+            return `
+                <tr class="hover:bg-surface-container-low/70 align-middle transition-colors">
+                    <td class="py-space-md px-space-lg">
+                        <div class="flex items-center gap-space-md">
+                            <div class="w-9 h-9 rounded-full bg-primary-fixed text-on-primary-fixed font-semibold flex items-center justify-center text-sm shrink-0">
+                                ${escapeHtml(initials)}
+                            </div>
+                            <div class="flex flex-col min-w-0">
+                                <span class="font-label-md text-label-md text-on-surface font-semibold truncate">${safeName}</span>
+                                <span class="font-data-mono text-[11px] text-on-surface-variant truncate">
+                                    ${safeCode}${faceRegistered ? ' <span class="text-green-600">ΓùÅ</span>' : ""}
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-space-md px-space-md text-on-surface-variant">
+                        ${escapeHtml(employee.department || "ΓÇö")}
+                    </td>
+                    <td class="py-space-md px-space-md">
+                        <div class="flex flex-col">
+                            <span class="text-on-surface-variant">${escapeHtml(shiftName)}</span>
+                            ${expectedTime ? `<span class="font-data-mono text-[11px] text-on-surface-variant">${expectedTime}</span>` : ""}
+                        </div>
+                    </td>
+                    <td class="py-space-md px-space-md font-data-mono text-data-mono whitespace-nowrap ${employee.evaluation?.isLate ? "text-amber-600 font-semibold" : "text-on-surface-variant"}">
+                        ${escapeHtml(checkIn)}
+                    </td>
+                    <td class="py-space-md px-space-md font-data-mono text-data-mono whitespace-nowrap ${employee.evaluation?.isEarlyLeave ? "text-orange-600 font-semibold" : "text-on-surface-variant"}">
+                        ${escapeHtml(checkOut)}
+                    </td>
+                    <td class="py-space-md px-space-md">
+                        ${statusBadgeHtml(employee)}
+                    </td>
+                    <td class="py-space-md px-space-lg">
+                        <div class="flex items-center justify-end gap-space-xs flex-wrap">
+                            ${actions}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        };
+
+        const renderTable = () => {
+            if (state.employees.length === 0) {
+                elements.tableBody.innerHTML = `
                     <tr>
-                        <td class="px-space-md py-space-sm font-data-mono">${record.work_date}</td>
-                        <td class="px-space-md py-space-sm">
-                            ${record.has_schedule
-                                ? `<div class="flex flex-col"><span class="font-label-md text-label-md text-on-surface">${record.shift_code ? `<span class="font-data-mono text-primary mr-1">${record.shift_code}</span>` : ""}${record.shift_name || "—"}</span><span class="font-body-sm text-body-sm text-on-surface-variant">${record.scheduled_start || "—"} – ${record.scheduled_end || "—"}</span></div>`
-                                : '<span class="font-body-sm text-body-sm text-outline">Không có ca áp dụng</span>'}
-                        </td>
-                        <td class="px-space-md py-space-sm font-data-mono">${record.check_in || "—"}</td>
-                        <td class="px-space-md py-space-sm font-data-mono">${record.check_out || "—"}</td>
-                        <td class="px-space-md py-space-sm">
-                            ${record.status === "absent"
-                                ? '<span class="text-outline">—</span>'
-                                : record.late_minutes > 0
-                                    ? `<span class="font-label-md text-label-md text-orange-700">Trễ ${record.late_minutes} phút</span>`
-                                    : record.status === "late"
-                                        ? '<span class="font-label-md text-label-md text-orange-700">Đi muộn</span>'
-                                        : record.has_schedule
-                                            ? '<span class="font-body-sm text-body-sm text-green-700">Đúng giờ</span>'
-                                            : '<span class="text-outline">—</span>'}
-                        </td>
-                        <td class="px-space-md py-space-sm">
-                            ${record.status === "absent"
-                                ? '<span class="text-outline">—</span>'
-                                : record.early_leave_minutes > 0
-                                    ? `<span class="font-label-md text-label-md text-red-700">Sớm ${record.early_leave_minutes} phút</span>`
-                                    : record.has_schedule && record.check_out
-                                        ? '<span class="font-body-sm text-body-sm text-green-700">Đủ giờ</span>'
-                                        : '<span class="text-outline">—</span>'}
-                        </td>
-                        <td class="px-space-md py-space-sm font-data-mono">${Number(record.total_hours || 0)} giờ</td>
-                        <td class="px-space-md py-space-sm">
-                            ${record.status === "present"
-                                ? '<span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Đúng giờ</span>'
-                                : record.status === "late"
-                                    ? '<span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-orange-50 text-orange-700 text-xs font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>Đi muộn</span>'
-                                    : record.status === "absent"
-                                        ? '<span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-red-50 text-red-700 text-xs font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Vắng mặt</span>'
-                                        : `<span class="inline-flex px-space-sm py-1 rounded-full bg-surface-container-high text-on-surface-variant text-xs font-semibold">${statusLabels[record.status] || record.status}</span>`}
+                        <td colspan="7" class="py-space-2xl px-space-lg">
+                            <div class="flex flex-col items-center justify-center gap-space-sm text-center">
+                                <div class="w-14 h-14 rounded-full bg-surface-container-low text-on-surface-variant flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-[28px]">group_off</span>
+                                </div>
+                                <p class="font-label-md text-label-md text-on-surface">Kh├┤ng t├¼m thß║Ñy nh├ón vi├¬n ph├╣ hß╗úp</p>
+                                <p class="font-body-sm text-body-sm text-on-surface-variant">Thß╗¡ thay ─æß╗òi ng├áy, tß╗½ kh├│a hoß║╖c bß╗Ö lß╗ìc.</p>
+                                <button
+                                    class="mt-space-xs flex items-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-label-sm text-label-sm transition-colors"
+                                    data-reset-filter
+                                    type="button"
+                                >
+                                    <span class="material-symbols-outlined text-[18px]">filter_alt_off</span>
+                                    <span>X├│a bß╗Ö lß╗ìc</span>
+                                </button>
+                            </div>
                         </td>
                     </tr>
-                `).join("")
-                : '<tr><td colspan="8" class="px-space-md py-space-xl text-center text-on-surface-variant">Chưa có lịch sử chấm công.</td></tr>';
-        } catch (error) {
-            historyDescription.textContent = "Không thể tải lịch sử";
-            historyBody.innerHTML = `<tr><td colspan="8" class="px-space-md py-space-xl text-center text-error">${error.message}</td></tr>`;
-        }
-    };
+                `;
+                return;
+            }
 
-    const resetForm = () => {
-        form.reset();
-        resetSubmitButton();
-        form.action = "/admin/attendance/create";
-        modalTitle.textContent = "Điều chỉnh chấm công";
-        employeeSelect.disabled = false;
-        document.getElementById("attendance-employee-lock-note").classList.add("hidden");
-        statusSelect.value = "auto";
+            elements.tableBody.innerHTML = state.employees.map(renderRow).join("");
+        };
 
-        const today = new Date();
-        dateInput.value = [
-            today.getFullYear(),
-            String(today.getMonth() + 1).padStart(2, "0"),
-            String(today.getDate()).padStart(2, "0")
-        ].join("-");
+        const renderErrorState = (message) => {
+            elements.tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="py-space-2xl px-space-lg">
+                        <div class="flex flex-col items-center justify-center gap-space-sm text-center">
+                            <div class="w-14 h-14 rounded-full bg-error-container text-on-error-container flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[28px]">cloud_off</span>
+                            </div>
+                            <p class="font-label-md text-label-md text-on-surface">Kh├┤ng tß║úi ─æ╞░ß╗úc dß╗» liß╗çu</p>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant max-w-md">${escapeHtml(message)}</p>
+                            <button
+                                class="mt-space-xs flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-md py-space-sm rounded-xl font-label-sm text-label-sm transition-colors"
+                                data-retry
+                                type="button"
+                            >
+                                <span class="material-symbols-outlined text-[18px]">refresh</span>
+                                <span>Thß╗¡ lß║íi</span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        };
 
-        syncStatusFields();
-        clearError();
-    };
+        const setLoading = (loading) => {
+            elements.refreshBtn.disabled = loading;
+            elements.refreshIcon.classList.toggle("animate-spin", loading);
 
-    document.getElementById("open-create-attendance").addEventListener("click", () => {
-        resetForm();
-        openModal();
-    });
+            if (loading) {
+                elements.tableSummary.textContent = "─Éang tß║úi dß╗» liß╗çu...";
 
-    document.querySelectorAll("[data-close-attendance-modal]").forEach((button) => {
-        button.addEventListener("click", closeModal);
-    });
-    document.querySelectorAll("[data-close-history-modal]").forEach((button) => {
-        button.addEventListener("click", closeHistoryModal);
-    });
+                if (state.employees.length === 0) {
+                    renderSkeleton();
+                }
 
-    document.getElementById("attendanceBody").addEventListener("click", (event) => {
-        const button = event.target.closest("[data-edit-attendance]");
-        const historyButton = event.target.closest("[data-view-attendance-history]");
-        if (!button && !historyButton) return;
+                elements.tableBody.classList.toggle("opacity-60", state.employees.length > 0);
+            } else {
+                elements.tableBody.classList.remove("opacity-60");
+            }
+        };
 
-        if (historyButton) {
-            window.openAttendanceHistory(historyButton);
-            return;
-        }
+        const populateDepartments = (departments) => {
+            const current = elements.departmentSelect.value;
 
-        const data = button.dataset;
-        form.reset();
-        resetSubmitButton();
-        form.action = `/admin/attendance/${data.id}/update`;
-        modalTitle.textContent = "Điều chỉnh dữ liệu chấm công";
-        employeeSelect.value = data.employeeId;
-        employeeSelect.disabled = true;
-        document.getElementById("attendance-employee-lock-note").classList.remove("hidden");
-        dateInput.value = data.workDate;
-        checkInInput.value = data.checkIn;
-        checkOutInput.value = data.checkOut;
-        statusSelect.value = data.status;
-        syncStatusFields();
-        clearError();
-        openModal();
-    });
+            elements.departmentSelect.innerHTML = `<option value="">Tß║Ñt cß║ú ph├▓ng ban</option>`;
 
-    statusSelect.addEventListener("change", syncStatusFields);
-
-    document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape" && !modal.classList.contains("hidden")) {
-            closeModal();
-        }
-        if (event.key === "Escape" && !historyModal.classList.contains("hidden")) {
-            closeHistoryModal();
-        }
-    });
-
-    form.addEventListener("submit", (event) => {
-        clearError();
-        const submitButton = document.getElementById("attendance-submit");
-        const submitLabel = document.getElementById("attendance-submit-label");
-
-        if (statusSelect.value === "absent" && (checkInInput.value || checkOutInput.value)) {
-            event.preventDefault();
-            showError("Bản ghi vắng mặt không được có giờ vào hoặc giờ ra.");
-            return;
-        }
-
-        if (statusSelect.value !== "absent" && !checkInInput.value) {
-            event.preventDefault();
-            showError("Vui lòng nhập giờ vào cho bản ghi có mặt.");
-            return;
-        }
-
-        if (checkOutInput.value && checkOutInput.value <= checkInInput.value) {
-            event.preventDefault();
-            showError("Giờ ra phải sau giờ vào.");
-            return;
-        }
-
-        submitButton.disabled = true;
-        submitButton.setAttribute("aria-busy", "true");
-        submitLabel.textContent = "Đang lưu...";
-    });
-});
-
-function filterRecords() {
-    const keywordInput = document.getElementById("keyword");
-    const keyword = keywordInput.value.trim().toLocaleLowerCase();
-    document.getElementById("clear-attendance-search").classList.toggle("hidden", !keywordInput.value);
-    const date = document.getElementById("dateFilter").value;
-    const status = document.getElementById("statusFilter").value;
-    const rows = document.querySelectorAll(".attendance-row");
-    let visible = 0;
-    let attendedRows = 0;
-    let absentRows = 0;
-    let lateRows = 0;
-    let earlyRows = 0;
-    let unassignedRows = 0;
-
-    rows.forEach((row) => {
-        const matchesKeyword = !keyword
-            || row.dataset.name.includes(keyword)
-            || row.dataset.codeSearch.includes(keyword);
-        const matchesDate = !date || row.dataset.date === date;
-        const matchesStatus = !status || row.dataset.status === status;
-        const show = matchesKeyword && matchesDate && matchesStatus;
-
-        row.classList.toggle("hidden", !show);
-        if (!show) return;
-
-        visible += 1;
-        if (row.dataset.status === "present" || row.dataset.status === "late") attendedRows += 1;
-        if (row.dataset.status === "absent") absentRows += 1;
-        if (row.dataset.isLate === "true") lateRows += 1;
-        if (row.dataset.isEarly === "true") earlyRows += 1;
-        if (row.dataset.noSchedule === "true") unassignedRows += 1;
-    });
-
-    const attendanceRate = visible > 0
-        ? Math.round((attendedRows / visible) * 100)
-        : 0;
-    const absenceRate = visible > 0
-        ? Math.round((absentRows / visible) * 100)
-        : 0;
-
-    document.getElementById("attendanceRateCount").textContent = attendanceRate;
-    document.getElementById("attendanceRateDetail").textContent =
-        `${attendedRows} / ${visible} nhân viên`;
-    document.getElementById("absenceOverviewCount").textContent = `${absentRows} lượt`;
-    document.getElementById("absenceOverviewRate").textContent =
-        `${absenceRate}% tổng lượt ghi nhận`;
-    document.getElementById("lateOverviewCount").textContent = lateRows;
-    document.getElementById("earlyOverviewCount").textContent = earlyRows;
-    document.getElementById("unassignedOverviewCount").textContent = unassignedRows;
-
-    document.getElementById("emptyMessage").classList.toggle("hidden", visible !== 0);
-    document.getElementById("attendanceCount").textContent = `Hiển thị ${visible} / ${rows.length} nhân viên`;
-    document.getElementById("export-attendance").disabled = visible === 0;
-}
-
-let attendanceFilterTimeout;
-
-function scheduleFilterRecords() {
-    window.clearTimeout(attendanceFilterTimeout);
-    attendanceFilterTimeout = window.setTimeout(filterRecords, 150);
-}
-
-function exportCSV() {
-    const rows = [...document.querySelectorAll(".attendance-row")]
-        .filter((row) => !row.classList.contains("hidden"));
-
-    if (rows.length === 0) return;
-
-    const data = [
-        ["Mã nhân viên", "Nhân viên", "Ngày", "Ca làm", "Giờ vào", "Giờ ra", "Đi muộn (phút)", "Về sớm (phút)", "Số giờ", "Trạng thái"],
-        ...rows.map((row) => [
-            row.dataset.code,
-            row.dataset.employeeName,
-            row.dataset.date,
-            row.dataset.shiftName,
-            row.dataset.checkIn,
-            row.dataset.checkOut,
-            row.dataset.lateMinutes,
-            row.dataset.earlyMinutes,
-            row.dataset.totalHours,
-            { present: "Đúng giờ", late: "Đi muộn", absent: "Vắng mặt" }[row.dataset.status] || row.dataset.status
-        ])
-    ];
-
-    const csv = "\uFEFF" + data.map((row) =>
-        row.map((value) => `"${value.replace(/"/g, '""')}"`).join(",")
-    ).join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = "bao-cao-cham-cong.csv";
-    link.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
-}
-
-let attendanceRefreshInProgress = false;
-let lastAttendanceRowsHtml = null;
-let lastEmployeeOptionsSignature = null;
-let attendanceAutoSyncEnabled = true;
-let attendanceAutoSyncTimer = null;
-
-const formatRefreshTime = (date) => new Intl.DateTimeFormat("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit"
-}).format(date);
-
-function updateEmployeeOptions(employees) {
-    const employeeSelect = document.getElementById("attendance-employee");
-    const selectedEmployeeId = employeeSelect.value;
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = "-- Chọn nhân viên --";
-    employeeSelect.replaceChildren(placeholder);
-
-    employees.forEach((employee) => {
-        const option = document.createElement("option");
-        option.value = String(employee.id);
-        option.textContent = `${employee.employee_code} - ${employee.full_name}${employee.department ? ` (${employee.department})` : ""}`;
-        employeeSelect.append(option);
-    });
-
-    employeeSelect.value = employees.some(
-        (employee) => String(employee.id) === selectedEmployeeId
-    ) ? selectedEmployeeId : "";
-}
-
-async function refreshAttendance(manual = false) {
-    if (attendanceRefreshInProgress) return;
-    if (!manual && !attendanceAutoSyncEnabled) return;
-    if (!manual && document.visibilityState !== "visible") return;
-
-    const modal = document.getElementById("attendance-modal");
-    if (!manual && modal && !modal.classList.contains("hidden")) {
-        document.getElementById("attendance-sync-status").textContent =
-            "Tạm hoãn đồng bộ khi đang điều chỉnh";
-        return;
-    }
-
-    const refreshButton = document.getElementById("refresh-attendance");
-    const syncStatus = document.getElementById("attendance-sync-status");
-    const lastUpdated = document.getElementById("attendance-last-updated");
-    attendanceRefreshInProgress = true;
-    refreshButton.disabled = true;
-    refreshButton.setAttribute("aria-busy", "true");
-    const refreshIcon = refreshButton.querySelector(".material-symbols-outlined");
-    if (refreshIcon) refreshIcon.classList.add("animate-spin");
-    syncStatus.classList.remove("text-red-600");
-    syncStatus.classList.add("text-primary");
-    syncStatus.textContent = "Đang đồng bộ dữ liệu...";
-
-    try {
-        const response = await fetch("/admin/attendance/refresh", {
-            headers: { Accept: "application/json" },
-            cache: "no-store"
-        });
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || "Không thể đồng bộ dữ liệu chấm công.");
-        }
-
-        if (lastAttendanceRowsHtml !== data.rowsHtml) {
-            document.getElementById("attendanceBody").innerHTML = data.rowsHtml;
-            lastAttendanceRowsHtml = data.rowsHtml;
-            filterRecords();
-        }
-        document.getElementById("totalEmployeesCount").textContent = data.stats.total_employees;
-        document.getElementById("totalPresentCount").textContent = data.stats.present;
-        document.getElementById("totalLateCount").textContent = data.stats.late;
-        document.getElementById("totalAbsentCount").textContent = data.stats.absent;
-        const employeeOptionsSignature = JSON.stringify(data.employees);
-        if (lastEmployeeOptionsSignature !== employeeOptionsSignature) {
-            updateEmployeeOptions(data.employees);
-            lastEmployeeOptionsSignature = employeeOptionsSignature;
-        }
-
-        syncStatus.classList.remove("text-primary");
-        syncStatus.textContent = "Tự đồng bộ mỗi 30 giây";
-        lastUpdated.textContent = `Cập nhật lần cuối ${formatRefreshTime(new Date(data.refreshedAt))}`;
-    } catch (error) {
-        console.error("Lỗi đồng bộ bảng chấm công:", error);
-        syncStatus.classList.remove("text-primary");
-        syncStatus.classList.add("text-red-600");
-        syncStatus.textContent = "Đồng bộ thất bại; hệ thống sẽ thử lại";
-    } finally {
-        attendanceRefreshInProgress = false;
-        refreshButton.disabled = false;
-        refreshButton.removeAttribute("aria-busy");
-        const refreshIcon = refreshButton.querySelector(".material-symbols-outlined");
-        if (refreshIcon) refreshIcon.classList.remove("animate-spin");
-    }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    const clearButton = document.getElementById("clear-attendance-filters");
-    const refreshButton = document.getElementById("refresh-attendance");
-    const lastUpdated = document.getElementById("attendance-last-updated");
-    const autoSyncButton = document.getElementById("toggle-auto-sync-attendance");
-    const autoSyncIcon = document.getElementById("auto-sync-attendance-icon");
-    const autoSyncLabel = document.getElementById("auto-sync-attendance-label");
-
-    clearButton.addEventListener("click", () => {
-        document.getElementById("keyword").value = "";
-        document.getElementById("dateFilter").value = "";
-        document.getElementById("statusFilter").value = "";
-        filterRecords();
-    });
-
-    document.getElementById("clear-attendance-search").addEventListener("click", () => {
-        document.getElementById("keyword").value = "";
-        document.getElementById("clear-attendance-search").classList.add("hidden");
-        filterRecords();
-        document.getElementById("keyword").focus();
-    });
-
-    document.querySelectorAll("[data-attendance-status-filter]").forEach((button) => {
-        button.addEventListener("click", () => {
-            const statusFilter = document.getElementById("statusFilter");
-            statusFilter.value = button.dataset.attendanceStatusFilter;
-            filterRecords();
-            document.getElementById("statusFilter").closest("section").scrollIntoView({
-                behavior: "smooth",
-                block: "start"
+            departments.forEach((dept) => {
+                const option = document.createElement("option");
+                option.value = dept;
+                option.textContent = dept;
+                elements.departmentSelect.appendChild(option);
             });
+
+            if (current) {
+                elements.departmentSelect.value = current;
+            }
+        };
+
+        const loadData = async () => {
+            const requestId = ++state.requestId;
+
+            setLoading(true);
+
+            try {
+                const params = new URLSearchParams();
+
+                if (state.date) {
+                    params.set("date", state.date);
+                }
+
+                if (state.search) {
+                    params.set("search", state.search);
+                }
+
+                if (state.department) {
+                    params.set("department", state.department);
+                }
+
+                if (state.status && state.status !== "all") {
+                    params.set("status", state.status);
+                }
+
+                const query = params.toString();
+                const response = await fetch(`${API_BASE}/data${query ? `?${query}` : ""}`, {
+                    headers: {
+                        Accept: "application/json"
+                    }
+                });
+
+                let payload = {};
+
+                try {
+                    payload = await response.json();
+                } catch {
+                    payload = {};
+                }
+
+                if (requestId !== state.requestId) return;
+
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.message || "Kh├┤ng thß╗â lß║Ñy bß║úng chß║Ñm c├┤ng.");
+                }
+
+                state.employees = Array.isArray(payload.employees) ? payload.employees : [];
+                state.date = payload.date || state.date;
+                state.stats = {
+                    total: Number(payload.stats?.total || 0),
+                    checkedIn: Number(payload.stats?.checkedIn || 0),
+                    checkedOut: Number(payload.stats?.checkedOut || 0),
+                    late: Number(payload.stats?.late || 0),
+                    earlyLeave: Number(payload.stats?.earlyLeave || 0),
+                    notCheckedIn: Number(payload.stats?.notCheckedIn || 0)
+                };
+
+                if (Array.isArray(payload.departments)) {
+                    state.departments = payload.departments;
+                    populateDepartments(payload.departments);
+                }
+
+                if (elements.dateInput.value !== state.date) {
+                    elements.dateInput.value = state.date;
+                }
+
+                renderStats();
+                renderTable();
+                updateSummary();
+            } catch (error) {
+                if (requestId !== state.requestId) return;
+
+                state.employees = [];
+                renderErrorState(error.message);
+                elements.tableSummary.textContent = "Kh├┤ng tß║úi ─æ╞░ß╗úc dß╗» liß╗çu";
+                elements.tableDate.textContent = "";
+                showToast("error", error.message);
+            } finally {
+                if (requestId === state.requestId) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        const resetFilters = () => {
+            window.clearTimeout(searchTimer);
+            elements.searchInput.value = "";
+            elements.departmentSelect.value = "";
+            elements.statusSelect.value = "all";
+            elements.dateInput.value = getTodayString();
+            state.search = "";
+            state.department = "";
+            state.status = "all";
+            state.date = getTodayString();
+            loadData();
+        };
+
+        // ---- Chß║Ñm c├┤ng khu├┤n mß║╖t ----
+
+        const FACE_API_SCRIPT_URL = "/vendor/face-api/face-api.js";
+        const FACE_API_MODEL_URL = "/vendor/face-api/models";
+
+        const loadFaceApiScript = () => {
+            if (window.faceapi) {
+                return Promise.resolve(window.faceapi);
+            }
+
+            if (faceApiScriptPromise) {
+                return faceApiScriptPromise;
+            }
+
+            faceApiScriptPromise = new Promise((resolve, reject) => {
+                const script = document.createElement("script");
+
+                script.src = FACE_API_SCRIPT_URL;
+                script.async = true;
+                script.onload = () => {
+                    if (window.faceapi) {
+                        resolve(window.faceapi);
+                    } else {
+                        faceApiScriptPromise = null;
+                        reject(new Error("Th╞░ viß╗çn nhß║¡n diß╗çn khu├┤n mß║╖t kh├┤ng khß║ú dß╗Ñng."));
+                    }
+                };
+                script.onerror = () => {
+                    faceApiScriptPromise = null;
+                    reject(new Error("Kh├┤ng tß║úi ─æ╞░ß╗úc th╞░ viß╗çn nhß║¡n diß╗çn khu├┤n mß║╖t."));
+                };
+                document.head.appendChild(script);
+            });
+
+            return faceApiScriptPromise;
+        };
+
+        const ensureFaceApiModels = () => {
+            if (faceApiModelsPromise) {
+                return faceApiModelsPromise;
+            }
+
+            faceApiModelsPromise = (async () => {
+                const faceapi = await loadFaceApiScript();
+
+                if (faceapi.tf && faceapi.tf.setBackend) {
+                    try {
+                        await faceapi.tf.setBackend("webgl");
+                    } catch {
+                        // Tr├¼nh duyß╗çt kh├┤ng hß╗ù trß╗ú WebGL th├¼ d├╣ng backend mß║╖c ─æß╗ïnh.
+                    }
+
+                    await faceapi.tf.ready();
+                }
+
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(FACE_API_MODEL_URL),
+                    faceapi.nets.faceLandmark68TinyNet.loadFromUri(FACE_API_MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(FACE_API_MODEL_URL)
+                ]);
+
+                return faceapi;
+            })().catch((error) => {
+                faceApiModelsPromise = null;
+                throw error;
+            });
+
+            return faceApiModelsPromise;
+        };
+
+        const setFaceStatus = (text, type = "info") => {
+            const icons = {
+                info: "info",
+                loading: "progress_activity",
+                searching: "person_search",
+                success: "check_circle",
+                warning: "warning",
+                error: "error"
+            };
+
+            elements.faceStatusText.textContent = text;
+            elements.faceStatusIcon.textContent = icons[type] || "info";
+            elements.faceStatusIcon.classList.toggle("animate-spin", type === "loading");
+            elements.faceStatusIcon.classList.toggle("text-green-400", type === "success");
+            elements.faceStatusIcon.classList.toggle("text-amber-300", type === "warning");
+            elements.faceStatusIcon.classList.toggle("text-red-300", type === "error");
+        };
+
+        const showFaceError = (message) => {
+            elements.faceErrorMessage.textContent = message;
+            elements.faceError.classList.remove("hidden");
+        };
+
+        const hideFaceError = () => {
+            elements.faceError.classList.add("hidden");
+            elements.faceErrorMessage.textContent = "";
+        };
+
+        const hideFaceResult = () => {
+            elements.faceResult.classList.add("hidden");
+        };
+
+        const stopFaceCamera = () => {
+            if (faceState.stream) {
+                faceState.stream.getTracks().forEach((track) => track.stop());
+                faceState.stream = null;
+            }
+
+            if (elements.faceVideo) {
+                elements.faceVideo.pause();
+                elements.faceVideo.srcObject = null;
+            }
+
+            elements.facePlaceholder.classList.remove("hidden");
+        };
+
+        const stopFaceDetectionLoop = () => {
+            if (faceState.detectionTimer) {
+                window.clearTimeout(faceState.detectionTimer);
+                faceState.detectionTimer = null;
+            }
+
+            faceState.detecting = false;
+        };
+
+        const closeFaceModal = () => {
+            if (faceState.capturing) return;
+
+            faceState.open = false;
+            faceState.requestId += 1;
+            faceState.capturing = false;
+            stopFaceDetectionLoop();
+            stopFaceCamera();
+            closeModal(elements.faceModal);
+        };
+
+        const updateFaceDetectionState = (detections) => {
+            const video = elements.faceVideo;
+
+            if (!video.videoWidth) {
+                setFaceStatus("─Éang chuß║⌐n bß╗ï camera...", "loading");
+                elements.faceCaptureBtn.disabled = true;
+                return;
+            }
+
+            if (detections.length === 0) {
+                setFaceStatus("Kh├┤ng ph├ít hiß╗çn khu├┤n mß║╖t", "searching");
+                elements.faceHint.textContent = "─É╞░a khu├┤n mß║╖t v├áo giß╗»a khung oval v├á ─æß║úm bß║úo ─æß╗º ├ính s├íng.";
+                elements.faceCaptureBtn.disabled = true;
+                return;
+            }
+
+            if (detections.length > 1) {
+                setFaceStatus("C├│ nhiß╗üu khu├┤n mß║╖t trong khung h├¼nh", "warning");
+                elements.faceHint.textContent = "Chß╗ë ─æß╗â mß╗Öt ng╞░ß╗¥i trong khung h├¼nh tr╞░ß╗¢c khi chß║Ñm c├┤ng.";
+                elements.faceCaptureBtn.disabled = true;
+                return;
+            }
+
+            const box = detections[0].box;
+            const widthRatio = box.width / video.videoWidth;
+            const centerX = box.x + box.width / 2;
+            const centerY = box.y + box.height / 2;
+            const offsetX = Math.abs(centerX - video.videoWidth / 2) / video.videoWidth;
+            const offsetY = Math.abs(centerY - video.videoHeight / 2) / video.videoHeight;
+
+            if (widthRatio < 0.15) {
+                setFaceStatus("Khu├┤n mß║╖t qu├í nhß╗Å", "warning");
+                elements.faceHint.textContent = "─É╞░a khu├┤n mß║╖t lß║íi gß║ºn camera h╞ín.";
+                elements.faceCaptureBtn.disabled = true;
+                return;
+            }
+
+            if (offsetX > 0.22 || offsetY > 0.22) {
+                setFaceStatus("Khu├┤n mß║╖t ch╞░a ß╗ƒ giß╗»a khung", "warning");
+                elements.faceHint.textContent = "Di chuyß╗ân khu├┤n mß║╖t v├áo giß╗»a khung oval.";
+                elements.faceCaptureBtn.disabled = true;
+                return;
+            }
+
+            setFaceStatus("─É├ú ph├ít hiß╗çn khu├┤n mß║╖t", "success");
+            elements.faceHint.textContent = "Giß╗» y├¬n, nh├¼n thß║│ng v├áo camera v├á bß║Ñm Chß║Ñm c├┤ng.";
+            elements.faceCaptureBtn.disabled = false;
+        };
+
+        const startFaceDetectionLoop = () => {
+            stopFaceDetectionLoop();
+
+            const loopId = faceState.requestId;
+
+            const scheduleNext = () => {
+                if (faceState.capturing) return;
+                if (loopId !== faceState.requestId) return;
+                if (!faceState.open) return;
+
+                faceState.detectionTimer = window.setTimeout(runDetection, 350);
+            };
+
+            const runDetection = async () => {
+                if (faceState.capturing) return;
+                if (loopId !== faceState.requestId) return;
+
+                if (
+                    !faceState.open
+                    || faceState.detecting
+                    || !faceState.faceapi
+                ) {
+                    scheduleNext();
+                    return;
+                }
+
+                faceState.detecting = true;
+
+                try {
+                    const options = new faceState.faceapi.TinyFaceDetectorOptions({
+                        inputSize: 224,
+                        scoreThreshold: 0.5
+                    });
+                    const detections = await faceState.faceapi.detectAllFaces(elements.faceVideo, options);
+
+                    if (faceState.capturing) return;
+                    if (loopId !== faceState.requestId) return;
+                    if (!faceState.open) return;
+
+                    updateFaceDetectionState(detections);
+                } catch (error) {
+                    if (faceState.capturing) return;
+                    if (loopId !== faceState.requestId) return;
+
+                    console.error("Lß╗ùi nhß║¡n diß╗çn khu├┤n mß║╖t:", error);
+                    setFaceStatus("Kh├┤ng thß╗â nhß║¡n diß╗çn khu├┤n mß║╖t", "error");
+                    showFaceError("Kh├┤ng thß╗â nhß║¡n diß╗çn khu├┤n mß║╖t tß╗½ camera. Vui l├▓ng thß╗¡ lß║íi.");
+                    elements.faceCaptureBtn.disabled = true;
+                    elements.faceRetryBtn.classList.remove("hidden");
+                    elements.faceRetryBtn.classList.add("flex");
+                } finally {
+                    if (loopId === faceState.requestId) {
+                        faceState.detecting = false;
+                        scheduleNext();
+                    }
+                }
+            };
+
+            runDetection();
+        };
+
+        const startFaceCamera = async () => {
+            if (faceState.starting) return;
+
+            faceState.starting = true;
+            faceState.capturing = false;
+            stopFaceDetectionLoop();
+            stopFaceCamera();
+            faceState.requestId += 1;
+            const requestId = faceState.requestId;
+
+            hideFaceError();
+            hideFaceResult();
+            elements.facePlaceholder.classList.remove("hidden");
+            elements.faceStartBtn.classList.add("hidden");
+            elements.faceStartBtn.classList.remove("flex");
+            elements.faceCaptureBtn.classList.remove("hidden");
+            elements.faceCaptureBtn.classList.add("flex");
+            elements.faceCaptureBtn.disabled = true;
+            elements.faceRetryBtn.classList.add("hidden");
+            elements.faceRetryBtn.classList.remove("flex");
+            setFaceStatus("─Éang khß╗ƒi ─æß╗Öng camera...", "loading");
+
+            try {
+                if (!window.isSecureContext) {
+                    throw new Error("Camera chß╗ë hoß║ít ─æß╗Öng tr├¬n HTTPS hoß║╖c localhost.");
+                }
+
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error("Tr├¼nh duyß╗çt kh├┤ng hß╗ù trß╗ú truy cß║¡p camera.");
+                }
+
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: "user",
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    },
+                    audio: false
+                });
+
+                if (
+                    !faceState.open
+                    || requestId !== faceState.requestId
+                ) {
+                    stream.getTracks().forEach((track) => track.stop());
+                    return;
+                }
+
+                faceState.stream = stream;
+                elements.faceVideo.srcObject = stream;
+
+                stream.getVideoTracks().forEach((track) => {
+                    track.addEventListener("ended", () => {
+                        if (requestId !== faceState.requestId) return;
+                        if (!faceState.open) return;
+
+                        stopFaceDetectionLoop();
+                        stopFaceCamera();
+                        setFaceStatus("Camera ─æ├ú bß╗ï ngß║»t", "error");
+                        showFaceError("Camera ─æ├ú bß╗ï ngß║»t. Vui l├▓ng thß╗¡ lß║íi.");
+                        elements.faceCaptureBtn.disabled = true;
+                        elements.faceRetryBtn.classList.remove("hidden");
+                        elements.faceRetryBtn.classList.add("flex");
+                    });
+                });
+
+                await new Promise((resolve) => {
+                    if (elements.faceVideo.readyState >= 1) {
+                        resolve();
+                        return;
+                    }
+
+                    elements.faceVideo.onloadedmetadata = () => resolve();
+                });
+
+                await elements.faceVideo.play();
+
+                if (
+                    !faceState.open
+                    || requestId !== faceState.requestId
+                ) {
+                    return;
+                }
+
+                elements.facePlaceholder.classList.add("hidden");
+                setFaceStatus("─Éang tß║úi m├┤ h├¼nh nhß║¡n diß╗çn...", "loading");
+
+                const faceapi = await ensureFaceApiModels();
+
+                if (
+                    !faceState.open
+                    || requestId !== faceState.requestId
+                ) {
+                    return;
+                }
+
+                faceState.faceapi = faceapi;
+                setFaceStatus("─Éang t├¼m khu├┤n mß║╖t...", "searching");
+                startFaceDetectionLoop();
+            } catch (error) {
+                console.error("Lß╗ùi khß╗ƒi ─æß╗Öng camera:", error);
+
+                if (requestId !== faceState.requestId) return;
+
+                stopFaceCamera();
+
+                let message = "Kh├┤ng thß╗â khß╗ƒi ─æß╗Öng camera. Vui l├▓ng thß╗¡ lß║íi.";
+
+                if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+                    message = "Bß║ín ─æ├ú tß╗½ chß╗æi quyß╗ün truy cß║¡p camera. H├úy cß║Ñp quyß╗ün camera trong tr├¼nh duyß╗çt rß╗ôi thß╗¡ lß║íi.";
+                } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+                    message = "Kh├┤ng t├¼m thß║Ñy camera tr├¬n thiß║┐t bß╗ï.";
+                } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+                    message = "Camera ─æang ─æ╞░ß╗úc ß╗⌐ng dß╗Ñng kh├íc sß╗¡ dß╗Ñng.";
+                } else if (error.message) {
+                    message = error.message;
+                }
+
+                setFaceStatus("Kh├┤ng thß╗â khß╗ƒi ─æß╗Öng camera", "error");
+                showFaceError(message);
+                elements.faceCaptureBtn.disabled = true;
+                elements.faceRetryBtn.classList.remove("hidden");
+                elements.faceRetryBtn.classList.add("flex");
+            } finally {
+                if (requestId === faceState.requestId) {
+                    faceState.starting = false;
+                }
+            }
+        };
+
+        const captureFaceAndAttend = async () => {
+            if (!faceState.faceapi || !faceState.stream || faceState.capturing) return;
+
+            const captureRequestId = faceState.requestId;
+
+            stopFaceDetectionLoop();
+            faceState.capturing = true;
+            elements.faceCaptureBtn.disabled = true;
+            hideFaceError();
+            hideFaceResult();
+            setFaceStatus("─Éang tr├¡ch xuß║Ñt v├á gß╗¡i dß╗» liß╗çu khu├┤n mß║╖t...", "loading");
+
+            try {
+                const options = new faceState.faceapi.TinyFaceDetectorOptions({
+                    inputSize: 320,
+                    scoreThreshold: 0.5
+                });
+                const detections = await faceState.faceapi
+                    .detectAllFaces(elements.faceVideo, options)
+                    .withFaceLandmarks(true)
+                    .withFaceDescriptors();
+
+                if (captureRequestId !== faceState.requestId) return;
+                if (!faceState.open) return;
+
+                if (detections.length === 0) {
+                    throw new Error("Kh├┤ng ph├ít hiß╗çn khu├┤n mß║╖t. Vui l├▓ng nh├¼n thß║│ng v├áo camera v├á thß╗¡ lß║íi.");
+                }
+
+                if (detections.length > 1) {
+                    throw new Error("C├│ nhiß╗üu khu├┤n mß║╖t trong khung h├¼nh. Chß╗ë ─æß╗â mß╗Öt ng╞░ß╗¥i v├á thß╗¡ lß║íi.");
+                }
+
+                const detection = detections[0];
+                const descriptor = Array.from(detection.descriptor);
+
+                if (descriptor.length !== 128 || !descriptor.every((value) => Number.isFinite(value))) {
+                    throw new Error("Dß╗» liß╗çu khu├┤n mß║╖t kh├┤ng hß╗úp lß╗ç. Vui l├▓ng thß╗¡ lß║íi.");
+                }
+
+                // Gß╗¡i l├¬n server
+                const controller = new AbortController();
+                const timeoutId = window.setTimeout(() => controller.abort(), 20000);
+
+                try {
+                    const response = await fetch(`${API_BASE}/face`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Accept: "application/json"
+                        },
+                        body: JSON.stringify({
+                            descriptor,
+                            action: faceState.action
+                        }),
+                        signal: controller.signal
+                    });
+
+                    let payload = {};
+
+                    try {
+                        payload = await response.json();
+                    } catch {
+                        payload = {};
+                    }
+
+                    if (captureRequestId !== faceState.requestId) return;
+
+                    if (!response.ok || !payload.success) {
+                        throw new Error(payload.message || "Kh├┤ng thß╗â chß║Ñm c├┤ng.");
+                    }
+
+                    // Th├ánh c├┤ng
+                    faceState.capturing = false;
+                    setFaceStatus("Chß║Ñm c├┤ng th├ánh c├┤ng!", "success");
+
+                    const employee = payload.employee;
+                    elements.faceResultMessage.textContent = payload.message || "Chß║Ñm c├┤ng th├ánh c├┤ng!";
+                    elements.faceResultEmployee.textContent = employee
+                        ? `${employee.full_name} (${employee.employee_code})`
+                        : "";
+
+                    const eval_ = payload.evaluation;
+                    let detailParts = [];
+
+                    if (eval_) {
+                        if (eval_.isLate) {
+                            detailParts.push(`─Éi muß╗Ön ${eval_.lateMinutes} ph├║t`);
+                        }
+                        if (eval_.isEarlyLeave) {
+                            detailParts.push(`Vß╗ü sß╗¢m ${eval_.earlyLeaveMinutes} ph├║t`);
+                        }
+                        if (eval_.suggestedStatus === "present") {
+                            detailParts.push("─É├║ng giß╗¥");
+                        }
+                    }
+
+                    elements.faceResultDetail.textContent = detailParts.join(" ΓÇó ");
+                    elements.faceResult.classList.remove("hidden");
+                    elements.faceCaptureBtn.disabled = true;
+
+                    showToast("success", payload.message || "Chß║Ñm c├┤ng th├ánh c├┤ng!");
+                    await loadData();
+                } finally {
+                    window.clearTimeout(timeoutId);
+                }
+            } catch (error) {
+                if (captureRequestId !== faceState.requestId) return;
+
+                console.error("Lß╗ùi chß║Ñm c├┤ng khu├┤n mß║╖t:", error);
+                faceState.capturing = false;
+
+                const message = error.name === "AbortError"
+                    ? "Hß║┐t thß╗¥i gian chß╗¥ phß║ún hß╗ôi tß╗½ m├íy chß╗º."
+                    : error.message;
+
+                setFaceStatus("Ch╞░a thß╗â chß║Ñm c├┤ng", "error");
+                showFaceError(message);
+                elements.faceCaptureBtn.disabled = false;
+
+                if (
+                    faceState.open
+                    && faceState.stream
+                    && faceState.faceapi
+                ) {
+                    startFaceDetectionLoop();
+                }
+            }
+        };
+
+        const setFaceAction = (action) => {
+            faceState.action = action;
+            const isCheckIn = action === "check_in";
+
+            elements.faceActionCheckin.classList.toggle("bg-primary", isCheckIn);
+            elements.faceActionCheckin.classList.toggle("text-on-primary", isCheckIn);
+            elements.faceActionCheckin.classList.toggle("bg-surface-container-high", !isCheckIn);
+            elements.faceActionCheckin.classList.toggle("text-on-surface-variant", !isCheckIn);
+            elements.faceActionCheckin.classList.toggle("hover:bg-surface-container", !isCheckIn);
+
+            elements.faceActionCheckout.classList.toggle("bg-primary", !isCheckIn);
+            elements.faceActionCheckout.classList.toggle("text-on-primary", !isCheckIn);
+            elements.faceActionCheckout.classList.toggle("bg-surface-container-high", isCheckIn);
+            elements.faceActionCheckout.classList.toggle("text-on-surface-variant", isCheckIn);
+            elements.faceActionCheckout.classList.toggle("hover:bg-surface-container", isCheckIn);
+        };
+
+        const openFaceModal = () => {
+            faceState.open = true;
+            faceState.capturing = false;
+            faceState.starting = false;
+
+            hideFaceError();
+            hideFaceResult();
+            elements.facePlaceholder.classList.remove("hidden");
+            elements.faceStartBtn.classList.remove("hidden");
+            elements.faceStartBtn.classList.add("flex");
+            elements.faceCaptureBtn.classList.add("hidden");
+            elements.faceCaptureBtn.classList.remove("flex");
+            elements.faceCaptureBtn.disabled = true;
+            elements.faceRetryBtn.classList.add("hidden");
+            elements.faceRetryBtn.classList.remove("flex");
+            setFaceStatus("Bß║Ñm n├║t b├¬n d╞░ß╗¢i ─æß╗â bß║»t ─æß║ºu", "info");
+            elements.faceHint.textContent = "Nh├¼n thß║│ng v├áo camera, giß╗» khu├┤n mß║╖t trong khung oval. Hß╗ç thß╗æng sß║╜ tß╗▒ ─æß╗Öng nhß║¡n diß╗çn.";
+            setFaceAction("check_in");
+
+            openModal(elements.faceModal);
+        };
+
+        // ---- Chß║Ñm c├┤ng thß╗º c├┤ng ----
+
+        const closeManualModal = () => {
+            if (manualState.submitting) return;
+
+            manualState.open = false;
+            closeModal(elements.manualModal);
+        };
+
+        const setManualAction = (action) => {
+            manualState.action = action;
+            const isCheckIn = action === "check_in";
+
+            elements.manualActionCheckin.classList.toggle("bg-primary", isCheckIn);
+            elements.manualActionCheckin.classList.toggle("text-on-primary", isCheckIn);
+            elements.manualActionCheckin.classList.toggle("bg-surface-container-high", !isCheckIn);
+            elements.manualActionCheckin.classList.toggle("text-on-surface-variant", !isCheckIn);
+            elements.manualActionCheckin.classList.toggle("hover:bg-surface-container", !isCheckIn);
+
+            elements.manualActionCheckout.classList.toggle("bg-primary", !isCheckIn);
+            elements.manualActionCheckout.classList.toggle("text-on-primary", !isCheckIn);
+            elements.manualActionCheckout.classList.toggle("bg-surface-container-high", isCheckIn);
+            elements.manualActionCheckout.classList.toggle("text-on-surface-variant", isCheckIn);
+            elements.manualActionCheckout.classList.toggle("hover:bg-surface-container", isCheckIn);
+        };
+
+        const openManualModal = (employee, defaultAction) => {
+            if (!employee) return;
+
+            manualState.open = true;
+            manualState.employee = employee;
+            manualState.submitting = false;
+
+            setText(elements.manualEmployeeName, employee.full_name);
+            setText(elements.manualEmployeeCode, employee.employee_code);
+            elements.manualReason.value = "";
+
+            elements.manualError.classList.add("hidden");
+            elements.manualSubmitBtn.disabled = false;
+            elements.manualSubmitBtn.innerHTML = `
+                <span class="material-symbols-outlined text-[18px]">check</span>
+                <span>X├íc nhß║¡n chß║Ñm c├┤ng</span>
+            `;
+
+            setManualAction(defaultAction || "check_in");
+            openModal(elements.manualModal);
+            elements.manualReason.focus();
+        };
+
+        const submitManualAttendance = async () => {
+            if (!manualState.employee || manualState.submitting) return;
+
+            const reason = elements.manualReason.value.trim();
+
+            if (reason.length < 5 || reason.length > 255) {
+                elements.manualErrorMessage.textContent = "Vui l├▓ng nhß║¡p l├╜ do chß║Ñm c├┤ng thß╗º c├┤ng (tß╗½ 5 ─æß║┐n 255 k├╜ tß╗▒).";
+                elements.manualError.classList.remove("hidden");
+                elements.manualReason.focus();
+                return;
+            }
+
+            manualState.submitting = true;
+            elements.manualError.classList.add("hidden");
+            elements.manualSubmitBtn.disabled = true;
+            elements.manualSubmitBtn.innerHTML = `
+                <span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                <span>─Éang xß╗¡ l├╜...</span>
+            `;
+
+            try {
+                const response = await fetch(`${API_BASE}/manual`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json"
+                    },
+                    body: JSON.stringify({
+                        employee_id: manualState.employee.id,
+                        action: manualState.action,
+                        reason
+                    })
+                });
+
+                let payload = {};
+
+                try {
+                    payload = await response.json();
+                } catch {
+                    payload = {};
+                }
+
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.message || "Kh├┤ng thß╗â chß║Ñm c├┤ng thß╗º c├┤ng.");
+                }
+
+                manualState.submitting = false;
+                state.lastFocused = null;
+                closeModal(elements.manualModal, false);
+                elements.refreshBtn.focus();
+                showToast("success", payload.message || "Chß║Ñm c├┤ng thß╗º c├┤ng th├ánh c├┤ng.");
+                await loadData();
+            } catch (error) {
+                manualState.submitting = false;
+                elements.manualSubmitBtn.disabled = false;
+                elements.manualSubmitBtn.innerHTML = `
+                    <span class="material-symbols-outlined text-[18px]">check</span>
+                    <span>X├íc nhß║¡n chß║Ñm c├┤ng</span>
+                `;
+                elements.manualErrorMessage.textContent = error.message;
+                elements.manualError.classList.remove("hidden");
+                showToast("error", error.message);
+            }
+        };
+
+        // ---- Sß╗▒ kiß╗çn ----
+
+        let searchTimer = null;
+
+        elements.refreshBtn.addEventListener("click", loadData);
+
+        elements.applyFilterBtn.addEventListener("click", () => {
+            window.clearTimeout(searchTimer);
+            state.search = elements.searchInput.value.trim();
+            state.department = elements.departmentSelect.value;
+            state.status = elements.statusSelect.value;
+            state.date = elements.dateInput.value || getTodayString();
+            loadData();
         });
-    });
 
-    lastUpdated.textContent = `Trang tải lúc ${formatRefreshTime(new Date())}`;
-    refreshButton.addEventListener("click", () => refreshAttendance(true));
-    document.getElementById("export-attendance").addEventListener("click", async () => {
-        const exportButton = document.getElementById("export-attendance");
-        exportButton.disabled = true;
-        try {
-            const response = await fetch("/admin/attendance/export-csv", { cache: "no-store" });
-            if (!response.ok) throw new Error("Không thể xuất CSV lịch sử chấm công.");
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = "lich-su-cham-cong.csv";
-            link.click();
-            window.setTimeout(() => URL.revokeObjectURL(url), 0);
-        } catch (error) {
-            window.alert(error.message);
-        } finally {
-            exportButton.disabled = false;
-        }
-    });
-    const startAttendanceAutoSync = () => {
-        window.clearInterval(attendanceAutoSyncTimer);
-        attendanceAutoSyncTimer = window.setInterval(() => refreshAttendance(), 30000);
-    };
-    startAttendanceAutoSync();
+        elements.resetFilterBtn.addEventListener("click", resetFilters);
 
-    autoSyncButton.addEventListener("click", () => {
-        attendanceAutoSyncEnabled = !attendanceAutoSyncEnabled;
-        autoSyncButton.setAttribute("aria-pressed", String(attendanceAutoSyncEnabled));
-        autoSyncIcon.textContent = attendanceAutoSyncEnabled ? "pause_circle" : "play_circle";
-        autoSyncLabel.textContent = attendanceAutoSyncEnabled ? "Tạm dừng tự động" : "Bật tự đồng bộ";
-        document.getElementById("attendance-sync-status").textContent =
-            attendanceAutoSyncEnabled ? "Tự đồng bộ mỗi 30 giây" : "Tự đồng bộ đang tạm dừng";
+        elements.searchInput.addEventListener("input", () => {
+            window.clearTimeout(searchTimer);
+            searchTimer = window.setTimeout(() => {
+                state.search = elements.searchInput.value.trim();
+                loadData();
+            }, 350);
+        });
 
-        if (attendanceAutoSyncEnabled) {
-            startAttendanceAutoSync();
-            refreshAttendance(true);
-        } else {
-            window.clearInterval(attendanceAutoSyncTimer);
-        }
-    });
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") refreshAttendance();
-    });
-    window.addEventListener("online", () => {
-        if (attendanceAutoSyncEnabled) refreshAttendance(true);
-    });
+        elements.searchInput.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
 
-    filterRecords();
-});
+            event.preventDefault();
+            window.clearTimeout(searchTimer);
+            state.search = elements.searchInput.value.trim();
+            state.department = elements.departmentSelect.value;
+            state.status = elements.statusSelect.value;
+            state.date = elements.dateInput.value || getTodayString();
+            loadData();
+        });
+
+        elements.dateInput.addEventListener("change", () => {
+            state.date = elements.dateInput.value || getTodayString();
+            loadData();
+        });
+
+        elements.departmentSelect.addEventListener("change", () => {
+            state.department = elements.departmentSelect.value;
+            loadData();
+        });
+
+        elements.statusSelect.addEventListener("change", () => {
+            state.status = elements.statusSelect.value;
+            loadData();
+        });
+
+        elements.tableBody.addEventListener("click", (event) => {
+            const manualButton = event.target.closest("[data-manual-id]");
+
+            if (manualButton) {
+                openManualModal({
+                    id: manualButton.getAttribute("data-manual-id"),
+                    full_name: manualButton.getAttribute("data-employee-name"),
+                    employee_code: manualButton.getAttribute("data-employee-code")
+                }, manualButton.getAttribute("data-manual-action") || "check_in");
+                return;
+            }
+
+            if (event.target.closest("[data-reset-filter]")) {
+                resetFilters();
+                return;
+            }
+
+            if (event.target.closest("[data-retry]")) {
+                loadData();
+            }
+        });
+
+        // Modal chß║Ñm c├┤ng khu├┤n mß║╖t
+        elements.faceCheckinBtn.addEventListener("click", openFaceModal);
+
+        elements.faceActionCheckin.addEventListener("click", () => setFaceAction("check_in"));
+        elements.faceActionCheckout.addEventListener("click", () => setFaceAction("check_out"));
+
+        elements.faceStartBtn.addEventListener("click", () => {
+            startFaceCamera();
+        });
+
+        elements.faceCaptureBtn.addEventListener("click", captureFaceAndAttend);
+
+        elements.faceRetryBtn.addEventListener("click", () => {
+            startFaceCamera();
+        });
+
+        document.querySelectorAll('[data-close-modal="face"]').forEach((element) => {
+            element.addEventListener("click", closeFaceModal);
+        });
+
+        // Modal chß║Ñm c├┤ng thß╗º c├┤ng
+        elements.manualActionCheckin.addEventListener("click", () => setManualAction("check_in"));
+        elements.manualActionCheckout.addEventListener("click", () => setManualAction("check_out"));
+
+        elements.manualSubmitBtn.addEventListener("click", submitManualAttendance);
+
+        document.querySelectorAll('[data-close-modal="manual"]').forEach((element) => {
+            element.addEventListener("click", closeManualModal);
+        });
+
+        // ESC
+        document.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape") return;
+
+            if (!elements.manualModal.classList.contains("hidden")) {
+                closeManualModal();
+                return;
+            }
+
+            if (!elements.faceModal.classList.contains("hidden")) {
+                closeFaceModal();
+            }
+        });
+
+        // Khß╗ƒi tß║ío
+        state.date = getTodayString();
+        elements.dateInput.value = state.date;
+        renderSkeleton();
+        loadData();
+    })();
 </script>
 
 <%- include("../partials/adminFoot") %>

@@ -11,6 +11,7 @@
     "init:shift-module": "node backend/scripts/initShiftModule.js",
     "init:device-module": "node backend/scripts/initDeviceModule.js",
     "init:employee-status": "node backend/scripts/initEmployeeStatusModule.js",
+    "init:face-profiles": "node backend/scripts/initFaceProfiles.js",
     "seed:devices": "node backend/scripts/seedSampleDevices.js",
     "seed:shifts": "node backend/scripts/seedSampleShifts.js",
     "seed:employees": "node backend/scripts/seedSampleEmployees.js",
@@ -21,6 +22,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@vladmandic/face-api": "^1.7.15",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "dotenv": "^18.0.10",
