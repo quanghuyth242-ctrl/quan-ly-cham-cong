@@ -58,40 +58,68 @@
 </style>
 
 <!-- Tiêu đề trang -->
-<section class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+<section class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-2xl border border-surface-container-high shadow-sm">
     <div class="flex flex-col gap-space-xs">
         <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
-            <span class="flex h-2 w-2 rounded-full bg-primary"></span>
+            <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-primary-fixed text-primary">
+                <span class="material-symbols-outlined text-[18px]">face</span>
+            </span>
             <span class="uppercase tracking-wider">Sinh trắc học &amp; bảo mật</span>
         </div>
         <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">
-            Quản lý khuôn mặt nhân viên
+            Quản lý khuôn mặt
         </h2>
         <p class="font-body-md text-body-md text-on-surface-variant max-w-3xl">
-            Theo dõi trạng thái đăng ký khuôn mặt, xem chi tiết hồ sơ và quản lý dữ liệu sinh trắc học của nhân viên.
+            Theo dõi hồ sơ, trạng thái đồng ý và dữ liệu sinh trắc học của nhân viên trên một màn hình.
         </p>
     </div>
 
-    <div class="flex flex-wrap items-center gap-space-sm">
-        <span class="inline-flex items-center gap-space-xs px-space-md py-space-sm rounded-xl bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm">
+    <div class="flex flex-wrap items-center gap-space-sm xl:max-w-[720px] xl:justify-end">
+        <span class="inline-flex items-center gap-space-xs px-space-md py-space-sm rounded-xl border border-primary/10 bg-primary-fixed/50 text-primary font-label-sm text-label-sm">
             <span class="material-symbols-outlined text-[18px] text-primary">verified_user</span>
             Chỉ quản trị viên
         </span>
 
         <button
+            id="face-recognize-open"
+            class="flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-md py-space-sm rounded-xl font-label-md text-label-md shadow-sm transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            type="button"
+        >
+            <span class="material-symbols-outlined text-[18px]">face_search</span>
+            <span>Nhận diện khuôn mặt</span>
+        </button>
+
+        <button
             id="face-refresh"
-            class="flex items-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            class="flex items-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             type="button"
         >
             <span id="face-refresh-icon" class="material-symbols-outlined text-[18px] text-on-surface-variant">refresh</span>
             <span>Làm mới</span>
         </button>
+
+        <div class="flex items-center gap-space-sm px-space-md py-space-sm rounded-xl border border-surface-container-high bg-surface-container-low">
+            <button
+                id="face-auto-sync-toggle"
+                class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-2"
+                type="button"
+                role="switch"
+                aria-checked="true"
+                aria-label="Tắt đồng bộ tự động"
+            >
+                <span id="face-auto-sync-knob" class="inline-block h-5 w-5 translate-x-5 transform rounded-full bg-white shadow transition-transform"></span>
+            </button>
+            <div class="min-w-0">
+                <p id="face-auto-sync-label" class="font-label-sm text-label-sm text-on-surface font-semibold">Đồng bộ tự động đang bật</p>
+                <p id="face-auto-sync-status" class="max-w-80 truncate text-[11px] text-on-surface-variant" role="status" aria-live="polite">Đang chờ cập nhật dữ liệu...</p>
+            </div>
+        </div>
     </div>
 </section>
 
 <!-- Thống kê -->
 <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-lg">
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-md">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high border-l-4 border-l-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex items-center justify-between gap-space-md">
         <div class="flex flex-col min-w-0">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng nhân viên</span>
             <span id="face-stat-total" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">—</span>
@@ -102,7 +130,7 @@
         </div>
     </div>
 
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-md">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high border-l-4 border-l-secondary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex items-center justify-between gap-space-md">
         <div class="flex flex-col min-w-0">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đã đăng ký</span>
             <span id="face-stat-registered" class="font-headline-xl text-headline-xl text-secondary font-bold mt-space-xs">—</span>
@@ -113,7 +141,7 @@
         </div>
     </div>
 
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-md">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high border-l-4 border-l-amber-400 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex items-center justify-between gap-space-md">
         <div class="flex flex-col min-w-0">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Chưa đăng ký</span>
             <span id="face-stat-unregistered" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">—</span>
@@ -124,7 +152,7 @@
         </div>
     </div>
 
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between gap-space-sm">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high border-l-4 border-l-indigo-400 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between gap-space-sm">
         <div class="flex items-start justify-between gap-space-md">
             <div class="flex flex-col min-w-0">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tỷ lệ đăng ký</span>
@@ -141,24 +169,49 @@
 </section>
 
 <!-- Ghi chú quy trình -->
-<section class="flex items-start gap-space-md p-space-lg rounded-xl bg-primary-fixed border border-surface-container-high">
-    <div class="w-9 h-9 rounded-xl bg-primary text-on-primary flex items-center justify-center shrink-0">
-        <span class="material-symbols-outlined text-[20px]">info</span>
+<section class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(420px,1.1fr)] items-center gap-space-lg p-space-lg rounded-2xl bg-primary-fixed/70 border border-primary/10">
+    <div class="flex items-start gap-space-md">
+        <div class="w-10 h-10 rounded-xl bg-primary text-on-primary flex items-center justify-center shrink-0 shadow-sm">
+            <span class="material-symbols-outlined text-[22px]">shield_person</span>
+        </div>
+        <div class="flex flex-col gap-space-xs">
+            <p class="font-label-md text-label-md text-primary font-semibold">Quy trình an toàn</p>
+            <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Chỉ lưu Face Descriptor 128 chiều, không lưu ảnh. Chỉ thu thập sau khi nhân viên đã đồng ý.
+            </p>
+        </div>
     </div>
-    <div class="flex flex-col gap-space-xs">
-        <p class="font-label-md text-label-md text-primary font-semibold">Quy trình đăng ký khuôn mặt</p>
-        <p class="font-body-sm text-body-sm text-on-surface-variant">
-            Chọn nhân viên → Đăng ký khuôn mặt → Xác nhận. Hệ thống chỉ lưu Face Descriptor 128 chiều, không lưu ảnh khuôn mặt.
-            Dữ liệu chỉ được thu thập khi nhân viên đã đồng ý.
-        </p>
-    </div>
+    <ol class="grid grid-cols-1 sm:grid-cols-3 gap-space-sm" aria-label="Các bước đăng ký khuôn mặt">
+        <li class="flex items-center gap-space-sm rounded-xl bg-white/70 px-space-md py-space-sm">
+            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-on-primary font-label-sm">1</span>
+            <span class="font-label-sm text-label-sm text-on-surface">Xác nhận đồng ý</span>
+        </li>
+        <li class="flex items-center gap-space-sm rounded-xl bg-white/70 px-space-md py-space-sm">
+            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-on-primary font-label-sm">2</span>
+            <span class="font-label-sm text-label-sm text-on-surface">Chụp khuôn mặt</span>
+        </li>
+        <li class="flex items-center gap-space-sm rounded-xl bg-white/70 px-space-md py-space-sm">
+            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-on-primary font-label-sm">3</span>
+            <span class="font-label-sm text-label-sm text-on-surface">Lưu hồ sơ</span>
+        </li>
+    </ol>
 </section>
 
 <!-- Danh sách nhân viên -->
-<section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-    <div class="p-space-lg border-b border-surface-container-high">
-        <div class="flex flex-col xl:flex-row xl:items-end gap-space-md">
-            <div class="flex-1 min-w-0">
+<section class="bg-surface-container-lowest rounded-2xl border border-surface-container-high shadow-sm overflow-hidden">
+    <div class="p-space-lg border-b border-surface-container-high bg-surface-container-low/40">
+        <div class="flex items-center gap-space-sm mb-space-lg">
+            <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-fixed text-primary">
+                <span class="material-symbols-outlined text-[20px]">badge</span>
+            </div>
+            <div>
+                <h3 class="font-label-md text-label-md text-on-surface font-semibold">Danh sách hồ sơ</h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">Tra cứu nhân viên theo phòng ban và trạng thái đăng ký khuôn mặt.</p>
+            </div>
+        </div>
+
+        <div role="search" aria-label="Tìm kiếm và lọc hồ sơ" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_220px_220px_auto] gap-space-md items-end">
+            <div class="min-w-0 sm:col-span-2 xl:col-span-1">
                 <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="face-search">
                     Tìm kiếm nhân viên
                 </label>
@@ -172,6 +225,22 @@
                         autocomplete="off"
                         placeholder="Nhập mã nhân viên hoặc họ tên..."
                     >
+                </div>
+            </div>
+
+            <div class="w-full xl:w-56">
+                <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="face-department">
+                    Phòng ban
+                </label>
+                <div class="relative">
+                    <select
+                        id="face-department"
+                        class="w-full appearance-none bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-space-md pr-space-xl py-space-sm rounded-xl outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                        name="department"
+                    >
+                        <option value="">Tất cả phòng ban</option>
+                    </select>
+                    <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
                 </div>
             </div>
 
@@ -193,10 +262,10 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-space-sm">
+            <div class="flex flex-wrap items-center gap-space-sm sm:col-span-2 xl:col-span-1 xl:justify-end">
                 <button
                     id="face-apply-filter"
-                    class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md shadow-md transition-all"
+                    class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md shadow-sm transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                     type="button"
                 >
                     <span class="material-symbols-outlined text-[18px]">filter_alt</span>
@@ -204,7 +273,7 @@
                 </button>
                 <button
                     id="face-reset-filter"
-                    class="px-space-md py-space-sm text-on-surface-variant hover:text-on-surface font-label-md text-label-md rounded-xl hover:bg-surface-container-low transition-colors"
+                    class="px-space-md py-space-sm border border-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md rounded-xl hover:bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     type="button"
                 >
                     Xóa lọc
@@ -228,9 +297,9 @@
         </table>
     </div>
 
-    <div class="p-space-lg bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-sm text-body-sm text-on-surface-variant">
-        <span id="face-table-summary">Đang tải dữ liệu...</span>
-        <span id="face-table-total"></span>
+    <div class="p-space-lg bg-surface-container-low/70 flex flex-col sm:flex-row items-center justify-between gap-space-sm text-body-sm text-on-surface-variant">
+        <span id="face-table-summary" class="inline-flex items-center gap-space-xs rounded-full border border-surface-container-high bg-white px-space-md py-space-xs font-label-sm text-label-sm">Đang tải dữ liệu...</span>
+        <span id="face-table-total" class="font-body-sm text-body-sm"></span>
     </div>
 </section>
 
@@ -518,8 +587,8 @@
                             <span class="material-symbols-outlined text-[22px]">verified_user</span>
                         </div>
                         <div class="flex flex-col gap-space-xs">
-                            <p class="font-label-md text-label-md text-on-surface font-semibold">Xác nhận sự đồng ý của nhân viên</p>
-                            <p class="font-body-sm text-body-sm text-on-surface-variant">
+                            <p id="face-capture-consent-title" class="font-label-md text-label-md text-on-surface font-semibold">Xác nhận sự đồng ý của nhân viên</p>
+                            <p id="face-capture-consent-description" class="font-body-sm text-body-sm text-on-surface-variant">
                                 Trước khi thu thập dữ liệu khuôn mặt, quản trị viên cần xác nhận nhân viên đã được thông báo và đồng ý.
                             </p>
                         </div>
@@ -531,14 +600,14 @@
                             class="mt-0.5 h-4 w-4 rounded border-outline text-primary focus:ring-2 focus:ring-primary/20"
                             type="checkbox"
                         >
-                        <span class="font-body-sm text-body-sm text-on-surface">
+                        <span id="face-capture-consent-label" class="font-body-sm text-body-sm text-on-surface">
                             Tôi xác nhận <strong>nhân viên đã được thông báo và đồng ý</strong> cho việc thu thập, lưu trữ descriptor khuôn mặt 128 chiều để phục vụ chấm công.
                         </span>
                     </label>
 
                     <div class="flex items-start gap-space-sm p-space-md rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
                         <span class="material-symbols-outlined text-[20px] shrink-0">shield_lock</span>
-                        <p class="font-body-sm text-body-sm">
+                        <p id="face-capture-privacy-note" class="font-body-sm text-body-sm">
                             Hệ thống chỉ lưu descriptor 128 chiều, không lưu ảnh khuôn mặt. Dữ liệu được dùng để đối chiếu khi chấm công.
                         </p>
                     </div>
@@ -679,7 +748,13 @@
         const state = {
             search: "",
             status: "all",
+            department: "",
             employees: [],
+            metadataLoaded: false,
+            autoSyncEnabled: true,
+            syncInProgress: false,
+            lastSyncAt: null,
+            syncError: null,
             stats: {
                 total: 0,
                 registered: 0,
@@ -693,10 +768,19 @@
             lastFocused: null
         };
 
+        let autoSyncTimer = null;
+        let autoSyncInFlight = false;
+
         const elements = {
             refreshBtn: document.getElementById("face-refresh"),
             refreshIcon: document.getElementById("face-refresh-icon"),
+            autoSyncToggle: document.getElementById("face-auto-sync-toggle"),
+            autoSyncKnob: document.getElementById("face-auto-sync-knob"),
+            autoSyncLabel: document.getElementById("face-auto-sync-label"),
+            autoSyncStatus: document.getElementById("face-auto-sync-status"),
+            recognizeOpenBtn: document.getElementById("face-recognize-open"),
             searchInput: document.getElementById("face-search"),
+            departmentSelect: document.getElementById("face-department"),
             statusSelect: document.getElementById("face-status"),
             applyFilterBtn: document.getElementById("face-apply-filter"),
             resetFilterBtn: document.getElementById("face-reset-filter"),
@@ -740,7 +824,11 @@
             captureStepCamera: document.getElementById("face-capture-camera-step"),
             captureStepReview: document.getElementById("face-capture-review-step"),
             captureStepIndicators: document.querySelectorAll("[data-capture-step]"),
+            captureConsentTitle: document.getElementById("face-capture-consent-title"),
+            captureConsentDescription: document.getElementById("face-capture-consent-description"),
             captureConsent: document.getElementById("face-capture-consent"),
+            captureConsentLabel: document.getElementById("face-capture-consent-label"),
+            capturePrivacyNote: document.getElementById("face-capture-privacy-note"),
             captureContinueBtn: document.getElementById("face-capture-continue"),
             captureVideo: document.getElementById("face-capture-video"),
             capturePlaceholder: document.getElementById("face-capture-placeholder"),
@@ -789,37 +877,6 @@
             if (element) {
                 element.textContent = value === null || value === undefined || value === "" ? "—" : value;
             }
-        };
-
-        const formatDate = (value) => {
-            if (!value) return "—";
-
-            const date = new Date(value);
-
-            if (Number.isNaN(date.getTime())) return "—";
-
-            return new Intl.DateTimeFormat("vi-VN", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric"
-            }).format(date);
-        };
-
-        const formatDateTime = (value) => {
-            if (!value) return "—";
-
-            const date = new Date(value);
-
-            if (Number.isNaN(date.getTime())) return "—";
-
-            return new Intl.DateTimeFormat("vi-VN", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false
-            }).format(date);
         };
 
         const getInitials = (name) => {
@@ -963,6 +1020,31 @@
             elements.statRateBar.style.width = `${safeRate}%`;
         };
 
+        const renderDepartmentOptions = (departments) => {
+            const selectedDepartment = state.department;
+            const departmentNames = Array.isArray(departments)
+                ? [...new Set(departments.map((department) => String(department || "").trim()).filter(Boolean))]
+                : [];
+
+            elements.departmentSelect.innerHTML = `<option value="">Tất cả phòng ban</option>`;
+
+            departmentNames.forEach((department) => {
+                const option = document.createElement("option");
+                option.value = department;
+                option.textContent = department;
+                elements.departmentSelect.appendChild(option);
+            });
+
+            if (selectedDepartment && !departmentNames.includes(selectedDepartment)) {
+                const option = document.createElement("option");
+                option.value = selectedDepartment;
+                option.textContent = selectedDepartment;
+                elements.departmentSelect.appendChild(option);
+            }
+
+            elements.departmentSelect.value = selectedDepartment;
+        };
+
         const updateSummary = () => {
             elements.tableSummary.textContent = `Hiển thị ${state.employees.length} nhân viên`;
             elements.tableTotal.textContent = `Tổng ${state.stats.total} nhân viên trong hệ thống`;
@@ -971,7 +1053,7 @@
         const renderRow = (employee) => {
             const registered = Boolean(employee.face_profile_id);
             const initials = getInitials(employee.full_name);
-            const registeredAt = registered ? formatDate(employee.face_created_at) : "—";
+            const registeredAt = registered ? employee.face_created_at : "—";
             const safeName = escapeHtml(employee.full_name);
             const safeCode = escapeHtml(employee.employee_code);
 
@@ -1072,7 +1154,7 @@
                                     <span class="material-symbols-outlined text-[28px]">group_off</span>
                                 </div>
                                 <p class="font-label-md text-label-md text-on-surface">Không tìm thấy nhân viên phù hợp</p>
-                                <p class="font-body-sm text-body-sm text-on-surface-variant">Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc trạng thái.</p>
+                                <p class="font-body-sm text-body-sm text-on-surface-variant">Thử thay đổi từ khóa tìm kiếm hoặc các bộ lọc phòng ban, trạng thái.</p>
                                 <button
                                     class="mt-space-xs flex items-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-label-sm text-label-sm transition-colors"
                                     data-reset-filter
@@ -1132,10 +1214,65 @@
             }
         };
 
-        const loadData = async () => {
-            const requestId = ++state.requestId;
+        const renderAutoSyncStatus = () => {
+            const lastUpdated = state.lastSyncAt
+                ? `Cập nhật gần nhất lúc ${state.lastSyncAt.toLocaleTimeString("vi-VN")}`
+                : "Chưa có lần đồng bộ thành công";
+            let status = "Tự động đồng bộ đang tạm dừng";
 
-            setLoading(true);
+            if (state.syncError) {
+                status = `Không đồng bộ được: ${state.syncError}`;
+            } else if (state.syncInProgress) {
+                status = "Đang đồng bộ dữ liệu...";
+            } else if (state.autoSyncEnabled) {
+                status = "Tự động cập nhật mỗi 30 giây";
+            }
+
+            elements.autoSyncToggle.setAttribute("aria-checked", String(state.autoSyncEnabled));
+            elements.autoSyncToggle.setAttribute(
+                "aria-label",
+                state.autoSyncEnabled ? "Tắt đồng bộ tự động" : "Bật đồng bộ tự động"
+            );
+            elements.autoSyncToggle.classList.toggle("bg-primary", state.autoSyncEnabled);
+            elements.autoSyncToggle.classList.toggle("bg-surface-container-high", !state.autoSyncEnabled);
+            elements.autoSyncKnob.classList.toggle("translate-x-5", state.autoSyncEnabled);
+            elements.autoSyncKnob.classList.toggle("translate-x-0", !state.autoSyncEnabled);
+            elements.autoSyncLabel.textContent = state.autoSyncEnabled
+                ? "Đồng bộ tự động đang bật"
+                : "Đồng bộ tự động đang tắt";
+            elements.autoSyncStatus.textContent = `${status} · ${lastUpdated}`;
+        };
+
+        const startAutoSync = () => {
+            if (autoSyncTimer !== null) {
+                window.clearInterval(autoSyncTimer);
+                autoSyncTimer = null;
+            }
+
+            if (!state.autoSyncEnabled) return;
+
+            autoSyncTimer = window.setInterval(() => {
+                if (!document.hidden) {
+                    loadData({ background: true, refreshMetadata: true });
+                }
+            }, 30000);
+        };
+
+        const loadData = async ({ background = false, refreshMetadata = false } = {}) => {
+            if (background && (state.syncInProgress || autoSyncInFlight)) return;
+            if (background) autoSyncInFlight = true;
+
+            const requestId = ++state.requestId;
+            state.syncInProgress = true;
+
+            if (refreshMetadata) {
+                state.metadataLoaded = false;
+            }
+
+            if (!background) {
+                setLoading(true);
+            }
+            renderAutoSyncStatus();
 
             try {
                 const params = new URLSearchParams();
@@ -1147,6 +1284,15 @@
                 if (state.status && state.status !== "all") {
                     params.set("status", state.status);
                 }
+
+                if (state.department) {
+                    params.set("department", state.department);
+                }
+
+                params.set(
+                    "includeMeta",
+                    refreshMetadata || !state.metadataLoaded ? "true" : "false"
+                );
 
                 const query = params.toString();
                 const response = await fetch(`${API_BASE}/data${query ? `?${query}` : ""}`, {
@@ -1170,27 +1316,47 @@
                 }
 
                 state.employees = Array.isArray(payload.employees) ? payload.employees : [];
-                state.stats = {
-                    total: Number(payload.stats?.total || 0),
-                    registered: Number(payload.stats?.registered || 0),
-                    unregistered: Number(payload.stats?.unregistered || 0),
-                    registrationRate: Number(payload.stats?.registrationRate || 0)
-                };
+                if (payload.stats && Array.isArray(payload.departments)) {
+                    renderDepartmentOptions(payload.departments);
+                    state.stats = {
+                        total: Number(payload.stats.total || 0),
+                        registered: Number(payload.stats.registered || 0),
+                        unregistered: Number(payload.stats.unregistered || 0),
+                        registrationRate: Number(payload.stats.registrationRate || 0)
+                    };
+                    state.metadataLoaded = true;
+                    renderStats();
+                }
 
-                renderStats();
                 renderTable();
                 updateSummary();
+                state.lastSyncAt = new Date();
+                state.syncError = null;
             } catch (error) {
                 if (requestId !== state.requestId) return;
 
-                state.employees = [];
-                renderErrorState(error.message);
-                elements.tableSummary.textContent = "Không tải được dữ liệu";
-                elements.tableTotal.textContent = "";
-                showToast("error", error.message);
+                state.syncError = error.message;
+
+                if (!background) {
+                    state.employees = [];
+                    renderErrorState(error.message);
+                    elements.tableSummary.textContent = "Không tải được dữ liệu";
+                    elements.tableTotal.textContent = "";
+                    showToast("error", error.message);
+                }
             } finally {
+                if (background) {
+                    autoSyncInFlight = false;
+                }
+
                 if (requestId === state.requestId) {
-                    setLoading(false);
+                    state.syncInProgress = false;
+
+                    if (!background) {
+                        setLoading(false);
+                    }
+
+                    renderAutoSyncStatus();
                 }
             }
         };
@@ -1249,8 +1415,8 @@
             setText(elements.detailEmail, employee.email);
             setText(elements.detailPhone, employee.phone);
             setText(elements.detailProfileId, registered ? `#${employee.face_profile_id}` : "Chưa có hồ sơ");
-            setText(elements.detailRegisteredAt, registered ? formatDateTime(employee.face_created_at) : "—");
-            setText(elements.detailConsentAt, registered ? formatDateTime(employee.consent_at) : "—");
+            setText(elements.detailRegisteredAt, registered ? employee.face_created_at : "—");
+            setText(elements.detailConsentAt, registered ? employee.consent_at : "—");
             elements.detailStatus.innerHTML = statusBadgeHtml(registered);
 
             elements.detailRegisterBtn.classList.toggle("hidden", registered);
@@ -1358,7 +1524,7 @@
                 closeModal(elements.detailModal, false);
                 elements.refreshBtn.focus();
                 showToast("success", payload.message || "Đã xóa hồ sơ khuôn mặt thành công.");
-                await loadData();
+                await loadData({ refreshMetadata: true });
             } catch (error) {
                 state.deleting = false;
                 resetDeleteButton();
@@ -1369,8 +1535,10 @@
         const resetFilters = () => {
             window.clearTimeout(searchTimer);
             elements.searchInput.value = "";
+            elements.departmentSelect.value = "";
             elements.statusSelect.value = "all";
             state.search = "";
+            state.department = "";
             state.status = "all";
             loadData();
         };
@@ -1819,15 +1987,25 @@
                 stopCaptureCamera();
                 setCaptureStep("review");
                 captureState.capturing = false;
+                elements.captureSaveBtn.disabled = false;
+                elements.captureRetakeBtn.disabled = false;
+                elements.captureSaveBtn.innerHTML = `
+                    <span class="material-symbols-outlined text-[18px]">${captureState.mode === "recognize" ? "face_search" : "save"}</span>
+                    <span>${captureState.mode === "recognize" ? "Nhận diện khuôn mặt" : captureState.mode === "update" ? "Xác nhận cập nhật" : "Xác nhận đăng ký"}</span>
+                `;
                 setText(
                     elements.captureReviewName,
-                    `${captureState.employee.full_name} (${captureState.employee.employee_code})`
+                    captureState.mode === "recognize"
+                        ? "Khuôn mặt đã sẵn sàng để nhận diện"
+                        : `${captureState.employee.full_name} (${captureState.employee.employee_code})`
                 );
                 setText(
                     elements.captureReviewMessage,
-                    captureState.mode === "update"
-                        ? "Descriptor 128 chiều mới đã sẵn sàng. Hồ sơ cũ sẽ được cập nhật sau khi xác nhận."
-                        : "Descriptor 128 chiều đã sẵn sàng. Không có ảnh nào được lưu."
+                    captureState.mode === "recognize"
+                        ? "Descriptor tạm thời sẽ được gửi để so khớp với hồ sơ đã đăng ký. Ảnh và descriptor không được lưu."
+                        : captureState.mode === "update"
+                            ? "Descriptor 128 chiều mới đã sẵn sàng. Hồ sơ cũ sẽ được cập nhật sau khi xác nhận."
+                            : "Descriptor 128 chiều đã sẵn sàng. Không có ảnh nào được lưu."
                 );
             } catch (error) {
                 if (captureRequestId !== captureState.requestId) return;
@@ -1850,15 +2028,22 @@
         };
 
         const saveCaptureDescriptor = async () => {
-            if (!captureState.employee || !captureState.descriptor || captureState.saving) return;
+            const isRecognition = captureState.mode === "recognize";
+            if ((!captureState.employee && !isRecognition) || !captureState.descriptor || captureState.saving) return;
 
             const employee = captureState.employee;
             const mode = captureState.mode;
-            const endpoint = mode === "update"
-                ? `${API_BASE}/${employee.id}`
-                : `${API_BASE}/${employee.id}/register`;
-            const method = mode === "update" ? "PUT" : "POST";
-            const confirmLabel = mode === "update" ? "Xác nhận cập nhật" : "Xác nhận đăng ký";
+            const endpoint = isRecognition
+                ? `${API_BASE}/recognize`
+                : mode === "update"
+                    ? `${API_BASE}/${employee.id}`
+                    : `${API_BASE}/${employee.id}/register`;
+            const method = isRecognition ? "POST" : mode === "update" ? "PUT" : "POST";
+            const confirmLabel = isRecognition
+                ? "Nhận diện khuôn mặt"
+                : mode === "update"
+                    ? "Xác nhận cập nhật"
+                    : "Xác nhận đăng ký";
 
             captureState.saving = true;
             hideCaptureError();
@@ -1866,7 +2051,7 @@
             elements.captureRetakeBtn.disabled = true;
             elements.captureSaveBtn.innerHTML = `
                 <span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                <span>Đang lưu...</span>
+                <span>${isRecognition ? "Đang nhận diện..." : "Đang lưu..."}</span>
             `;
 
             const controller = new AbortController();
@@ -1898,6 +2083,40 @@
                     throw new Error(payload.message || "Không thể lưu dữ liệu khuôn mặt.");
                 }
 
+                if (isRecognition) {
+                    const matchedEmployee = payload.matched ? payload.employee : null;
+                    const distance = Number(payload.distance);
+                    const distanceText = Number.isFinite(distance)
+                        ? ` Khoảng cách so khớp: ${distance.toFixed(4)}.`
+                        : "";
+
+                    setText(
+                        elements.captureReviewName,
+                        matchedEmployee
+                            ? `${matchedEmployee.full_name} (${matchedEmployee.employee_code})`
+                            : "Không tìm thấy nhân viên phù hợp"
+                    );
+                    setText(
+                        elements.captureReviewMessage,
+                        matchedEmployee
+                            ? `${matchedEmployee.department || "Chưa có phòng ban"}.${distanceText} Dữ liệu khuôn mặt chỉ dùng cho lần nhận diện này.`
+                            : payload.message || "Không tìm thấy hồ sơ khuôn mặt phù hợp. Hãy thử chụp lại."
+                    );
+                    captureState.descriptor = null;
+                    captureState.saving = false;
+                    elements.captureSaveBtn.disabled = true;
+                    elements.captureRetakeBtn.disabled = false;
+                    elements.captureSaveBtn.innerHTML = `
+                        <span class="material-symbols-outlined text-[18px]">${matchedEmployee ? "check_circle" : "info"}</span>
+                        <span>${matchedEmployee ? "Đã nhận diện" : "Không có kết quả"}</span>
+                    `;
+                    setCaptureStatus(
+                        matchedEmployee ? "Đã tìm thấy hồ sơ nhân viên" : "Không tìm thấy hồ sơ phù hợp",
+                        matchedEmployee ? "success" : "warning"
+                    );
+                    return;
+                }
+
                 captureState.saving = false;
                 closeCaptureModal();
 
@@ -1906,8 +2125,8 @@
                 }
 
                 showToast("success", payload.message || "Đã lưu dữ liệu khuôn mặt thành công.");
-                await loadData();
-                elements.refreshBtn.focus();
+                await loadData({ refreshMetadata: true });
+                await openDetailModal(employee.id);
             } catch (error) {
                 console.error("Lỗi lưu dữ liệu khuôn mặt:", error);
 
@@ -1919,7 +2138,7 @@
                 elements.captureSaveBtn.disabled = false;
                 elements.captureRetakeBtn.disabled = false;
                 elements.captureSaveBtn.innerHTML = `
-                    <span class="material-symbols-outlined text-[18px]">save</span>
+                    <span class="material-symbols-outlined text-[18px]">${isRecognition ? "face_search" : "save"}</span>
                     <span>${confirmLabel}</span>
                 `;
                 showCaptureError(message);
@@ -1930,14 +2149,20 @@
         };
 
         const openCaptureModal = (employee, mode) => {
-            if (!employee || !employee.id) {
+            const isRecognition = mode === "recognize";
+
+            if (!isRecognition && (!employee || !employee.id)) {
                 showToast("error", "Không xác định được nhân viên cần đăng ký.");
                 return;
             }
 
             captureState.open = true;
-            captureState.employee = employee;
-            captureState.mode = mode === "update" ? "update" : "register";
+            captureState.employee = isRecognition ? null : employee;
+            captureState.mode = isRecognition
+                ? "recognize"
+                : mode === "update"
+                    ? "update"
+                    : "register";
             captureState.descriptor = null;
             captureState.saving = false;
             captureState.starting = false;
@@ -1945,25 +2170,44 @@
 
             const isUpdate = captureState.mode === "update";
 
-            elements.captureTitle.textContent = isUpdate
-                ? "Cập nhật khuôn mặt"
-                : "Đăng ký khuôn mặt";
-            setText(elements.captureEmployeeName, employee.full_name);
-            setText(elements.captureEmployeeCode, employee.employee_code);
-            setText(elements.captureEmployeeAvatar, getInitials(employee.full_name));
+            elements.captureTitle.textContent = isRecognition
+                ? "Nhận diện khuôn mặt"
+                : isUpdate
+                    ? "Cập nhật khuôn mặt"
+                    : "Đăng ký khuôn mặt";
+            setText(
+                elements.captureEmployeeName,
+                isRecognition ? "Tìm trong hồ sơ đã đăng ký" : employee.full_name
+            );
+            setText(elements.captureEmployeeCode, isRecognition ? "" : employee.employee_code);
+            setText(elements.captureEmployeeAvatar, isRecognition ? "?" : getInitials(employee.full_name));
+            elements.captureConsentTitle.textContent = isRecognition
+                ? "Xác nhận đồng ý nhận diện khuôn mặt"
+                : "Xác nhận sự đồng ý của nhân viên";
+            elements.captureConsentDescription.textContent = isRecognition
+                ? "Chỉ tiếp tục khi người trước camera đã được thông báo và đồng ý cho việc so khớp khuôn mặt với hồ sơ đã đăng ký."
+                : "Trước khi thu thập dữ liệu khuôn mặt, quản trị viên cần xác nhận nhân viên đã được thông báo và đồng ý.";
+            elements.captureConsentLabel.textContent = isRecognition
+                ? "Tôi xác nhận người trước camera đã được thông báo và đồng ý sử dụng dữ liệu khuôn mặt để so khớp hồ sơ."
+                : "Tôi xác nhận nhân viên đã được thông báo và đồng ý cho việc thu thập, lưu trữ descriptor khuôn mặt 128 chiều để phục vụ chấm công.";
+            elements.capturePrivacyNote.textContent = isRecognition
+                ? "Khung hình được xử lý trực tiếp trên trình duyệt. Descriptor tạm thời được gửi lên máy chủ để so khớp, không lưu ảnh hoặc descriptor nhận diện."
+                : "Hệ thống chỉ lưu descriptor 128 chiều, không lưu ảnh khuôn mặt. Dữ liệu được dùng để đối chiếu khi chấm công.";
             setText(
                 elements.captureReviewName,
-                `${employee.full_name} (${employee.employee_code})`
+                isRecognition ? "Sẵn sàng nhận diện" : `${employee.full_name} (${employee.employee_code})`
             );
             setText(
                 elements.captureReviewMessage,
-                isUpdate
-                    ? "Descriptor 128 chiều mới đã sẵn sàng. Hồ sơ cũ sẽ được cập nhật sau khi xác nhận."
-                    : "Descriptor 128 chiều đã sẵn sàng. Không có ảnh nào được lưu."
+                isRecognition
+                    ? "Chụp khuôn mặt để tìm hồ sơ phù hợp. Ảnh và descriptor không được lưu."
+                    : isUpdate
+                        ? "Descriptor 128 chiều mới đã sẵn sàng. Hồ sơ cũ sẽ được cập nhật sau khi xác nhận."
+                        : "Descriptor 128 chiều đã sẵn sàng. Không có ảnh nào được lưu."
             );
             elements.captureSaveBtn.innerHTML = `
-                <span class="material-symbols-outlined text-[18px]">save</span>
-                <span>${isUpdate ? "Xác nhận cập nhật" : "Xác nhận đăng ký"}</span>
+                <span class="material-symbols-outlined text-[18px]">${isRecognition ? "face_search" : "save"}</span>
+                <span>${isRecognition ? "Nhận diện khuôn mặt" : isUpdate ? "Xác nhận cập nhật" : "Xác nhận đăng ký"}</span>
             `;
 
             elements.captureConsent.checked = false;
@@ -1975,8 +2219,10 @@
             elements.captureRetryBtn.classList.remove("flex");
             hideCaptureError();
             elements.capturePlaceholder.classList.remove("hidden");
-            elements.captureHint.textContent = "Giữ khuôn mặt trong khung oval, nhìn thẳng vào camera và chỉ để một người trong khung hình.";
-            setCaptureStatus("Đang khởi động camera...", "loading");
+            elements.captureHint.textContent = isRecognition
+                ? "Chỉ để một người trong khung hình, nhìn thẳng vào camera và giữ khuôn mặt trong khung oval."
+                : "Giữ khuôn mặt trong khung oval, nhìn thẳng vào camera và chỉ để một người trong khung hình.";
+            setCaptureStatus("Xác nhận đồng ý để tiếp tục", "info");
 
             setCaptureStep("consent");
             openModal(elements.captureModal);
@@ -1985,11 +2231,26 @@
 
         let searchTimer = null;
 
-        elements.refreshBtn.addEventListener("click", loadData);
+        elements.refreshBtn.addEventListener("click", () => {
+            loadData({ refreshMetadata: true });
+        });
+        elements.autoSyncToggle.addEventListener("click", () => {
+            state.autoSyncEnabled = !state.autoSyncEnabled;
+            renderAutoSyncStatus();
+            startAutoSync();
+
+            if (state.autoSyncEnabled) {
+                loadData({ background: true, refreshMetadata: true });
+            }
+        });
+        elements.recognizeOpenBtn.addEventListener("click", () => {
+            openCaptureModal(null, "recognize");
+        });
 
         elements.applyFilterBtn.addEventListener("click", () => {
             window.clearTimeout(searchTimer);
             state.search = elements.searchInput.value.trim();
+            state.department = elements.departmentSelect.value;
             state.status = elements.statusSelect.value;
             loadData();
         });
@@ -2010,12 +2271,18 @@
             event.preventDefault();
             window.clearTimeout(searchTimer);
             state.search = elements.searchInput.value.trim();
+            state.department = elements.departmentSelect.value;
             state.status = elements.statusSelect.value;
             loadData();
         });
 
         elements.statusSelect.addEventListener("change", () => {
             state.status = elements.statusSelect.value;
+            loadData();
+        });
+
+        elements.departmentSelect.addEventListener("change", () => {
+            state.department = elements.departmentSelect.value;
             loadData();
         });
 
@@ -2057,7 +2324,7 @@
             }
 
             if (event.target.closest("[data-retry]")) {
-                loadData();
+                loadData({ refreshMetadata: true });
             }
         });
 
@@ -2136,8 +2403,16 @@
             }
         });
 
+        document.addEventListener("visibilitychange", () => {
+            if (state.autoSyncEnabled && !document.hidden) {
+                loadData({ background: true, refreshMetadata: true });
+            }
+        });
+
         renderSkeleton();
-        loadData();
+        renderAutoSyncStatus();
+        loadData({ refreshMetadata: true });
+        startAutoSync();
     })();
 </script>
 

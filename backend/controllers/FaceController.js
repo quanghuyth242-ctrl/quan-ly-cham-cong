@@ -12,22 +12,34 @@ import {
     findMatchingEmployee
 } from "../services/FaceService.js";
 import { writeFaceAuditLog } from "../services/faceAuditService.js";
+import { getDepartments } from "../models/EmployeeModel.js";
 
 // Danh sách nhân viên và trạng thái khuôn mặt
 export const getFaceEmployees = async (req, res) => {
     try {
         const { search = "", status = "all" } = req.query;
+        const department = String(req.query.department || "").trim().slice(0, 100);
+        const includeMeta = String(req.query.includeMeta || "").toLowerCase() !== "false";
 
-        const [employees, stats] = await Promise.all([
-            getEmployeesWithFaceStatus({ search, status }),
-            getFaceRegistrationStats()
+        const [employees, metadata] = await Promise.all([
+            getEmployeesWithFaceStatus({ search, status, department }),
+            includeMeta
+                ? Promise.all([getFaceRegistrationStats(), getDepartments()])
+                : Promise.resolve(null)
         ]);
 
-        return res.status(200).json({
+        const response = {
             success: true,
-            employees,
-            stats
-        });
+            employees
+        };
+
+        if (metadata) {
+            const [stats, departments] = metadata;
+            response.stats = stats;
+            response.departments = departments;
+        }
+
+        return res.status(200).json(response);
     } catch (error) {
         console.error("Lỗi lấy danh sách khuôn mặt:", error);
 
@@ -141,10 +153,7 @@ const saveFaceProfile = async (req, res, mode) => {
             });
         }
 
-        // Thời điểm đồng ý do server ghi nhận, không tin tưởng thời gian từ client.
-        const consentAt = new Date();
-
-        await createFaceProfile(employeeId, descriptor, consentAt);
+        await createFaceProfile(employeeId, descriptor);
 
         // Không ghi descriptor vào log, chỉ ghi thao tác và nhân viên liên quan.
         await writeFaceAuditLog({
@@ -192,6 +201,69 @@ export const registerFaceProfile = (req, res) => {
 // Cập nhật khuôn mặt đã đăng ký
 export const updateFaceProfile = (req, res) => {
     return saveFaceProfile(req, res, "update");
+};
+
+export const recognizeFaceProfile = async (req, res) => {
+    try {
+        const { descriptor, consent } = req.body || {};
+
+        if (consent !== true) {
+            return res.status(400).json({
+                success: false,
+                message: "Cần xác nhận sự đồng ý của người được nhận diện."
+            });
+        }
+
+        if (!isFaceDescriptorUsable(descriptor)) {
+            return res.status(400).json({
+                success: false,
+                message: "Dữ liệu khuôn mặt không hợp lệ. Vui lòng chụp lại."
+            });
+        }
+
+        const profiles = await getAllFaceProfiles();
+        const result = findMatchingEmployee(descriptor, profiles);
+
+        if (!result.matched || !result.employee) {
+            return res.status(200).json({
+                success: true,
+                matched: false,
+                message: "Không tìm thấy hồ sơ khuôn mặt phù hợp."
+            });
+        }
+
+        const employee = result.employee;
+
+        await writeFaceAuditLog({
+            action: "recognize_face_profile",
+            actor: req.session.user,
+            employee: {
+                id: employee.employee_id,
+                employee_code: employee.employee_code,
+                full_name: employee.full_name
+            },
+            detail: "Đã nhận diện hồ sơ khuôn mặt.",
+            req
+        });
+
+        return res.status(200).json({
+            success: true,
+            matched: true,
+            employee: {
+                employee_code: employee.employee_code,
+                full_name: employee.full_name,
+                department: employee.department
+            },
+            distance: result.distance
+        });
+    } catch (error) {
+        console.error("Lỗi nhận diện khuôn mặt:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Không thể nhận diện khuôn mặt. Vui lòng thử lại."
+        });
+    }
 };
 
 // Xóa hồ sơ khuôn mặt

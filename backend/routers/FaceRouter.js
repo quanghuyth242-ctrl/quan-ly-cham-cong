@@ -4,6 +4,7 @@ import {
     renderFacePage,
     getFaceEmployees,
     getFaceEmployeeDetail,
+    recognizeFaceProfile,
     registerFaceProfile,
     updateFaceProfile,
     removeFaceProfile
@@ -22,6 +23,9 @@ router.get("/", renderFacePage);
 
 // API lấy dữ liệu nhân viên
 router.get("/data", getFaceEmployees);
+
+// API nhận diện hồ sơ khuôn mặt (không ghi nhận chấm công)
+router.post("/recognize", recognizeFaceProfile);
 
 // API đăng ký khuôn mặt
 router.post("/:employeeId/register", registerFaceProfile);
