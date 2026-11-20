@@ -3,6 +3,7 @@ import * as AttendanceDeviceController from "../controllers/attendanceDeviceCont
 
 const router = express.Router();
 
+router.get("/:deviceCode/config", AttendanceDeviceController.getConfiguration);
 router.post("/:deviceCode/heartbeat", AttendanceDeviceController.heartbeat);
 router.post("/:deviceCode/sync", AttendanceDeviceController.sync);
 router.post("/:deviceCode/events", AttendanceDeviceController.syncEvents);

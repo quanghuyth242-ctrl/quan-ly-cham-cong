@@ -23,6 +23,30 @@
         other: "Khác"
     }; %>
 
+    <style>
+        #device-table { width: 100%; min-width: 0; border-collapse: separate; border-spacing: 0; }
+        #device-table thead { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+        #device-table tbody { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; padding: 1rem; }
+        #device-table tbody > tr[data-device-row] { display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; border: 1px solid rgb(226 232 240); border-radius: 1rem; background: white; box-shadow: 0 1px 2px rgb(15 23 42 / 0.04); transition: border-color 160ms ease, box-shadow 160ms ease; }
+        #device-table tbody > tr[data-device-row][hidden] { display: none; }
+        #device-table tbody > tr[data-device-row]:hover { border-color: rgb(148 163 184); box-shadow: 0 8px 24px rgb(15 23 42 / 0.08); }
+        #device-table td { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; justify-content: center; gap: .35rem; padding: .9rem 1rem; border-bottom: 1px solid rgb(241 245 249); }
+        #device-table td::before { color: rgb(100 116 139); font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; content: attr(data-label); }
+        #device-table td:first-child { grid-column: 1 / -1; padding: 1.1rem 1rem; background: rgb(248 250 252); }
+        #device-table td:first-child::before, #device-table td:last-child::before { display: none; }
+        #device-table td:last-child { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; border-bottom: 0; }
+        #device-table td:last-child details { flex: 1; }
+        #device-table td:last-child details[open] { width: 100%; }
+        #device-table td:last-child details[open] form { max-width: 36rem; padding: 1rem; border: 1px solid rgb(226 232 240); border-radius: .75rem; background: rgb(248 250 252); }
+        #device-table td:last-child details[open] + form { align-self: flex-start; }
+        #device-table #device-filter-empty, #device-table tr.device-empty-row { display: block; padding: 1.5rem; border: 1px dashed rgb(203 213 225); border-radius: 1rem; color: rgb(100 116 139); text-align: center; }
+        #device-table #device-filter-empty[hidden] { display: none; }
+        @media (min-width: 640px) {
+            #device-table tbody > tr[data-device-row] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            #device-table td:nth-child(4), #device-table td:nth-child(5) { border-bottom: 0; }
+        }
+    </style>
+
     <% if (newDevice) { %>
         <section class="bg-green-50 border border-green-200 p-space-lg sm:p-space-xl rounded-xl" role="status">
             <div class="flex items-start gap-space-md">
@@ -42,27 +66,38 @@
                         hoặc <code>/api/devices/<%= newDevice.deviceCode %>/sync</code>,
                         kèm header <code>X-Device-Token</code>.
                     </div>
+                    <div class="font-body-sm text-body-sm text-green-800">
+                        Máy chủ: <code><%= newDevice.server_url || "chưa khai báo địa chỉ máy chủ" %></code> ·
+                        Heartbeat mỗi <strong><%= newDevice.heartbeat_interval_seconds %> giây</strong> ·
+                        Đồng bộ <strong><%= newDevice.auto_sync_enabled ? `tự động mỗi ${newDevice.sync_interval_minutes} phút` : 'thủ công' %></strong>
+                        qua <code>/api/devices/<%= newDevice.deviceCode %>/<%= newDevice.sync_mode === 'events' ? 'events' : 'sync' %></code>.
+                    </div>
+                    <p class="font-body-sm text-body-sm text-green-800">
+                        Thiết bị có thể lấy cấu hình hiện tại qua GET <code>/api/devices/<%= newDevice.deviceCode %>/config</code>
+                        kèm header <code>X-Device-Token</code>.
+                    </p>
                 </div>
             </div>
         </section>
     <% } %>
 
-    <section class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+    <section class="relative overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-lg md:p-space-xl rounded-2xl border border-surface-container-high/60 shadow-sm">
+        <div class="absolute inset-y-0 left-0 w-1 bg-primary"></div>
         <div class="flex flex-col gap-space-xs">
             <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
                 <span class="flex h-2 w-2 rounded-full bg-primary-container"></span>
                 <span class="uppercase tracking-wider">Kết nối thiết bị chấm công</span>
             </div>
-            <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Trạng thái thiết bị</h2>
+            <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Quản lý thiết bị chấm công</h2>
             <p class="font-body-md text-body-md text-on-surface-variant">
-                Trạng thái trực tuyến được cập nhật theo tín hiệu heartbeat gần nhất.
+                Trạng thái dựa trên heartbeat theo cấu hình từng thiết bị, với ngưỡng tối thiểu <%= onlineWindowMinutes %> phút.
             </p>
         </div>
         <div class="flex flex-wrap gap-space-sm">
             <button
                 id="device-status-refresh"
                 type="button"
-                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md transition-colors disabled:opacity-60"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md shadow-sm transition-all active:scale-[0.98] disabled:opacity-60"
             >
                 <span id="device-status-refresh-icon" class="material-symbols-outlined text-[20px]">refresh</span>
                 <span>Kiểm tra trạng thái</span>
@@ -79,7 +114,7 @@
     </section>
 
     <section class="grid grid-cols-1 sm:grid-cols-3 gap-space-lg" aria-label="Thống kê trạng thái thiết bị">
-        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <article class="bg-surface-container-lowest p-space-lg rounded-2xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng thiết bị</span>
                 <span id="device-stat-total" class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= stats.total %></span>
@@ -88,7 +123,7 @@
                 <span class="material-symbols-outlined text-[24px]">devices</span>
             </div>
         </article>
-        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <article class="bg-surface-container-lowest p-space-lg rounded-2xl border border-green-100 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đang trực tuyến</span>
                 <span id="device-stat-online" class="font-headline-xl text-headline-xl text-green-600 font-bold mt-space-xs"><%= stats.online %></span>
@@ -97,7 +132,7 @@
                 <span class="material-symbols-outlined text-[24px]">wifi</span>
             </div>
         </article>
-        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <article class="bg-surface-container-lowest p-space-lg rounded-2xl border border-red-100 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đang ngoại tuyến</span>
                 <span id="device-stat-offline" class="font-headline-xl text-headline-xl text-red-600 font-bold mt-space-xs"><%= stats.offline %></span>
@@ -109,32 +144,33 @@
     </section>
 
     <section class="grid grid-cols-1 xl:grid-cols-3 gap-space-lg">
-        <div class="xl:col-span-2 bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <div class="xl:col-span-2 bg-surface-container-lowest rounded-2xl border border-surface-container-high/60 shadow-sm overflow-hidden">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm p-space-lg sm:p-space-xl border-b border-outline-variant">
                 <div>
                     <h3 class="font-headline-sm text-headline-sm text-primary">Danh sách thiết bị</h3>
                     <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
-                        Thiết bị được xem là trực tuyến nếu gửi tín hiệu trong vòng <%= onlineWindowMinutes %> phút.
+                        Thiết bị được xem là trực tuyến khi gửi heartbeat trong tối đa 3 chu kỳ đã cấu hình, nhưng không thấp hơn <%= onlineWindowMinutes %> phút.
                     </p>
                 </div>
-                <div class="flex flex-wrap items-center gap-space-sm">
+                <div class="flex w-full flex-col sm:w-auto sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-space-sm">
                     <label class="sr-only" for="device-search">Tìm thiết bị</label>
-                    <input id="device-search" type="search" placeholder="Tìm theo tên, mã hoặc vị trí" class="px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-lg text-on-surface">
+                    <input id="device-search" type="search" placeholder="Tìm theo tên, mã hoặc vị trí" class="min-w-0 sm:w-64 px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
                     <label class="sr-only" for="device-state-filter">Lọc theo trạng thái</label>
-                    <select id="device-state-filter" class="px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-lg text-on-surface">
+                    <select id="device-state-filter" class="px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
                         <option value="all">Tất cả trạng thái</option>
                         <option value="online">Trực tuyến</option>
                         <option value="offline">Ngoại tuyến</option>
                         <option value="inactive">Ngừng hoạt động</option>
                     </select>
-                    <span id="device-visible-count" class="font-label-sm text-label-sm text-on-surface-variant">
+                    <span id="device-visible-count" aria-live="polite" class="self-start sm:self-center px-space-sm py-1 bg-surface-container-low rounded-full font-label-sm text-label-sm text-on-surface-variant">
                         <%= devices.length %> / <%= devices.length %> thiết bị
                     </span>
                 </div>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[1100px] text-left">
+            <div>
+                <table id="device-table" class="w-full text-left">
+                    <caption class="sr-only">Danh sách thiết bị chấm công và trạng thái kết nối</caption>
                     <thead class="bg-surface-container-low">
                         <tr class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
                             <th class="px-space-lg py-space-md font-medium">Thiết bị</th>
@@ -147,7 +183,7 @@
                     </thead>
                     <tbody class="divide-y divide-outline-variant">
                         <% if (devices.length === 0) { %>
-                            <tr>
+                            <tr class="device-empty-row">
                                 <td colspan="6" class="px-space-lg py-space-2xl text-center">
                                     <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
                                         <span class="material-symbols-outlined text-[40px]">devices_other</span>
@@ -158,7 +194,7 @@
                             </tr>
                         <% } %>
                         <% devices.forEach((device) => { %>
-                            <tr class="hover:bg-surface-container-low transition-colors" data-device-row data-device-id="<%= device.id %>" data-device-state="<%= !device.is_active ? 'inactive' : device.is_online ? 'online' : 'offline' %>">
+                            <tr data-device-row data-device-id="<%= device.id %>" data-device-state="<%= !device.is_active ? 'inactive' : device.is_online ? 'online' : 'offline' %>">
                                 <td class="px-space-lg py-space-md">
                                     <div class="flex flex-col">
                                         <span class="font-label-md text-label-md text-on-surface"><%= device.name %></span>
@@ -170,10 +206,10 @@
                                         </span>
                                     </div>
                                 </td>
-                                <td class="px-space-md py-space-md font-body-sm text-body-sm text-on-surface-variant">
+                                <td data-label="Vị trí" class="px-space-md py-space-md font-body-sm text-body-sm text-on-surface-variant">
                                     <%= device.location || "Chưa cập nhật" %>
                                 </td>
-                                <td class="px-space-md py-space-md">
+                                <td data-label="Trạng thái" class="px-space-md py-space-md">
                                     <% if (!device.is_active) { %>
                                         <span id="device-status-<%= device.id %>" class="inline-flex items-center gap-1.5 px-space-sm py-1 bg-surface-container-high text-on-surface-variant rounded-full font-label-sm text-label-sm">
                                             <span class="w-2 h-2 rounded-full bg-outline"></span>Ngừng hoạt động
@@ -188,10 +224,10 @@
                                         </span>
                                     <% } %>
                                 </td>
-                                <td id="device-last-seen-<%= device.id %>" class="px-space-lg py-space-md font-body-sm text-body-sm text-on-surface-variant">
+                                <td data-label="Heartbeat gần nhất" id="device-last-seen-<%= device.id %>" class="px-space-lg py-space-md font-body-sm text-body-sm text-on-surface-variant">
                                     <%= device.last_seen_at || "Chưa gửi tín hiệu" %>
                                 </td>
-                                <td class="px-space-lg py-space-md font-body-sm text-body-sm text-on-surface-variant">
+                                <td data-label="Đồng bộ gần nhất" class="px-space-lg py-space-md font-body-sm text-body-sm text-on-surface-variant">
                                     <div class="flex flex-col">
                                         <span><%= device.last_sync_at || "Chưa đồng bộ" %></span>
                                         <% if (device.last_sync_count > 0) { %>
@@ -199,15 +235,38 @@
                                         <% } %>
                                     </div>
                                 </td>
-                                <td class="px-space-md py-space-md">
+                                <td data-label="Thao tác" class="px-space-md py-space-md">
                                     <details>
-                                        <summary class="cursor-pointer text-primary font-label-md text-label-md">Sửa</summary>
-                                        <form action="/admin/devices/<%= device.id %>/update" method="POST" class="mt-space-sm min-w-[220px] flex flex-col gap-space-xs">
+                                        <summary class="inline-flex cursor-pointer items-center gap-space-xs px-space-md py-space-sm bg-surface-container-low hover:bg-primary-fixed text-primary rounded-xl font-label-md text-label-md transition-colors">
+                                            <span class="material-symbols-outlined text-[18px]">settings</span>Sửa cấu hình
+                                        </summary>
+                                        <form action="/admin/devices/<%= device.id %>/update" method="POST" class="mt-space-sm min-w-[220px] flex flex-col gap-space-sm">
                                             <label class="font-label-sm text-label-sm">Tên thiết bị
                                                 <input name="name" value="<%= device.name %>" maxlength="120" required class="w-full px-space-sm py-1 border border-outline-variant rounded">
                                             </label>
                                             <label class="font-label-sm text-label-sm">Vị trí
                                                 <input name="location" value="<%= device.location || '' %>" maxlength="150" class="w-full px-space-sm py-1 border border-outline-variant rounded">
+                                            </label>
+                                            <label class="font-label-sm text-label-sm">Địa chỉ máy chủ nhận dữ liệu
+                                                <input name="server_url" type="url" value="<%= device.server_url || '' %>" maxlength="255" placeholder="http://192.168.1.10:3000" class="w-full px-space-sm py-1 border border-outline-variant rounded">
+                                            </label>
+                                            <label class="font-label-sm text-label-sm">Chu kỳ heartbeat (giây)
+                                                <input name="heartbeat_interval_seconds" type="number" min="10" max="3600" step="1" value="<%= device.heartbeat_interval_seconds || 60 %>" required class="w-full px-space-sm py-1 border border-outline-variant rounded">
+                                            </label>
+                                            <label class="font-label-sm text-label-sm">Chế độ đồng bộ
+                                                <select name="sync_mode" required class="w-full px-space-sm py-1 border border-outline-variant rounded">
+                                                    <option value="events" <%= device.sync_mode === 'events' ? 'selected' : '' %>>Lượt chấm công (events)</option>
+                                                    <option value="records" <%= device.sync_mode === 'records' ? 'selected' : '' %>>Bản ghi theo ngày (records)</option>
+                                                </select>
+                                            </label>
+                                            <label class="font-label-sm text-label-sm">Tự động đồng bộ
+                                                <select name="auto_sync_enabled" required class="w-full px-space-sm py-1 border border-outline-variant rounded">
+                                                    <option value="1" <%= device.auto_sync_enabled ? 'selected' : '' %>>Bật</option>
+                                                    <option value="0" <%= !device.auto_sync_enabled ? 'selected' : '' %>>Tắt</option>
+                                                </select>
+                                            </label>
+                                            <label class="font-label-sm text-label-sm">Chu kỳ đồng bộ (phút)
+                                                <input name="sync_interval_minutes" type="number" min="1" max="1440" step="1" value="<%= device.sync_interval_minutes || 5 %>" required class="w-full px-space-sm py-1 border border-outline-variant rounded">
                                             </label>
                                             <label class="font-label-sm text-label-sm">Loại thiết bị
                                                 <select name="device_type" required class="w-full px-space-sm py-1 border border-outline-variant rounded">
@@ -223,11 +282,13 @@
                                                     <option value="0" <%= !device.is_active ? 'selected' : '' %>>Ngừng hoạt động</option>
                                                 </select>
                                             </label>
-                                            <button type="submit" class="px-space-sm py-1 bg-primary text-on-primary rounded">Lưu thay đổi</button>
+                                            <button type="submit" class="px-space-md py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md">Lưu thay đổi</button>
                                         </form>
                                     </details>
                                     <form action="/admin/devices/<%= device.id %>/delete" method="POST" class="mt-space-xs" onsubmit="return confirm('Xóa thiết bị này? Lịch sử sự kiện của thiết bị sẽ bị xóa, dữ liệu chấm công tổng hợp vẫn được giữ.');">
-                                        <button type="submit" class="font-label-sm text-label-sm text-red-700 hover:text-red-900">Xóa thiết bị</button>
+                                        <button type="submit" class="inline-flex items-center gap-space-xs px-space-md py-space-sm text-red-700 hover:bg-red-50 rounded-xl font-label-md text-label-md transition-colors">
+                                            <span class="material-symbols-outlined text-[18px]">delete</span>Xóa
+                                        </button>
                                     </form>
                                 </td>
                             </tr>
@@ -240,7 +301,7 @@
             </div>
         </div>
 
-        <aside class="bg-surface-container-lowest p-space-lg sm:p-space-xl rounded-xl shadow-sm flex flex-col gap-space-md">
+        <aside class="bg-surface-container-lowest p-space-lg sm:p-space-xl rounded-2xl border border-surface-container-high/60 shadow-sm flex flex-col gap-space-md">
             <div>
                 <h3 class="font-headline-sm text-headline-sm text-primary">Đăng ký thiết bị</h3>
                 <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
@@ -285,6 +346,33 @@
                     >
                 </div>
                 <div class="flex flex-col gap-space-xs">
+                    <label for="server_url" class="font-label-md text-label-md text-on-surface">Địa chỉ máy chủ nhận dữ liệu</label>
+                    <input id="server_url" name="server_url" type="url" maxlength="255" placeholder="http://192.168.1.10:3000" class="w-full px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+                    <span class="font-body-sm text-body-sm text-on-surface-variant">Dùng địa chỉ IP nội bộ hoặc tên miền mà thiết bị truy cập được.</span>
+                </div>
+                <div class="flex flex-col gap-space-xs">
+                    <label for="heartbeat_interval_seconds" class="font-label-md text-label-md text-on-surface">Chu kỳ heartbeat (giây)</label>
+                    <input id="heartbeat_interval_seconds" name="heartbeat_interval_seconds" type="number" min="10" max="3600" step="1" value="60" required class="w-full px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div class="flex flex-col gap-space-xs">
+                    <label for="sync_mode" class="font-label-md text-label-md text-on-surface">Chế độ đồng bộ</label>
+                    <select id="sync_mode" name="sync_mode" required class="w-full px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="events">Lượt chấm công (events)</option>
+                        <option value="records">Bản ghi theo ngày (records)</option>
+                    </select>
+                </div>
+                <div class="flex flex-col gap-space-xs">
+                    <label for="auto_sync_enabled" class="font-label-md text-label-md text-on-surface">Tự động đồng bộ dữ liệu</label>
+                    <select id="auto_sync_enabled" name="auto_sync_enabled" required class="w-full px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="1">Bật</option>
+                        <option value="0">Tắt</option>
+                    </select>
+                </div>
+                <div class="flex flex-col gap-space-xs">
+                    <label for="sync_interval_minutes" class="font-label-md text-label-md text-on-surface">Chu kỳ đồng bộ (phút)</label>
+                    <input id="sync_interval_minutes" name="sync_interval_minutes" type="number" min="1" max="1440" step="1" value="5" required class="w-full px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div class="flex flex-col gap-space-xs">
                     <label for="device_type" class="font-label-md text-label-md text-on-surface">Loại thiết bị</label>
                     <select
                         id="device_type"
@@ -307,14 +395,23 @@
                 </button>
             </form>
 
-            <div class="mt-space-xs p-space-md bg-surface-container-low rounded-xl">
+            <details class="mt-space-xs rounded-xl border border-surface-container-high/70 bg-surface-container-low p-space-md">
+                <summary class="cursor-pointer font-label-md text-label-md text-primary">Hướng dẫn heartbeat và đồng bộ API</summary>
+                <div class="mt-space-md flex flex-col gap-space-md">
+            <div class="p-space-md bg-white rounded-xl border border-outline-variant">
                 <div class="flex items-center gap-space-xs text-primary">
                     <span class="material-symbols-outlined text-[18px]">api</span>
                     <span class="font-label-md text-label-md">Cấu hình heartbeat</span>
                 </div>
                 <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
                     Thiết bị gửi POST đến <code>/api/devices/{mã-thiết-bị}/heartbeat</code> kèm header
-                    <code>X-Device-Token</code>. Nếu không nhận tín hiệu trong <%= onlineWindowMinutes %> phút, thiết bị sẽ hiện ngoại tuyến.
+                    <code>X-Device-Token</code>. Có thể lấy chu kỳ heartbeat và cấu hình đồng bộ qua GET
+                    <code>/api/devices/{mã-thiết-bị}/config</code>. Thiết bị được xem là ngoại tuyến khi quá 3 chu kỳ heartbeat
+                    (tối thiểu <%= onlineWindowMinutes %> phút) chưa gửi tín hiệu.
+                </p>
+                <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-sm">
+                    Firmware cần đọc cấu hình này để chạy lịch đồng bộ. Khi bật tự động, thiết bị gửi dữ liệu theo chu kỳ đã đặt;
+                    khi tắt, thiết bị không gửi lô định kỳ. Máy chủ vẫn tiếp nhận các lô được gửi thủ công.
                 </p>
             </div>
 
@@ -375,6 +472,8 @@
                     Chỉ bản ghi do thiết bị tạo mới hoặc đồng bộ trước đó mới được cập nhật; dữ liệu đã điều chỉnh thủ công được giữ nguyên.
                 </p>
             </div>
+                </div>
+            </details>
         </aside>
     </section>
 </section>
