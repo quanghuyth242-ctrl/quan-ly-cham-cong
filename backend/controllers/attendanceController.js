@@ -1,6 +1,7 @@
 import {
     getRosterForDate,
     getDepartments,
+    getAllShifts,
     findEmployeeFullById,
     normalizeAttendanceStatus
 } from "../models/attendance.js";
@@ -288,10 +289,24 @@ export const getAttendanceData = async (req, res) => {
             .trim()
             .slice(0, 100);
         const status = normalizeAttendanceStatus(req.query.status);
+        const rawShiftId = String(req.query.shiftId || "").trim();
+        const shiftId = rawShiftId ? Number(rawShiftId) : null;
 
-        const [rows, departments] = await Promise.all([
-            getRosterForDate({ date, search, department, status }),
-            getDepartments()
+        if (
+            rawShiftId
+            && (!/^[1-9]\d*$/.test(rawShiftId) || !Number.isSafeInteger(shiftId))
+        ) {
+            return res.status(400).json({
+                success: false,
+                code: "INVALID_SHIFT_ID",
+                message: "Mã ca làm không hợp lệ."
+            });
+        }
+
+        const [rows, departments, shifts] = await Promise.all([
+            getRosterForDate({ date, search, department, status, shiftId }),
+            getDepartments(),
+            getAllShifts()
         ]);
 
         const employees = await Promise.all(
@@ -330,6 +345,7 @@ export const getAttendanceData = async (req, res) => {
             date,
             employees,
             departments,
+            shifts,
             stats
         });
     } catch (error) {
