@@ -115,6 +115,15 @@ export const getRosterForDate = async ({
                DATE_FORMAT(a.work_date, '%Y-%m-%d') AS work_date,
                a.check_in,
                a.check_out,
+               a.check_in_latitude,
+               a.check_in_longitude,
+               a.check_in_accuracy_m,
+               a.check_in_distance_m,
+               a.check_out_latitude,
+               a.check_out_longitude,
+               a.check_out_accuracy_m,
+               a.check_out_distance_m,
+               a.record_source,
                a.status
           FROM employees e
           LEFT JOIN attendance a
@@ -142,6 +151,14 @@ export const findByEmployeeAndDateForUpdate = async (
                 DATE_FORMAT(work_date, '%Y-%m-%d') AS work_date,
                 check_in,
                 check_out,
+                check_in_latitude,
+                check_in_longitude,
+                check_in_accuracy_m,
+                check_in_distance_m,
+                check_out_latitude,
+                check_out_longitude,
+                check_out_accuracy_m,
+                check_out_distance_m,
                 status
            FROM attendance
           WHERE employee_id = ?
@@ -160,6 +177,14 @@ const findAttendanceById = async (connection, attendanceId) => {
                 DATE_FORMAT(work_date, '%Y-%m-%d') AS work_date,
                 check_in,
                 check_out,
+                check_in_latitude,
+                check_in_longitude,
+                check_in_accuracy_m,
+                check_in_distance_m,
+                check_out_latitude,
+                check_out_longitude,
+                check_out_accuracy_m,
+                check_out_distance_m,
                 status
            FROM attendance
           WHERE id = ?
@@ -172,12 +197,24 @@ const findAttendanceById = async (connection, attendanceId) => {
 
 export const insertCheckIn = async (
     connection,
-    { employeeId, workDate, checkIn, status }
+    { employeeId, workDate, checkIn, status, location = null }
 ) => {
     const [result] = await connection.execute(
-        `INSERT INTO attendance (employee_id, work_date, check_in, check_out, status)
-         VALUES (?, ?, ?, NULL, ?)`,
-        [employeeId, workDate, checkIn, status]
+        `INSERT INTO attendance (
+            employee_id, work_date, check_in, check_out, status,
+            check_in_latitude, check_in_longitude, check_in_accuracy_m, check_in_distance_m
+         )
+         VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)`,
+        [
+            employeeId,
+            workDate,
+            checkIn,
+            status,
+            location?.latitude ?? null,
+            location?.longitude ?? null,
+            location?.accuracy ?? null,
+            location?.distance_m ?? null
+        ]
     );
 
     return findAttendanceById(connection, result.insertId);
@@ -185,14 +222,26 @@ export const insertCheckIn = async (
 
 export const updateCheckOut = async (
     connection,
-    { attendanceId, checkOut, status }
+    { attendanceId, checkOut, status, location = null }
 ) => {
     await connection.execute(
         `UPDATE attendance
             SET check_out = ?,
-                status = ?
+                status = ?,
+                check_out_latitude = ?,
+                check_out_longitude = ?,
+                check_out_accuracy_m = ?,
+                check_out_distance_m = ?
           WHERE id = ?`,
-        [checkOut, status, attendanceId]
+        [
+            checkOut,
+            status,
+            location?.latitude ?? null,
+            location?.longitude ?? null,
+            location?.accuracy ?? null,
+            location?.distance_m ?? null,
+            attendanceId
+        ]
     );
 
     return findAttendanceById(connection, attendanceId);
@@ -224,6 +273,14 @@ const BASE_SELECT = `
            DATE_FORMAT(a.work_date, '%Y-%m-%d') AS work_date,
            TIME_FORMAT(a.check_in, '%H:%i') AS check_in,
            TIME_FORMAT(a.check_out, '%H:%i') AS check_out,
+           a.check_in_latitude,
+           a.check_in_longitude,
+           a.check_in_accuracy_m,
+           a.check_in_distance_m,
+           a.check_out_latitude,
+           a.check_out_longitude,
+           a.check_out_accuracy_m,
+           a.check_out_distance_m,
            COALESCE(
                ROUND(GREATEST(0, TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out)) / 60, 2),
                0
@@ -327,6 +384,14 @@ export const findHistoryByEmployee = async (employeeId) => {
                 DATE_FORMAT(a.work_date, '%Y-%m-%d') AS work_date,
                 TIME_FORMAT(a.check_in, '%H:%i') AS check_in,
                 TIME_FORMAT(a.check_out, '%H:%i') AS check_out,
+                a.check_in_latitude,
+                a.check_in_longitude,
+                a.check_in_accuracy_m,
+                a.check_in_distance_m,
+                a.check_out_latitude,
+                a.check_out_longitude,
+                a.check_out_accuracy_m,
+                a.check_out_distance_m,
                 COALESCE(
                     ROUND(GREATEST(0, TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out)) / 60, 2),
                     0
@@ -397,6 +462,14 @@ export const exportAllHistory = async (fromDate = null, toDate = null) => {
                DATE_FORMAT(a.work_date, '%Y-%m-%d') AS work_date,
                TIME_FORMAT(a.check_in, '%H:%i') AS check_in,
                TIME_FORMAT(a.check_out, '%H:%i') AS check_out,
+               a.check_in_latitude,
+               a.check_in_longitude,
+               a.check_in_accuracy_m,
+               a.check_in_distance_m,
+               a.check_out_latitude,
+               a.check_out_longitude,
+               a.check_out_accuracy_m,
+               a.check_out_distance_m,
                LOWER(COALESCE(a.status, '')) AS status
           FROM attendance a
           INNER JOIN employees e ON e.id = a.employee_id

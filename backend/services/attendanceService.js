@@ -131,9 +131,10 @@ const toDateValue = (value) => {
  * @param {number} params.employeeId
  * @param {"check_in"|"check_out"} params.action
  * @param {string} params.workDate - YYYY-MM-DD (do server quyết định)
+ * @param {object|null} [params.location] - GPS coordinates already validated against the geofence
  * @returns {Promise<{ attendance: object, evaluation: object }>}
  */
-export const recordAttendance = async ({ employeeId, action, workDate }) => {
+export const recordAttendance = async ({ employeeId, action, workDate, location = null }) => {
     const normalizedEmployeeId = Number(employeeId);
 
     if (!Number.isInteger(normalizedEmployeeId) || normalizedEmployeeId <= 0) {
@@ -214,7 +215,8 @@ export const recordAttendance = async ({ employeeId, action, workDate }) => {
                 employeeId: normalizedEmployeeId,
                 workDate,
                 checkIn,
-                status: evaluation.suggestedStatus
+                status: evaluation.suggestedStatus,
+                location
             });
 
             await connection.commit();
@@ -259,7 +261,8 @@ export const recordAttendance = async ({ employeeId, action, workDate }) => {
         const attendance = await updateCheckOut(connection, {
             attendanceId: existing.id,
             checkOut,
-            status: evaluation.suggestedStatus
+            status: evaluation.suggestedStatus,
+            location
         });
 
         await connection.commit();

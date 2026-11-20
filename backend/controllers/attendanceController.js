@@ -22,12 +22,21 @@ import {
 } from "../services/attendanceService.js";
 import { evaluateAttendance } from "../services/shiftScheduleService.js";
 import { writeAttendanceAuditLog } from "../services/attendanceAuditService.js";
+import {
+    AttendanceGpsError,
+    getSettings as getAttendanceGpsSettings,
+    saveSettings as saveAttendanceGpsSettings,
+    validateLocation
+} from "../models/attendanceGps.js";
 
-export const renderAttendancePage = (req, res) => {
+export const renderAttendancePage = async (req, res) => {
+    const gpsSettings = await getAttendanceGpsSettings();
+
     res.render("admin/attendance", {
         user: req.session.user,
         pageTitle: "Bảng chấm công",
-        activePage: "attendance"
+        activePage: "attendance",
+        gpsSettings
     });
 };
 
@@ -48,6 +57,18 @@ const parseEmployeeId = (value) => {
     const id = Number(value);
 
     return Number.isInteger(id) && id > 0 ? id : null;
+};
+
+const parseFiniteNumber = (value) => {
+    if (
+        (typeof value !== "number" && typeof value !== "string")
+        || String(value).trim() === ""
+    ) {
+        return null;
+    }
+
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
 };
 
 const safeEmployee = (employee) => {
@@ -75,6 +96,14 @@ const formatTime = (value) => {
 };
 
 const sendAttendanceError = (res, error) => {
+    if (error instanceof AttendanceGpsError) {
+        return res.status(error.statusCode).json({
+            success: false,
+            code: error.code,
+            message: error.message
+        });
+    }
+
     if (error instanceof AttendanceError) {
         if (error.retryAfter) {
             res.set("Retry-After", String(error.retryAfter));
@@ -94,6 +123,150 @@ const sendAttendanceError = (res, error) => {
         code: "ATTENDANCE_SERVER_ERROR",
         message: "Không thể xử lý yêu cầu chấm công. Vui lòng thử lại."
     });
+};
+
+export const saveGpsSettings = async (req, res) => {
+    try {
+        const settings = await saveAttendanceGpsSettings({
+            latitude: parseFiniteNumber(req.body?.latitude),
+            longitude: parseFiniteNumber(req.body?.longitude),
+            radiusMeters: parseFiniteNumber(req.body?.radius_m),
+            updatedBy: Number(req.session.user?.id)
+        });
+
+        return res.status(200).json({
+            success: true,
+            settings,
+            message: "Đã lưu vị trí cơ sở và bán kính chấm công GPS."
+        });
+    } catch (error) {
+        if (error instanceof AttendanceGpsError) {
+            return sendAttendanceError(res, error);
+        }
+
+        console.error("Lỗi lưu cấu hình chấm công GPS:", error);
+        return res.status(500).json({
+            success: false,
+            code: "GPS_SETTINGS_ERROR",
+            message: "Không thể lưu cấu hình GPS. Vui lòng thử lại."
+        });
+    }
+};
+
+export const gpsAttendance = async (req, res) => {
+    const body = req.body || {};
+    const action = String(body.action || "").trim();
+    const workDate = getTodayDateString();
+    const employeeId = parseEmployeeId(body.employee_id);
+    let employee = null;
+    let location = null;
+
+    if (!isValidAction(action)) {
+        return res.status(400).json({
+            success: false,
+            code: "INVALID_ACTION",
+            message: "Hành động chấm công không hợp lệ."
+        });
+    }
+
+    if (!employeeId) {
+        return res.status(400).json({
+            success: false,
+            code: "INVALID_EMPLOYEE",
+            message: "Nhân viên không hợp lệ."
+        });
+    }
+
+    try {
+        const employeeRecord = await findEmployeeFullById(employeeId);
+        if (!employeeRecord) {
+            return res.status(404).json({
+                success: false,
+                code: "EMPLOYEE_NOT_FOUND",
+                message: "Không tìm thấy nhân viên."
+            });
+        }
+
+        employee = safeEmployee(employeeRecord);
+        location = await validateLocation({
+            latitude: parseFiniteNumber(body.latitude),
+            longitude: parseFiniteNumber(body.longitude),
+            accuracy: parseFiniteNumber(body.accuracy)
+        });
+
+        const cooldown = getActionCooldownRemaining(employee.id, action);
+        if (cooldown > 0) {
+            res.set("Retry-After", String(cooldown));
+            return res.status(429).json({
+                success: false,
+                code: "TOO_MANY_REQUESTS",
+                message: `Vui lòng đợi ${cooldown} giây trước khi thực hiện lại.`
+            });
+        }
+
+        const result = await recordAttendance({
+            employeeId: employee.id,
+            action,
+            workDate,
+            location
+        });
+
+        markActionSuccess(employee.id, action);
+
+        await writeAttendanceAuditLog({
+            action,
+            method: "gps",
+            result: "success",
+            actor: req.session.user,
+            employee,
+            workDate,
+            detail: {
+                accuracyMeters: location.accuracy,
+                distanceMeters: location.distance_m,
+                radiusMeters: location.radius_m,
+                status: result.evaluation.suggestedStatus
+            },
+            req
+        });
+
+        const time = formatTime(
+            action === "check_in"
+                ? result.attendance.check_in
+                : result.attendance.check_out
+        );
+
+        return res.status(200).json({
+            success: true,
+            code: action === "check_in" ? "GPS_CHECK_IN_SUCCESS" : "GPS_CHECK_OUT_SUCCESS",
+            message: `${action === "check_in" ? "Check-in" : "Check-out"} GPS thành công${time ? ` lúc ${time}` : ""}.`,
+            employee,
+            attendance: result.attendance,
+            evaluation: result.evaluation,
+            location: {
+                distance_m: location.distance_m,
+                accuracy_m: Math.round(location.accuracy),
+                radius_m: location.radius_m
+            }
+        });
+    } catch (error) {
+        if (error instanceof AttendanceError || error instanceof AttendanceGpsError) {
+            await writeAttendanceAuditLog({
+                action,
+                method: "gps",
+                result: "rejected",
+                actor: req.session.user,
+                employee,
+                workDate,
+                detail: {
+                    code: error.code,
+                    message: error.message
+                },
+                req
+            });
+        }
+
+        return sendAttendanceError(res, error);
+    }
 };
 
 // Bảng chấm công theo ngày, bao gồm cả nhân viên chưa chấm công.
@@ -148,6 +321,7 @@ export const getAttendanceData = async (req, res) => {
             earlyLeave: employees.filter(
                 (row) => row.check_out && row.evaluation.isEarlyLeave
             ).length,
+            deviceRecords: employees.filter((row) => row.record_source === "device").length,
             notCheckedIn: employees.filter((row) => !row.check_in).length
         };
 
@@ -702,13 +876,36 @@ export const exportCsv = async (req, res) => {
             String(req.query.to_date || "").trim() || null
         );
         const data = [
-            ["Mã nhân viên", "Nhân viên", "Ngày", "Giờ vào", "Giờ ra", "Trạng thái"],
+            [
+                "Mã nhân viên",
+                "Nhân viên",
+                "Ngày",
+                "Giờ vào",
+                "Giờ ra",
+                "GPS vào (vĩ độ, kinh độ)",
+                "Độ chính xác GPS vào (m)",
+                "Khoảng cách vào (m)",
+                "GPS ra (vĩ độ, kinh độ)",
+                "Độ chính xác GPS ra (m)",
+                "Khoảng cách ra (m)",
+                "Trạng thái"
+            ],
             ...rows.map((row) => [
                 row.employee_code,
                 row.full_name,
                 row.work_date,
                 row.check_in || "",
                 row.check_out || "",
+                row.check_in_latitude !== null && row.check_in_longitude !== null
+                    ? `${row.check_in_latitude}, ${row.check_in_longitude}`
+                    : "",
+                row.check_in_accuracy_m ?? "",
+                row.check_in_distance_m ?? "",
+                row.check_out_latitude !== null && row.check_out_longitude !== null
+                    ? `${row.check_out_latitude}, ${row.check_out_longitude}`
+                    : "",
+                row.check_out_accuracy_m ?? "",
+                row.check_out_distance_m ?? "",
                 { present: "Đúng giờ", late: "Đi muộn", absent: "Vắng mặt" }[row.status] || row.status
             ])
         ];
