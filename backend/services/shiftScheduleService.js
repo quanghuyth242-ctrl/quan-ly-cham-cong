@@ -81,11 +81,65 @@ export const getShiftForDate = async (employeeId, workDate) => {
     };
 };
 
-/**
- * Kiểm tra một ngày có phải ngày làm việc theo lịch phân ca hay không.
- */
-export const isWorkingDay = async (employeeId, workDate) => {
-    const shift = await getShiftForDate(employeeId, workDate);
+export const getShiftSchedulesForEmployeesOnDate = async (employeeIds, workDate) => {
+    const uniqueEmployeeIds = [...new Set(employeeIds)];
+    if (uniqueEmployeeIds.length === 0) return new Map();
+
+    const placeholders = uniqueEmployeeIds.map(() => "?").join(", ");
+    const [rows] = await db.execute(
+        `SELECT a.employee_id,
+                a.id AS assignment_id,
+                a.start_date,
+                a.end_date,
+                s.id AS shift_id,
+                s.shift_code,
+                s.shift_name,
+                TIME_FORMAT(s.morning_start, '%H:%i') AS morning_start,
+                TIME_FORMAT(s.morning_end, '%H:%i') AS morning_end,
+                TIME_FORMAT(s.afternoon_start, '%H:%i') AS afternoon_start,
+                TIME_FORMAT(s.afternoon_end, '%H:%i') AS afternoon_end,
+                sw.weekday
+           FROM employee_shift_assignments a
+           INNER JOIN work_shifts s ON s.id = a.shift_id
+           LEFT JOIN shift_workdays sw ON sw.shift_id = s.id
+          WHERE a.employee_id IN (${placeholders})
+            AND a.status = 'active'
+            AND ? BETWEEN a.start_date AND a.end_date
+          ORDER BY a.employee_id ASC, a.start_date DESC, a.id DESC, sw.weekday ASC`,
+        [...uniqueEmployeeIds, workDate]
+    );
+
+    const shiftsByEmployee = new Map();
+
+    for (const row of rows) {
+        let shift = shiftsByEmployee.get(row.employee_id);
+
+        if (!shift) {
+            shift = {
+                assignment_id: row.assignment_id,
+                start_date: row.start_date,
+                end_date: row.end_date,
+                shift_id: row.shift_id,
+                shift_code: row.shift_code,
+                shift_name: row.shift_name,
+                morning_start: row.morning_start,
+                morning_end: row.morning_end,
+                afternoon_start: row.afternoon_start,
+                afternoon_end: row.afternoon_end,
+                workdays: []
+            };
+            shiftsByEmployee.set(row.employee_id, shift);
+        }
+
+        if (shift.assignment_id === row.assignment_id && row.weekday !== null) {
+            shift.workdays.push(Number(row.weekday));
+        }
+    }
+
+    return shiftsByEmployee;
+};
+
+export const buildAttendanceSchedule = (shift, workDate) => {
     const weekday = getIsoWeekday(workDate);
 
     if (!shift) {
@@ -106,6 +160,14 @@ export const isWorkingDay = async (employeeId, workDate) => {
 };
 
 /**
+ * Kiểm tra một ngày có phải ngày làm việc theo lịch phân ca hay không.
+ */
+export const isWorkingDay = async (employeeId, workDate) => {
+    const shift = await getShiftForDate(employeeId, workDate);
+    return buildAttendanceSchedule(shift, workDate);
+};
+
+/**
  * Đánh giá một bản ghi chấm công dựa trên ca được phân.
  * Trả về giờ vào/ra dự kiến, số phút đi muộn, về sớm và thời gian làm việc thực tế.
  */
@@ -113,9 +175,10 @@ export const evaluateAttendance = async ({
     employeeId,
     workDate,
     checkIn = null,
-    checkOut = null
+    checkOut = null,
+    schedule: suppliedSchedule = null
 }) => {
-    const schedule = await isWorkingDay(employeeId, workDate);
+    const schedule = suppliedSchedule || await isWorkingDay(employeeId, workDate);
     const shift = schedule.shift;
 
     if (!shift) {
