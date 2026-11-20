@@ -33,6 +33,27 @@ export const findAll = async () => {
     }));
 };
 
+export const findStatuses = async () => {
+    const [rows] = await db.execute(
+        `SELECT id,
+                is_active,
+                DATE_FORMAT(last_seen_at, '%Y-%m-%d %H:%i:%s') AS last_seen_at,
+                CASE
+                    WHEN is_active = 1
+                     AND last_seen_at >= DATE_SUB(NOW(6), INTERVAL ${ONLINE_WINDOW_MINUTES} MINUTE)
+                    THEN 1
+                    ELSE 0
+                END AS is_online
+           FROM attendance_devices`
+    );
+
+    return rows.map((row) => ({
+        ...row,
+        is_active: Boolean(Number(row.is_active)),
+        is_online: Boolean(Number(row.is_online))
+    }));
+};
+
 export const create = async (data) => {
     const [result] = await db.execute(
         `INSERT INTO attendance_devices

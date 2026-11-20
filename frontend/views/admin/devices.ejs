@@ -58,20 +58,31 @@
                 Trạng thái trực tuyến được cập nhật theo tín hiệu heartbeat gần nhất.
             </p>
         </div>
-        <a
-            href="/admin/attendance"
-            class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors"
-        >
-            <span class="material-symbols-outlined text-[20px]">table_chart</span>
-            <span>Bảng chấm công</span>
-        </a>
+        <div class="flex flex-wrap gap-space-sm">
+            <button
+                id="device-status-refresh"
+                type="button"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md transition-colors disabled:opacity-60"
+            >
+                <span id="device-status-refresh-icon" class="material-symbols-outlined text-[20px]">refresh</span>
+                <span>Kiểm tra trạng thái</span>
+            </button>
+            <span id="device-status-refresh-result" class="self-center font-body-sm text-body-sm text-on-surface-variant" aria-live="polite"></span>
+            <a
+                href="/admin/attendance"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors"
+            >
+                <span class="material-symbols-outlined text-[20px]">table_chart</span>
+                <span>Bảng chấm công</span>
+            </a>
+        </div>
     </section>
 
     <section class="grid grid-cols-1 sm:grid-cols-3 gap-space-lg" aria-label="Thống kê trạng thái thiết bị">
         <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng thiết bị</span>
-                <span class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= stats.total %></span>
+                <span id="device-stat-total" class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= stats.total %></span>
             </div>
             <div class="w-11 h-11 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
                 <span class="material-symbols-outlined text-[24px]">devices</span>
@@ -80,7 +91,7 @@
         <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đang trực tuyến</span>
-                <span class="font-headline-xl text-headline-xl text-green-600 font-bold mt-space-xs"><%= stats.online %></span>
+                <span id="device-stat-online" class="font-headline-xl text-headline-xl text-green-600 font-bold mt-space-xs"><%= stats.online %></span>
             </div>
             <div class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
                 <span class="material-symbols-outlined text-[24px]">wifi</span>
@@ -89,7 +100,7 @@
         <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đang ngoại tuyến</span>
-                <span class="font-headline-xl text-headline-xl text-red-600 font-bold mt-space-xs"><%= stats.offline %></span>
+                <span id="device-stat-offline" class="font-headline-xl text-headline-xl text-red-600 font-bold mt-space-xs"><%= stats.offline %></span>
             </div>
             <div class="w-11 h-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
                 <span class="material-symbols-outlined text-[24px]">wifi_off</span>
@@ -106,7 +117,20 @@
                         Thiết bị được xem là trực tuyến nếu gửi tín hiệu trong vòng <%= onlineWindowMinutes %> phút.
                     </p>
                 </div>
-                <span class="font-label-sm text-label-sm text-on-surface-variant"><%= devices.length %> thiết bị</span>
+                <div class="flex flex-wrap items-center gap-space-sm">
+                    <label class="sr-only" for="device-search">Tìm thiết bị</label>
+                    <input id="device-search" type="search" placeholder="Tìm theo tên, mã hoặc vị trí" class="px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-lg text-on-surface">
+                    <label class="sr-only" for="device-state-filter">Lọc theo trạng thái</label>
+                    <select id="device-state-filter" class="px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-lg text-on-surface">
+                        <option value="all">Tất cả trạng thái</option>
+                        <option value="online">Trực tuyến</option>
+                        <option value="offline">Ngoại tuyến</option>
+                        <option value="inactive">Ngừng hoạt động</option>
+                    </select>
+                    <span id="device-visible-count" class="font-label-sm text-label-sm text-on-surface-variant">
+                        <%= devices.length %> / <%= devices.length %> thiết bị
+                    </span>
+                </div>
             </div>
 
             <div class="overflow-x-auto">
@@ -134,7 +158,7 @@
                             </tr>
                         <% } %>
                         <% devices.forEach((device) => { %>
-                            <tr class="hover:bg-surface-container-low transition-colors">
+                            <tr class="hover:bg-surface-container-low transition-colors" data-device-row data-device-id="<%= device.id %>" data-device-state="<%= !device.is_active ? 'inactive' : device.is_online ? 'online' : 'offline' %>">
                                 <td class="px-space-lg py-space-md">
                                     <div class="flex flex-col">
                                         <span class="font-label-md text-label-md text-on-surface"><%= device.name %></span>
@@ -151,20 +175,20 @@
                                 </td>
                                 <td class="px-space-md py-space-md">
                                     <% if (!device.is_active) { %>
-                                        <span class="inline-flex items-center gap-1.5 px-space-sm py-1 bg-surface-container-high text-on-surface-variant rounded-full font-label-sm text-label-sm">
+                                        <span id="device-status-<%= device.id %>" class="inline-flex items-center gap-1.5 px-space-sm py-1 bg-surface-container-high text-on-surface-variant rounded-full font-label-sm text-label-sm">
                                             <span class="w-2 h-2 rounded-full bg-outline"></span>Ngừng hoạt động
                                         </span>
                                     <% } else if (device.is_online) { %>
-                                        <span class="inline-flex items-center gap-1.5 px-space-sm py-1 bg-green-50 text-green-700 rounded-full font-label-sm text-label-sm">
+                                        <span id="device-status-<%= device.id %>" class="inline-flex items-center gap-1.5 px-space-sm py-1 bg-green-50 text-green-700 rounded-full font-label-sm text-label-sm">
                                             <span class="w-2 h-2 rounded-full bg-green-500"></span>Trực tuyến
                                         </span>
                                     <% } else { %>
-                                        <span class="inline-flex items-center gap-1.5 px-space-sm py-1 bg-red-50 text-red-700 rounded-full font-label-sm text-label-sm">
+                                        <span id="device-status-<%= device.id %>" class="inline-flex items-center gap-1.5 px-space-sm py-1 bg-red-50 text-red-700 rounded-full font-label-sm text-label-sm">
                                             <span class="w-2 h-2 rounded-full bg-red-500"></span>Ngoại tuyến
                                         </span>
                                     <% } %>
                                 </td>
-                                <td class="px-space-lg py-space-md font-body-sm text-body-sm text-on-surface-variant">
+                                <td id="device-last-seen-<%= device.id %>" class="px-space-lg py-space-md font-body-sm text-body-sm text-on-surface-variant">
                                     <%= device.last_seen_at || "Chưa gửi tín hiệu" %>
                                 </td>
                                 <td class="px-space-lg py-space-md font-body-sm text-body-sm text-on-surface-variant">
@@ -208,6 +232,9 @@
                                 </td>
                             </tr>
                         <% }); %>
+                        <tr id="device-filter-empty" hidden>
+                            <td colspan="6" class="px-space-lg py-space-xl text-center text-on-surface-variant">Không tìm thấy thiết bị phù hợp.</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -351,5 +378,92 @@
         </aside>
     </section>
 </section>
+
+<script>
+    (() => {
+        const button = document.getElementById("device-status-refresh");
+        const icon = document.getElementById("device-status-refresh-icon");
+        const searchInput = document.getElementById("device-search");
+        const stateFilter = document.getElementById("device-state-filter");
+        const deviceRows = [...document.querySelectorAll("[data-device-row]")];
+        const normalize = (value) => value.toLocaleLowerCase("vi").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        let checking = false;
+
+        const filterDevices = () => {
+            const query = normalize(searchInput.value.trim());
+            const selectedState = stateFilter.value;
+            let visibleCount = 0;
+
+            deviceRows.forEach((row) => {
+                const searchableText = `${row.cells[0].textContent} ${row.cells[1].textContent}`;
+                const matchesQuery = normalize(searchableText).includes(query);
+                const matchesState = selectedState === "all" || row.dataset.deviceState === selectedState;
+                row.hidden = !matchesQuery || !matchesState;
+                if (!row.hidden) visibleCount += 1;
+            });
+
+            document.getElementById("device-visible-count").textContent =
+                `${visibleCount} / ${deviceRows.length} thiết bị`;
+            document.getElementById("device-filter-empty").hidden = visibleCount > 0 || deviceRows.length === 0;
+        };
+
+        const checkDeviceStatuses = async () => {
+            if (checking || document.visibilityState !== "visible") return;
+            checking = true;
+            button.disabled = true;
+            icon.classList.add("animate-spin");
+
+            try {
+                const response = await fetch("/admin/devices/refresh", {
+                    headers: { Accept: "application/json" },
+                    cache: "no-store"
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || "Không thể kiểm tra trạng thái thiết bị.");
+
+                data.devices.forEach((device) => {
+                    const row = document.querySelector(`[data-device-id="${device.id}"]`);
+                    if (row) row.dataset.deviceState = !device.is_active ? "inactive" : device.is_online ? "online" : "offline";
+
+                    const badge = document.getElementById(`device-status-${device.id}`);
+                    if (badge) {
+                        if (!device.is_active) {
+                            badge.className = "inline-flex items-center gap-1.5 px-space-sm py-1 bg-surface-container-high text-on-surface-variant rounded-full font-label-sm text-label-sm";
+                            badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-outline"></span>Ngừng hoạt động';
+                        } else if (device.is_online) {
+                            badge.className = "inline-flex items-center gap-1.5 px-space-sm py-1 bg-green-50 text-green-700 rounded-full font-label-sm text-label-sm";
+                            badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500"></span>Trực tuyến';
+                        } else {
+                            badge.className = "inline-flex items-center gap-1.5 px-space-sm py-1 bg-red-50 text-red-700 rounded-full font-label-sm text-label-sm";
+                            badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-500"></span>Ngoại tuyến';
+                        }
+                    }
+
+                    const lastSeen = document.getElementById(`device-last-seen-${device.id}`);
+                    if (lastSeen) lastSeen.textContent = device.last_seen_at || "Chưa gửi tín hiệu";
+                });
+
+                document.getElementById("device-stat-total").textContent = data.stats.total;
+                document.getElementById("device-stat-online").textContent = data.stats.online;
+                document.getElementById("device-stat-offline").textContent = data.stats.offline;
+                filterDevices();
+                document.getElementById("device-status-refresh-result").textContent =
+                    `Đã kiểm tra lúc ${new Date(data.checked_at).toLocaleTimeString("vi-VN")}`;
+            } catch (error) {
+                console.error("Lỗi kiểm tra trạng thái thiết bị:", error);
+                document.getElementById("device-status-refresh-result").textContent = "Kiểm tra thất bại · Thử lại";
+            } finally {
+                checking = false;
+                button.disabled = false;
+                icon.classList.remove("animate-spin");
+            }
+        };
+
+        searchInput.addEventListener("input", filterDevices);
+        stateFilter.addEventListener("change", filterDevices);
+        button.addEventListener("click", checkDeviceStatuses);
+        window.setInterval(checkDeviceStatuses, 30000);
+    })();
+</script>
 
 <%- include("../partials/adminFoot") %>

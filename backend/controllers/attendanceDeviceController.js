@@ -254,6 +254,34 @@ export const index = async (req, res) => {
     }
 };
 
+export const refresh = async (_req, res) => {
+    try {
+        const devices = await AttendanceDeviceModel.findStatuses();
+        const online = devices.filter((device) => device.is_online).length;
+
+        res.set("Cache-Control", "no-store");
+        return res.json({
+            devices: devices.map((device) => ({
+                id: device.id,
+                is_active: device.is_active,
+                is_online: device.is_online,
+                last_seen_at: device.last_seen_at
+            })),
+            stats: {
+                total: devices.length,
+                online,
+                offline: devices.length - online
+            },
+            checked_at: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error("Lỗi kiểm tra trạng thái thiết bị:", error);
+        return res.status(500).json({
+            error: "Không thể kiểm tra trạng thái thiết bị. Vui lòng thử lại."
+        });
+    }
+};
+
 export const create = async (req, res) => {
     const deviceCode = typeof req.body.device_code === "string"
         ? req.body.device_code.trim().toUpperCase()
