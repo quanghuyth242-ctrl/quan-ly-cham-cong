@@ -6,7 +6,11 @@ const ATTENDANCE_STATUS_FILTERS = [
     "checked_out",
     "not_checked_in",
     "late",
-    "early_leave"
+    "early_leave",
+    "absent",
+    "missing_checkout",
+    "no_schedule",
+    "needs_review"
 ];
 
 export const normalizeAttendanceStatus = (status) => {
@@ -27,6 +31,11 @@ const buildStatusCondition = (status) => {
             return "a.status LIKE '%late%'";
         case "early_leave":
             return "a.status LIKE '%early_leave%'";
+        case "absent":
+        case "missing_checkout":
+        case "no_schedule":
+        case "needs_review":
+            return null;
         default:
             return null;
     }

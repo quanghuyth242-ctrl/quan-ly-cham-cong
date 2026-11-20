@@ -1,0 +1,132 @@
+<%- include("../partials/adminHead", {
+    pageTitle: employee ? `Hồ sơ ${employee.full_name}` : "Hồ sơ nhân viên",
+    activePage: "employees",
+    user: user
+}) %>
+
+<section class="flex flex-col gap-space-xl">
+    <%- include("../partials/alerts", { success: null, error: error }) %>
+
+    <% if (employee) { %>
+        <a href="/admin/employees" class="inline-flex items-center gap-space-xs text-primary font-label-md text-label-md hover:underline w-fit">
+            <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+            Quay lại danh sách nhân sự
+        </a>
+
+        <section class="relative overflow-hidden bg-surface-container-lowest p-space-lg md:p-space-xl rounded-2xl border border-surface-container-high/60 shadow-sm">
+            <div class="absolute inset-y-0 left-0 w-1 bg-primary"></div>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-lg">
+                <div class="flex items-center gap-space-md min-w-0">
+                    <div class="w-16 h-16 rounded-2xl bg-primary-fixed text-primary font-headline-md text-headline-md font-bold flex items-center justify-center shrink-0">
+                        <%= String(employee.full_name || "?").trim().slice(0, 2).toUpperCase() %>
+                    </div>
+                    <div class="flex flex-col gap-space-xs min-w-0">
+                        <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Hồ sơ nhân viên</span>
+                        <h1 class="font-headline-lg text-headline-lg text-primary tracking-tight break-words"><%= employee.full_name %></h1>
+                        <span class="font-data-mono text-data-mono text-on-surface-variant"><%= employee.employee_code %></span>
+                    </div>
+                </div>
+                <% if (employee.is_active) { %>
+                    <span class="inline-flex items-center gap-2 px-space-md py-space-sm bg-green-50 text-green-700 rounded-full font-label-md text-label-md w-fit">
+                        <span class="w-2 h-2 rounded-full bg-green-500"></span>Đang hoạt động
+                    </span>
+                <% } else { %>
+                    <span class="inline-flex items-center gap-2 px-space-md py-space-sm bg-red-50 text-red-700 rounded-full font-label-md text-label-md w-fit">
+                        <span class="w-2 h-2 rounded-full bg-red-500"></span>Ngừng hoạt động
+                    </span>
+                <% } %>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-space-lg" aria-label="Thông tin hồ sơ nhân viên">
+            <article class="bg-surface-container-lowest p-space-lg rounded-2xl border border-surface-container-high/60 shadow-sm">
+                <div class="flex items-center gap-space-sm text-primary mb-space-md">
+                    <span class="material-symbols-outlined">badge</span>
+                    <h2 class="font-headline-sm text-headline-sm">Thông tin công việc</h2>
+                </div>
+                <dl class="flex flex-col gap-space-md">
+                    <div>
+                        <dt class="font-label-sm text-label-sm text-on-surface-variant">Mã nhân viên</dt>
+                        <dd class="font-data-mono text-data-mono text-on-surface mt-space-xs"><%= employee.employee_code %></dd>
+                    </div>
+                    <div>
+                        <dt class="font-label-sm text-label-sm text-on-surface-variant">Phòng ban</dt>
+                        <dd class="font-body-md text-body-md text-on-surface mt-space-xs"><%= employee.department || "Chưa phân phòng ban" %></dd>
+                    </div>
+                    <div>
+                        <dt class="font-label-sm text-label-sm text-on-surface-variant">Chức vụ</dt>
+                        <dd class="font-body-md text-body-md text-on-surface mt-space-xs"><%= employee.position || "Chưa phân chức vụ" %></dd>
+                    </div>
+                    <div>
+                        <dt class="font-label-sm text-label-sm text-on-surface-variant">Ngày tạo hồ sơ</dt>
+                        <dd class="font-body-md text-body-md text-on-surface mt-space-xs"><%= employee.created_date || "Chưa có thông tin" %></dd>
+                    </div>
+                    <% if (employee.deactivated_date) { %>
+                        <div>
+                            <dt class="font-label-sm text-label-sm text-on-surface-variant">Ngày ngừng hoạt động</dt>
+                            <dd class="font-body-md text-body-md text-on-surface mt-space-xs"><%= employee.deactivated_date %></dd>
+                        </div>
+                    <% } %>
+                </dl>
+            </article>
+
+            <article class="bg-surface-container-lowest p-space-lg rounded-2xl border border-surface-container-high/60 shadow-sm">
+                <div class="flex items-center gap-space-sm text-primary mb-space-md">
+                    <span class="material-symbols-outlined">contact_page</span>
+                    <h2 class="font-headline-sm text-headline-sm">Thông tin liên hệ</h2>
+                </div>
+                <dl class="flex flex-col gap-space-md">
+                    <div>
+                        <dt class="font-label-sm text-label-sm text-on-surface-variant">Họ và tên</dt>
+                        <dd class="font-body-md text-body-md text-on-surface mt-space-xs"><%= employee.full_name %></dd>
+                    </div>
+                    <div>
+                        <dt class="font-label-sm text-label-sm text-on-surface-variant">Email</dt>
+                        <dd class="font-body-md text-body-md mt-space-xs">
+                            <% if (employee.email) { %>
+                                <a href="mailto:<%= employee.email %>" class="text-primary hover:underline break-all"><%= employee.email %></a>
+                            <% } else { %>
+                                <span class="text-on-surface-variant">Chưa cập nhật email</span>
+                            <% } %>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="font-label-sm text-label-sm text-on-surface-variant">Số điện thoại</dt>
+                        <dd class="font-body-md text-body-md mt-space-xs">
+                            <% if (employee.phone) { %>
+                                <a href="tel:<%= employee.phone %>" class="text-primary hover:underline"><%= employee.phone %></a>
+                            <% } else { %>
+                                <span class="text-on-surface-variant">Chưa cập nhật số điện thoại</span>
+                            <% } %>
+                        </dd>
+                    </div>
+                </dl>
+            </article>
+
+            <article class="bg-surface-container-lowest p-space-lg rounded-2xl border border-surface-container-high/60 shadow-sm md:col-span-2 xl:col-span-1">
+                <div class="flex items-center gap-space-sm text-primary mb-space-md">
+                    <span class="material-symbols-outlined">quick_reference_all</span>
+                    <h2 class="font-headline-sm text-headline-sm">Truy cập nhanh</h2>
+                </div>
+                <div class="flex flex-col gap-space-sm">
+                    <a href="/admin/attendance?search=<%= encodeURIComponent(employee.employee_code) %>" class="inline-flex items-center gap-space-sm px-space-md py-space-sm bg-surface-container-low hover:bg-surface-container-high rounded-xl text-primary font-label-md text-label-md transition-colors">
+                        <span class="material-symbols-outlined">fact_check</span>Xem chấm công
+                    </a>
+                    <a href="/admin/shift-assignments?search=<%= encodeURIComponent(employee.employee_code) %>" class="inline-flex items-center gap-space-sm px-space-md py-space-sm bg-surface-container-low hover:bg-surface-container-high rounded-xl text-primary font-label-md text-label-md transition-colors">
+                        <span class="material-symbols-outlined">event_repeat</span>Xem phân ca
+                    </a>
+                    <a href="/admin/employees?search=<%= encodeURIComponent(employee.employee_code) %>" class="inline-flex items-center gap-space-sm px-space-md py-space-sm bg-surface-container-low hover:bg-surface-container-high rounded-xl text-primary font-label-md text-label-md transition-colors">
+                        <span class="material-symbols-outlined">manage_search</span>Tìm trong danh sách nhân sự
+                    </a>
+                </div>
+            </article>
+        </section>
+    <% } else { %>
+        <a href="/admin/employees" class="inline-flex items-center gap-space-xs text-primary font-label-md text-label-md hover:underline w-fit">
+            <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+            Quay lại danh sách nhân sự
+        </a>
+    <% } %>
+</section>
+
+<%- include("../partials/adminFoot") %>

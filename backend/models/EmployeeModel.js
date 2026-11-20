@@ -31,6 +31,7 @@ export const findAll = async ({ search = "", department = "", status = "" } = {}
                 email,
                 phone,
                 department,
+                position,
                 is_active,
                 DATE_FORMAT(deactivated_at, '%Y-%m-%d %H:%i') AS deactivated_date,
                 DATE_FORMAT(created_at, '%Y-%m-%d') AS created_date
@@ -45,26 +46,44 @@ export const findAll = async ({ search = "", department = "", status = "" } = {}
 
 export const getDepartments = async () => {
     const [rows] = await db.execute(`
-        SELECT DISTINCT department
-          FROM employees
-         WHERE department IS NOT NULL
-           AND TRIM(department) <> ''
-         ORDER BY department ASC
+        SELECT department_name
+          FROM departments
+         ORDER BY department_name ASC
     `);
 
-    return rows.map((row) => row.department);
+    return rows.map((row) => row.department_name);
+};
+
+export const getPositions = async () => {
+    const [rows] = await db.execute(`
+        SELECT position_name
+          FROM positions
+         ORDER BY position_name ASC
+    `);
+    return rows.map((row) => row.position_name);
 };
 
 export const getAvailableEmployeeCodes = async (limit = 20) => {
-    const [rows] = await db.execute(
-        "SELECT employee_code FROM employees WHERE employee_code LIKE 'NV%'"
-    );
-    const usedCodes = new Set(rows.map((row) => String(row.employee_code).toUpperCase()));
     const availableCodes = [];
+    const batchSize = Math.min(1000, Math.max(100, limit * 2));
+    let number = 1;
 
-    for (let number = 1; number <= 999999 && availableCodes.length < limit; number += 1) {
-        const code = `NV${String(number).padStart(3, "0")}`;
-        if (!usedCodes.has(code)) availableCodes.push(code);
+    while (number <= 999999 && availableCodes.length < limit) {
+        const candidates = [];
+        for (let end = Math.min(999999, number + batchSize - 1); number <= end; number += 1) {
+            candidates.push(`NV${String(number).padStart(3, "0")}`);
+        }
+
+        const placeholders = candidates.map(() => "?").join(", ");
+        const [rows] = await db.execute(
+            `SELECT employee_code FROM employees WHERE employee_code IN (${placeholders})`,
+            candidates
+        );
+        const usedCodes = new Set(rows.map((row) => String(row.employee_code).toUpperCase()));
+        for (const code of candidates) {
+            if (!usedCodes.has(code)) availableCodes.push(code);
+            if (availableCodes.length >= limit) break;
+        }
     }
 
     return availableCodes;
@@ -73,7 +92,7 @@ export const getAvailableEmployeeCodes = async (limit = 20) => {
 export const getStats = async () => {
     const [rows] = await db.execute(`
         SELECT COUNT(*) AS total,
-               COUNT(DISTINCT NULLIF(TRIM(department), '')) AS departments,
+               (SELECT COUNT(*) FROM departments) AS departments,
                COALESCE(SUM(department IS NULL OR TRIM(department) = ''), 0) AS unassigned_department,
                COALESCE(SUM(is_active = 1), 0) AS active,
                COALESCE(SUM(is_active = 0), 0) AS inactive
@@ -91,14 +110,15 @@ export const getStats = async () => {
 
 export const create = async (employee) => {
     const [result] = await db.execute(
-        `INSERT INTO employees (employee_code, full_name, email, phone, department)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO employees (employee_code, full_name, email, phone, department, position)
+         VALUES (?, ?, ?, ?, ?, ?)`,
         [
             employee.employee_code,
             employee.full_name,
             employee.email,
             employee.phone,
-            employee.department
+            employee.department,
+            employee.position
         ]
     );
 
@@ -107,7 +127,8 @@ export const create = async (employee) => {
 
 export const findById = async (id) => {
     const [rows] = await db.execute(
-        `SELECT id, employee_code, full_name, email, phone, department, is_active,
+        `SELECT id, employee_code, full_name, email, phone, department, position, is_active,
+                DATE_FORMAT(created_at, '%Y-%m-%d') AS created_date,
                 DATE_FORMAT(deactivated_at, '%Y-%m-%d %H:%i') AS deactivated_date
            FROM employees
           WHERE id = ?
@@ -124,13 +145,15 @@ export const update = async (id, employee) => {
             SET full_name = ?,
                 email = ?,
                 phone = ?,
-                department = ?
+                department = ?,
+                position = ?
           WHERE id = ?`,
         [
             employee.full_name,
             employee.email,
             employee.phone,
             employee.department,
+            employee.position,
             id
         ]
     );
@@ -146,4 +169,69 @@ export const setActiveStatus = async (id, isActive) => {
     );
 
     return result.affectedRows > 0;
+};
+
+export const removeById = async (id) => {
+    const connection = await db.getConnection();
+
+    try {
+        await connection.beginTransaction();
+        const [employeeRows] = await connection.execute(
+            "SELECT id FROM employees WHERE id = ? FOR UPDATE",
+            [id]
+        );
+
+        if (!employeeRows[0]) {
+            await connection.rollback();
+            return { deleted: false, reason: "not_found" };
+        }
+
+        const tables = ["attendance", "employee_shift_assignments", "attendance_device_events"];
+        const history = {};
+
+        for (const table of tables) {
+            const [tableRows] = await connection.execute(
+                `SELECT 1 FROM information_schema.TABLES
+                  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? LIMIT 1`,
+                [table]
+            );
+
+            if (tableRows.length === 0) continue;
+
+            const [countRows] = await connection.execute(
+                `SELECT COUNT(*) AS total FROM ${table} WHERE employee_id = ?`,
+                [id]
+            );
+            history[table] = Number(countRows[0].total);
+        }
+
+        if (Object.values(history).some((count) => count > 0)) {
+            await connection.rollback();
+            return { deleted: false, reason: "has_history", history };
+        }
+
+        const [faceProfileTables] = await connection.execute(
+            `SELECT 1 FROM information_schema.TABLES
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'face_profiles' LIMIT 1`
+        );
+        if (faceProfileTables.length > 0) {
+            await connection.execute(
+                "DELETE FROM face_profiles WHERE employee_id = ?",
+                [id]
+            );
+        }
+
+        const [result] = await connection.execute(
+            "DELETE FROM employees WHERE id = ?",
+            [id]
+        );
+        await connection.commit();
+
+        return { deleted: result.affectedRows > 0, reason: result.affectedRows > 0 ? null : "not_found" };
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
 };

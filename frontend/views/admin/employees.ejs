@@ -4,17 +4,44 @@
     user: user
 }) %>
 
+<style>
+    .hr-hero { background: radial-gradient(circle at 90% 10%, rgba(221,225,255,.72), transparent 34%), linear-gradient(120deg, #fff 0%, #f7f9ff 100%); }
+    .hr-stat { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+    .hr-stat:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(25, 40, 80, .08); border-color: rgba(0,40,142,.18); }
+    .hr-input { transition: box-shadow .16s ease, border-color .16s ease; border: 1px solid #d9dce5; }
+    .hr-input:focus { border-color: #536dd2; box-shadow: 0 0 0 3px rgba(83,109,210,.14); outline: none; }
+    .hr-table-wrap { scrollbar-width: thin; }
+    @media (max-width: 767px) {
+        .hr-table { min-width: 0 !important; }
+        .hr-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+        .hr-table, .hr-table tbody { display: block; width: 100%; }
+        .hr-table tbody { padding: .75rem; }
+        .hr-table .employee-row { display: block; margin-bottom: .75rem; padding: .45rem .75rem; border: 1px solid #e2e6ef; border-radius: 1rem; background: #fff; box-shadow: 0 2px 8px rgba(25,40,80,.035); }
+        .hr-table .employee-row > td { position: static !important; z-index: auto !important; background: transparent !important; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: .7rem .25rem; border: 0; border-bottom: 1px solid #f0f1f5; text-align: right; white-space: normal; }
+        .hr-table .employee-row > td::before { content: attr(data-label); flex: 0 0 7rem; color: #686b78; font-size: .7rem; font-weight: 600; text-align: left; }
+        .hr-table .employee-row > td:nth-child(2) { justify-content: flex-start; text-align: left; }
+        .hr-table .employee-row > td:nth-child(2)::before { display: none; }
+        .hr-table .employee-row > td:last-child { display: block; border-bottom: 0; text-align: left; }
+        .hr-table .employee-row > td:last-child::before { display: block; margin-bottom: .5rem; }
+        .hr-table .employee-row > td:last-child > div { justify-content: flex-start; flex-wrap: wrap; }
+        .hr-table .employee-row > td:last-child form { display: inline-flex; }
+        .hr-table .employee-row > td:last-child button, .hr-table .employee-row > td:last-child a { font-size: .7rem; }
+        .hr-table .employee-row > td:last-child span:not(.material-symbols-outlined) { display: none; }
+        .hr-table tbody tr:not(.employee-row) td { display: block; padding: 1.5rem .75rem; }
+    }
+</style>
+
 <section class="flex flex-col gap-space-xl">
     <%- include("../partials/alerts", { success: success, error: error }) %>
 
-    <section class="relative overflow-hidden flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-lg md:p-space-xl rounded-xl border border-surface-container-high/60 shadow-sm">
-        <div class="absolute inset-y-0 left-0 w-1 bg-primary"></div>
+    <section class="hr-hero relative overflow-hidden flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg p-space-lg md:p-space-xl rounded-2xl border border-primary/10 shadow-sm">
+        <div class="absolute inset-y-0 left-0 w-1 bg-primary rounded-full"></div>
         <div class="flex flex-col gap-space-xs">
             <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
                 <span class="flex h-2 w-2 rounded-full bg-primary-container"></span>
                 <span class="uppercase tracking-wider">Hồ sơ nhân viên</span>
             </div>
-            <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Quản lý nhân sự</h2>
+            <h1 class="font-headline-lg text-headline-lg text-primary tracking-tight">Quản lý nhân sự</h1>
             <p class="font-body-md text-body-md text-on-surface-variant">
                 Tra cứu thông tin nhân viên và phân bố nhân sự theo phòng ban.
             </p>
@@ -22,8 +49,15 @@
         <div class="flex flex-wrap items-center gap-space-sm">
             <div class="flex items-center gap-space-xs px-space-md py-space-sm bg-surface-container-low text-on-surface-variant rounded-xl border border-surface-container-high">
                 <span id="employee-sync-icon" class="material-symbols-outlined text-[18px] text-primary">sync</span>
-                <span id="employee-sync-status" class="font-label-sm text-label-sm">Tự đồng bộ mỗi 30 giây</span>
+                <label for="employee-sync-interval" class="sr-only">Chu kỳ tự đồng bộ nhân sự</label>
+                <select id="employee-sync-interval" class="bg-transparent font-label-sm text-label-sm text-on-surface-variant outline-none cursor-pointer" title="Chu kỳ tự đồng bộ nhân sự">
+                    <option value="15000">Tự đồng bộ · 15 giây</option>
+                    <option value="30000">Tự đồng bộ · 30 giây</option>
+                    <option value="60000">Tự đồng bộ · 1 phút</option>
+                    <option value="off">Tắt tự đồng bộ</option>
+                </select>
             </div>
+            <span id="employee-sync-status" class="font-body-sm text-body-sm text-on-surface-variant" role="status" aria-live="polite">Sẵn sàng đồng bộ</span>
             <button
                 id="refresh-employees"
                 class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-all active:scale-[0.98] disabled:opacity-60"
@@ -40,6 +74,17 @@
                 <span class="material-symbols-outlined text-[20px]">person_add</span>
                 <span>Thêm nhân viên</span>
             </button>
+            <a
+                href="/admin/departments"
+                class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors"
+            >
+                <span class="material-symbols-outlined text-[20px]">corporate_fare</span>
+                <span>Quản lý phòng ban</span>
+            </a>
+            <a href="/admin/positions" class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors">
+                <span class="material-symbols-outlined text-[20px]">work</span>
+                <span>Quản lý chức vụ</span>
+            </a>
             <button
                 id="export-employees"
                 class="flex items-center justify-center w-10 h-10 bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant rounded-xl font-label-md text-label-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -54,8 +99,8 @@
         </div>
     </section>
 
-    <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-space-lg" aria-label="Thống kê nhân sự">
-        <a href="/admin/employees" class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-primary/10 transition-all">
+    <section class="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-space-md lg:gap-space-lg" aria-label="Thống kê nhân sự">
+        <a href="/admin/employees" class="hr-stat bg-surface-container-lowest p-space-md lg:p-space-lg rounded-2xl border border-surface-container-high/60 shadow-sm flex items-center justify-between gap-space-sm">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng nhân viên</span>
                 <span id="employee-stat-total" class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs"><%= stats.total %></span>
@@ -64,7 +109,7 @@
                 <span class="material-symbols-outlined text-[24px]">groups</span>
             </div>
         </a>
-        <a href="/admin/employees?status=active" class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-green-200 transition-all">
+        <a href="/admin/employees?status=active" class="hr-stat bg-surface-container-lowest p-space-md lg:p-space-lg rounded-2xl border border-surface-container-high/60 shadow-sm flex items-center justify-between gap-space-sm">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đang hoạt động</span>
                 <span id="employee-stat-active" class="font-headline-xl text-headline-xl text-green-700 font-bold mt-space-xs"><%= stats.active %></span>
@@ -73,7 +118,7 @@
                 <span class="material-symbols-outlined text-[24px]">person_check</span>
             </div>
         </a>
-        <a href="/admin/employees?status=inactive" class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high/60 shadow-sm flex items-center justify-between hover:ring-2 hover:ring-red-200 transition-all">
+        <a href="/admin/employees?status=inactive" class="hr-stat bg-surface-container-lowest p-space-md lg:p-space-lg rounded-2xl border border-surface-container-high/60 shadow-sm flex items-center justify-between gap-space-sm">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Ngừng hoạt động</span>
                 <span id="employee-stat-inactive" class="font-headline-xl text-headline-xl text-red-700 font-bold mt-space-xs"><%= stats.inactive %></span>
@@ -82,7 +127,7 @@
                 <span class="material-symbols-outlined text-[24px]">person_off</span>
             </div>
         </a>
-        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <article class="hr-stat bg-surface-container-lowest p-space-md lg:p-space-lg rounded-2xl border border-surface-container-high/60 shadow-sm flex items-center justify-between gap-space-sm">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Phòng ban</span>
                 <span id="employee-stat-departments" class="font-headline-xl text-headline-xl text-secondary font-bold mt-space-xs"><%= stats.departments %></span>
@@ -91,7 +136,7 @@
                 <span class="material-symbols-outlined text-[24px]">domain</span>
             </div>
         </article>
-        <article class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
+        <article class="hr-stat bg-surface-container-lowest p-space-md lg:p-space-lg rounded-2xl border border-surface-container-high/60 shadow-sm flex items-center justify-between gap-space-sm">
             <div class="flex flex-col">
                 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Chưa phân phòng ban</span>
                 <span id="employee-stat-unassigned" class="font-headline-xl text-headline-xl text-orange-600 font-bold mt-space-xs"><%= stats.unassignedDepartment %></span>
@@ -102,8 +147,8 @@
         </article>
     </section>
 
-    <section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-        <div class="p-space-lg md:p-space-xl border-b border-surface-container-high">
+    <section class="bg-surface-container-lowest rounded-2xl border border-surface-container-high/60 shadow-sm overflow-hidden">
+        <div class="p-space-lg md:p-space-xl border-b border-surface-container-high bg-surface-container-lowest">
             <form id="employee-filter-form" method="GET" action="/admin/employees" class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-space-md flex-1">
                     <label class="flex flex-col gap-space-xs">
@@ -117,7 +162,7 @@
                                 type="search"
                                 maxlength="100"
                                 placeholder="Tên, mã, email hoặc số điện thoại..."
-                                class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md pl-11 pr-space-md py-space-md rounded-xl outline-none focus:ring-2 focus:ring-primary-container transition-shadow"
+                                class="hr-input w-full bg-surface-container-low text-on-surface font-body-md text-body-md pl-11 pr-space-md py-space-md rounded-xl transition-shadow"
                             >
                             <button
                                 id="clear-employee-search"
@@ -134,7 +179,7 @@
                         <select
                             name="department"
                             data-auto-submit
-                            class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-md rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                            class="hr-input w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-md rounded-xl"
                         >
                             <option value="">Tất cả phòng ban</option>
                             <% departments.forEach((department) => { %>
@@ -147,7 +192,7 @@
                         <select
                             name="status"
                             data-auto-submit
-                            class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-md rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                            class="hr-input w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-md rounded-xl"
                         >
                             <option value="">Tất cả trạng thái</option>
                             <option value="active" <%= filters.status === "active" ? "selected" : "" %>>Đang hoạt động</option>
@@ -184,8 +229,8 @@
             </span>
         </div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse min-w-[980px]">
+        <div class="hr-table-wrap overflow-x-auto">
+            <table class="hr-table w-full text-left border-collapse min-w-[980px]">
                 <caption class="sr-only">Danh sách nhân sự</caption>
                 <thead>
                     <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
@@ -294,21 +339,25 @@
 
                 <label class="flex flex-col gap-space-xs">
                     <span class="font-label-sm text-label-sm text-on-surface">Phòng ban</span>
-                    <input
+                    <select
                         name="department"
-                        value="<%= formValues.department || '' %>"
-                        type="text"
-                        maxlength="100"
-                        list="employee-departments"
-                        autocomplete="organization-title"
-                        placeholder="Chọn hoặc nhập phòng ban mới"
                         class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
                     >
-                    <datalist id="employee-departments">
+                        <option value="">Chưa phân phòng ban</option>
                         <% departments.forEach((department) => { %>
-                            <option value="<%= department %>"></option>
+                            <option value="<%= department %>" <%= formValues.department === department ? "selected" : "" %>><%= department %></option>
                         <% }); %>
-                    </datalist>
+                    </select>
+                </label>
+
+                <label class="flex flex-col gap-space-xs">
+                    <span class="font-label-sm text-label-sm text-on-surface">Chức vụ</span>
+                    <select name="position" class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+                        <option value="">Chưa phân chức vụ</option>
+                        <% positions.forEach((position) => { %>
+                            <option value="<%= position %>" <%= formValues.position === position ? "selected" : "" %>><%= position %></option>
+                        <% }); %>
+                    </select>
                 </label>
 
                 <div class="flex items-center justify-end gap-space-sm pt-space-md border-t border-surface-container-high">
@@ -378,6 +427,7 @@ document.addEventListener("DOMContentLoaded", () => {
         form.elements.email.value = "";
         form.elements.phone.value = "";
         form.elements.department.value = "";
+        form.elements.position.value = "";
         employeeCodeHelp.textContent = "Mã sẽ được tự động chọn từ danh sách mã chưa sử dụng.";
         openModal();
     };
@@ -395,6 +445,7 @@ document.addEventListener("DOMContentLoaded", () => {
         form.elements.email.value = button.dataset.email;
         form.elements.phone.value = button.dataset.phone;
         form.elements.department.value = button.dataset.department;
+        form.elements.position.value = button.dataset.position;
         employeeCodeHelp.textContent = "Mã nhân viên được giữ cố định để bảo toàn dữ liệu chấm công.";
         openModal();
     };
@@ -459,8 +510,82 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 let employeeRefreshInProgress = false;
+let employeeSyncTimer = null;
+let employeeSyncInterval = 30000;
+const EMPLOYEE_SYNC_STORAGE_KEY = "hr.employeeSyncInterval";
+
+function getEmployeeSyncPreference() {
+    try {
+        const stored = window.localStorage.getItem(EMPLOYEE_SYNC_STORAGE_KEY);
+        if (stored === "off") return "off";
+        return [15000, 30000, 60000].includes(Number(stored)) ? Number(stored) : 30000;
+    } catch {
+        return 30000;
+    }
+}
+
+function updateEmployeeSyncStatus(message = "") {
+    const status = document.getElementById("employee-sync-status");
+    const intervalSelect = document.getElementById("employee-sync-interval");
+    if (!status || !intervalSelect) return;
+
+    const cadence = intervalSelect.value === "off"
+        ? "Tự đồng bộ đang tắt"
+        : `Tự đồng bộ mỗi ${intervalSelect.selectedOptions[0].textContent.split("·")[1].trim()}`;
+    status.textContent = message ? `${message} · ${cadence}` : "Sẵn sàng";
+}
+
+function scheduleEmployeeSync() {
+    window.clearInterval(employeeSyncTimer);
+    employeeSyncTimer = null;
+    if (employeeSyncInterval === "off") return;
+
+    employeeSyncTimer = window.setInterval(() => {
+        const modal = document.getElementById("employee-modal");
+        if (document.visibilityState === "visible" && modal?.classList.contains("hidden")) {
+            refreshEmployees();
+        }
+    }, employeeSyncInterval);
+}
 
 function bindEmployeeRowActions() {
+    document.querySelectorAll("[data-delete-employee]").forEach((deleteForm) => {
+        if (deleteForm.dataset.bound === "true") return;
+        deleteForm.dataset.bound = "true";
+        deleteForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const employeeName = deleteForm.dataset.name;
+            const confirmed = window.confirm(
+                `Xóa vĩnh viễn hồ sơ nhân viên "${employeeName}"? Nếu nhân viên có lịch sử chấm công hoặc phân ca, hệ thống sẽ giữ hồ sơ và yêu cầu ngừng hoạt động thay thế.`
+            );
+            if (!confirmed) return;
+
+            const submitButton = deleteForm.querySelector("button[type='submit']");
+            submitButton.disabled = true;
+            submitButton.setAttribute("aria-busy", "true");
+            submitButton.classList.add("opacity-60");
+
+            try {
+                const response = await fetch(deleteForm.action, {
+                    method: "POST",
+                    headers: { Accept: "application/json" },
+                    cache: "no-store"
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || "Không thể xóa nhân viên.");
+
+                await refreshEmployees(true);
+                document.getElementById("employee-sync-status").textContent = data.message;
+            } catch (error) {
+                console.error("Lỗi xóa hồ sơ nhân viên:", error);
+                window.alert(error.message);
+                submitButton.disabled = false;
+                submitButton.removeAttribute("aria-busy");
+                submitButton.classList.remove("opacity-60");
+            }
+        });
+    });
+
     document.querySelectorAll("[data-toggle-employee-status]").forEach((toggleForm) => {
         if (toggleForm.dataset.bound === "true") return;
         toggleForm.dataset.bound = "true";
@@ -532,12 +657,13 @@ async function refreshEmployees(manual = false) {
         modal.dataset.availableCodes = JSON.stringify(data.availableEmployeeCodes);
 
         bindEmployeeRowActions();
-        syncStatus.textContent = manual
-            ? "Đã đồng bộ dữ liệu nhân sự"
-            : "Tự đồng bộ mỗi 30 giây";
+        const syncedAt = new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit" }).format(new Date());
+        updateEmployeeSyncStatus(`${manual ? "Đồng bộ thủ công" : "Đã tự đồng bộ"} lúc ${syncedAt}`);
+        syncStatus.classList.remove("text-red-600");
+        syncStatus.classList.add("text-primary");
     } catch (error) {
         console.error("Lỗi đồng bộ nhân sự:", error);
-        syncStatus.textContent = "Đồng bộ thất bại; sẽ thử lại";
+        updateEmployeeSyncStatus("Đồng bộ thất bại; sẽ thử lại");
         syncStatus.classList.remove("text-primary");
         syncStatus.classList.add("text-red-600");
     } finally {
@@ -550,9 +676,27 @@ async function refreshEmployees(manual = false) {
 document.addEventListener("DOMContentLoaded", () => {
     bindEmployeeRowActions();
     document.getElementById("refresh-employees").addEventListener("click", () => refreshEmployees(true));
-    window.setInterval(() => refreshEmployees(), 30000);
+    const intervalSelect = document.getElementById("employee-sync-interval");
+    const savedPreference = getEmployeeSyncPreference();
+    intervalSelect.value = String(savedPreference);
+    employeeSyncInterval = savedPreference;
+    updateEmployeeSyncStatus();
+    scheduleEmployeeSync();
+    intervalSelect.addEventListener("change", () => {
+        employeeSyncInterval = intervalSelect.value === "off" ? "off" : Number(intervalSelect.value);
+        try {
+            window.localStorage.setItem(EMPLOYEE_SYNC_STORAGE_KEY, String(employeeSyncInterval));
+        } catch (error) {
+            console.warn("Không thể lưu tùy chọn đồng bộ nhân sự trên trình duyệt:", error);
+        }
+        updateEmployeeSyncStatus("Đã cập nhật chế độ");
+        scheduleEmployeeSync();
+    });
     document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") refreshEmployees();
+        const modal = document.getElementById("employee-modal");
+        if (employeeSyncInterval !== "off" && document.visibilityState === "visible" && modal?.classList.contains("hidden")) {
+            refreshEmployees();
+        }
     });
 });
 

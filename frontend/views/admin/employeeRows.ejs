@@ -21,10 +21,10 @@
             data-status="<%= employee.is_active ? 'Đang hoạt động' : 'Ngừng hoạt động' %>"
             data-active="<%= employee.is_active ? 'true' : 'false' %>"
         >
-            <td class="py-space-md px-space-lg sticky left-0 z-[1] bg-surface-container-lowest">
+            <td data-label="Mã nhân viên" class="py-space-md px-space-lg sticky left-0 z-[1] bg-surface-container-lowest">
                 <span class="inline-flex px-space-sm py-1 rounded-lg bg-primary-fixed text-primary font-data-mono text-data-mono font-semibold"><%= employee.employee_code %></span>
             </td>
-            <td class="py-space-md px-space-md">
+            <td data-label="Nhân viên" class="py-space-md px-space-md">
                 <div class="flex items-center gap-space-sm">
                     <div class="w-9 h-9 rounded-full bg-primary-fixed text-primary font-semibold flex items-center justify-center text-xs shrink-0">
                         <%= String(employee.full_name || "?").trim().slice(0, 2).toUpperCase() %>
@@ -32,14 +32,15 @@
                     <span class="font-label-md text-label-md text-on-surface font-semibold"><%= employee.full_name %></span>
                 </div>
             </td>
-            <td class="py-space-md px-space-md">
-                <% if (employee.department) { %>
-                    <span class="inline-flex px-space-sm py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm"><%= employee.department %></span>
-                <% } else { %>
-                    <span class="text-outline">Chưa phân phòng ban</span>
-                <% } %>
+            <td data-label="Phòng ban / chức vụ" class="py-space-md px-space-md">
+                <div class="flex flex-col items-start gap-1">
+                    <% if (employee.department) { %>
+                        <span class="inline-flex px-space-sm py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm"><%= employee.department %></span>
+                    <% } else { %><span class="text-outline">Chưa phân phòng ban</span><% } %>
+                    <span class="text-xs text-on-surface-variant"><%= employee.position || "Chưa phân chức vụ" %></span>
+                </div>
             </td>
-            <td class="py-space-md px-space-md">
+            <td data-label="Trạng thái" class="py-space-md px-space-md">
                 <% if (employee.is_active) { %>
                     <span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold">
                         <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
@@ -57,7 +58,7 @@
                     </div>
                 <% } %>
             </td>
-            <td class="py-space-md px-space-md">
+            <td data-label="Liên hệ" class="py-space-md px-space-md">
                 <div class="flex flex-col gap-1">
                     <% if (employee.email) { %>
                         <a class="text-primary hover:underline" href="mailto:<%= employee.email %>"><%= employee.email %></a>
@@ -71,9 +72,17 @@
                     <% } %>
                 </div>
             </td>
-            <td class="py-space-md px-space-md font-data-mono text-data-mono"><%= employee.created_date || "—" %></td>
-            <td class="py-space-md px-space-lg sticky right-0 z-[1] bg-surface-container-lowest">
+            <td data-label="Ngày tạo hồ sơ" class="py-space-md px-space-md font-data-mono text-data-mono"><%= employee.created_date || "—" %></td>
+            <td data-label="Thao tác" class="py-space-md px-space-lg sticky right-0 z-[1] bg-surface-container-lowest">
                 <div class="flex justify-end gap-space-xs">
+                    <a
+                        class="inline-flex items-center gap-1 px-space-sm py-1 bg-primary-fixed hover:bg-primary-fixed-dim text-primary font-label-sm text-label-sm rounded-lg transition-colors"
+                        href="/admin/employees/<%= employee.id %>"
+                        title="Xem hồ sơ nhân viên"
+                    >
+                        <span class="material-symbols-outlined text-[16px]">visibility</span>
+                        <span>Hồ sơ</span>
+                    </a>
                     <button
                         class="inline-flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
                         data-edit-employee
@@ -83,6 +92,7 @@
                         data-email="<%= employee.email || '' %>"
                         data-phone="<%= employee.phone || '' %>"
                         data-department="<%= employee.department || '' %>"
+                        data-position="<%= employee.position || '' %>"
                         type="button"
                         title="Cập nhật thông tin nhân viên"
                     >
@@ -124,6 +134,21 @@
                         <span class="material-symbols-outlined text-[16px]">event_repeat</span>
                         <span>Phân ca</span>
                     </a>
+                    <form
+                        method="POST"
+                        action="/admin/employees/<%= employee.id %>/delete"
+                        data-delete-employee
+                        data-name="<%= employee.full_name %>"
+                    >
+                        <button
+                            class="inline-flex items-center gap-1 px-space-sm py-1 bg-red-50 hover:bg-red-100 text-red-700 font-label-sm text-label-sm rounded-lg transition-colors"
+                            type="submit"
+                            title="Xóa hồ sơ nhân viên"
+                        >
+                            <span class="material-symbols-outlined text-[16px]">delete</span>
+                            <span>Xóa</span>
+                        </button>
+                    </form>
                 </div>
             </td>
         </tr>
