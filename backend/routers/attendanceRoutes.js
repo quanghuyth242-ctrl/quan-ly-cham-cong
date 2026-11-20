@@ -4,7 +4,9 @@ import {
     renderAttendancePage,
     getAttendanceData,
     faceAttendance,
-    manualAttendance
+    manualAttendance,
+    gpsAttendance,
+    saveGpsSettings
 } from "../controllers/attendanceController.js";
 import * as AdminAttendanceController from "../controllers/attendanceController.js";
 import { requireAdmin, requireAdminApi } from "../middlewares/authMiddleware.js";
@@ -28,6 +30,8 @@ router.post("/face", requireAdminApi, faceAttendance);
 
 // API chấm công thủ công (phương thức dự phòng)
 router.post("/manual", requireAdminApi, manualAttendance);
+router.post("/gps", requireAdminApi, gpsAttendance);
+router.post("/gps/settings", requireAdminApi, saveGpsSettings);
 
 // Các tính năng quản lý chấm công từ nhánh main
 router.get("/reports", requireAdmin, AdminAttendanceController.report);

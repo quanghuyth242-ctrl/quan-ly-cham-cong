@@ -88,11 +88,26 @@
             Bảng chấm công
         </h2>
         <p class="font-body-md text-body-md text-on-surface-variant max-w-3xl">
-            Theo dõi trạng thái chấm công hàng ngày, hỗ trợ chấm công bằng nhận diện khuôn mặt và phương thức thủ công khi cần.
+            Theo dõi trạng thái chấm công hàng ngày, nhận dữ liệu từ máy chấm công tự động và hỗ trợ nhận diện khuôn mặt, GPS.
         </p>
     </div>
 
     <div class="flex flex-wrap items-center gap-space-sm">
+        <a
+            href="/admin/devices"
+            class="flex items-center gap-space-xs bg-blue-50 hover:bg-blue-100 text-blue-800 px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors"
+        >
+            <span class="material-symbols-outlined text-[18px]">devices</span>
+            <span>Thiết bị chấm công</span>
+        </a>
+        <button
+            id="att-gps-settings-open"
+            class="flex items-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors"
+            type="button"
+        >
+            <span class="material-symbols-outlined text-[18px]">location_on</span>
+            <span>Cấu hình GPS</span>
+        </button>
         <button
             id="att-face-checkin"
             class="flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md shadow-md transition-all"
@@ -112,9 +127,12 @@
         </button>
     </div>
 </section>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-space-sm">
+    Bản ghi sẽ tự cập nhật sau khi thiết bị gửi dữ liệu đồng bộ; bảng làm mới tự động mỗi 30 giây.
+</p>
 
 <!-- Thống kê -->
-<section class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-space-lg">
+<section class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-space-lg">
     <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
         <div class="flex flex-col min-w-0">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng NV</span>
@@ -172,6 +190,16 @@
         </div>
         <div class="w-9 h-9 rounded-xl bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
             <span class="material-symbols-outlined text-[20px]">person_off</span>
+        </div>
+    </div>
+
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
+        <div class="flex flex-col min-w-0">
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Qua thiết bị</span>
+            <span id="att-stat-device" class="font-headline-xl text-headline-xl text-blue-700 font-bold mt-space-xs">—</span>
+        </div>
+        <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[20px]">fingerprint</span>
         </div>
     </div>
 </section>
@@ -562,6 +590,102 @@
     </div>
 </div>
 
+<!-- Modal chấm công GPS -->
+<div id="att-gps-modal" class="fixed inset-0 z-[70] hidden" role="dialog" aria-modal="true" aria-labelledby="att-gps-title" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-close-modal="gps"></div>
+    <div class="relative flex min-h-full items-center justify-center p-space-lg">
+        <section class="w-full max-w-lg bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden">
+            <div class="flex items-start justify-between gap-space-md px-space-xl py-space-lg border-b border-surface-container-high">
+                <div>
+                    <h3 id="att-gps-title" class="font-headline-sm text-headline-sm text-primary font-semibold">Chấm công GPS</h3>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
+                        <span id="att-gps-employee">—</span> · <span id="att-gps-action-label">Check-in</span>
+                    </p>
+                </div>
+                <button class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high" data-close-modal="gps" type="button" aria-label="Đóng">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="p-space-xl flex flex-col gap-space-lg">
+                <div id="att-gps-error" class="hidden flex items-start gap-space-sm p-space-md rounded-xl bg-error-container border border-error/20 text-on-error-container" role="alert">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">error</span>
+                    <p id="att-gps-error-message" class="font-body-sm text-body-sm"></p>
+                </div>
+                <div class="flex items-start gap-space-sm p-space-md rounded-xl bg-blue-50 border border-blue-200 text-blue-800">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">my_location</span>
+                    <p class="font-body-sm text-body-sm">Vị trí chỉ được yêu cầu khi bạn bấm chấm công. Hệ thống chỉ ghi tọa độ của lượt chấm công này và kiểm tra trong bán kính cơ sở.</p>
+                </div>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">Cần cấp quyền vị trí và mở trang bằng HTTPS hoặc localhost.</p>
+            </div>
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-space-sm px-space-xl py-space-lg border-t border-surface-container-high bg-surface-container-low">
+                <button class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-container text-on-surface font-label-md rounded-xl" data-close-modal="gps" type="button">Hủy</button>
+                <button id="att-gps-submit" class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md disabled:opacity-60" type="button">
+                    <span class="material-symbols-outlined text-[18px]">my_location</span>
+                    <span>Lấy vị trí và chấm công</span>
+                </button>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- Modal cấu hình vùng GPS -->
+<div
+    id="att-gps-settings-modal"
+    class="fixed inset-0 z-[70] hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="att-gps-settings-title"
+    aria-hidden="true"
+    data-latitude="<%= typeof gpsSettings !== 'undefined' && gpsSettings && gpsSettings.latitude !== null ? gpsSettings.latitude : '' %>"
+    data-longitude="<%= typeof gpsSettings !== 'undefined' && gpsSettings && gpsSettings.longitude !== null ? gpsSettings.longitude : '' %>"
+    data-radius="<%= typeof gpsSettings !== 'undefined' && gpsSettings ? gpsSettings.radius_m : 100 %>"
+    data-configured="<%= typeof gpsSettings !== 'undefined' && gpsSettings && gpsSettings.configured ? 'true' : 'false' %>"
+>
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-close-modal="gps-settings"></div>
+    <div class="relative flex min-h-full items-center justify-center p-space-lg">
+        <section class="w-full max-w-xl bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden">
+            <div class="flex items-start justify-between gap-space-md px-space-xl py-space-lg border-b border-surface-container-high">
+                <div>
+                    <h3 id="att-gps-settings-title" class="font-headline-sm text-headline-sm text-primary font-semibold">Cấu hình vùng chấm công GPS</h3>
+                    <p id="att-gps-settings-status" class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs"></p>
+                </div>
+                <button class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high" data-close-modal="gps-settings" type="button" aria-label="Đóng">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <form id="att-gps-settings-form" class="p-space-xl flex flex-col gap-space-lg">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+                    <div>
+                        <label class="font-label-sm text-on-surface block mb-space-xs" for="att-gps-latitude">Vĩ độ</label>
+                        <input id="att-gps-latitude" name="latitude" type="number" step="any" min="-90" max="90" required class="w-full bg-surface-container-low px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary/20">
+                    </div>
+                    <div>
+                        <label class="font-label-sm text-on-surface block mb-space-xs" for="att-gps-longitude">Kinh độ</label>
+                        <input id="att-gps-longitude" name="longitude" type="number" step="any" min="-180" max="180" required class="w-full bg-surface-container-low px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary/20">
+                    </div>
+                </div>
+                <button id="att-gps-use-current" class="self-start flex items-center gap-space-xs text-primary hover:text-primary-container font-label-sm" type="button">
+                    <span class="material-symbols-outlined text-[18px]">my_location</span>
+                    <span>Dùng vị trí hiện tại làm cơ sở</span>
+                </button>
+                <div>
+                    <label class="font-label-sm text-on-surface block mb-space-xs" for="att-gps-radius">Bán kính cho phép (mét)</label>
+                    <input id="att-gps-radius" name="radius_m" type="number" min="20" max="5000" step="1" required class="w-full bg-surface-container-low px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary/20">
+                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Cho phép từ 20 đến 5.000 mét tính từ vị trí cơ sở.</p>
+                </div>
+                <div id="att-gps-settings-error" class="hidden p-space-md rounded-xl bg-error-container text-on-error-container font-body-sm" role="alert"></div>
+            </form>
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-space-sm px-space-xl py-space-lg border-t border-surface-container-high bg-surface-container-low">
+                <button class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-container text-on-surface font-label-md rounded-xl" data-close-modal="gps-settings" type="button">Đóng</button>
+                <button id="att-gps-settings-save" class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md disabled:opacity-60" type="submit" form="att-gps-settings-form">
+                    <span class="material-symbols-outlined text-[18px]">save</span>
+                    <span>Lưu cấu hình</span>
+                </button>
+            </div>
+        </section>
+    </div>
+</div>
+
 <!-- Thông báo -->
 <div
     id="att-toast-container"
@@ -589,6 +713,7 @@
                 checkedOut: 0,
                 late: 0,
                 earlyLeave: 0,
+                deviceRecords: 0,
                 notCheckedIn: 0
             },
             requestId: 0,
@@ -599,6 +724,7 @@
             refreshBtn: document.getElementById("att-refresh"),
             refreshIcon: document.getElementById("att-refresh-icon"),
             faceCheckinBtn: document.getElementById("att-face-checkin"),
+            gpsSettingsOpenBtn: document.getElementById("att-gps-settings-open"),
             dateInput: document.getElementById("att-date"),
             searchInput: document.getElementById("att-search"),
             departmentSelect: document.getElementById("att-department"),
@@ -610,6 +736,7 @@
             statCheckedOut: document.getElementById("att-stat-checkedout"),
             statLate: document.getElementById("att-stat-late"),
             statEarly: document.getElementById("att-stat-early"),
+            statDevice: document.getElementById("att-stat-device"),
             statNotCheckedIn: document.getElementById("att-stat-notcheckedin"),
             tableBody: document.getElementById("att-table-body"),
             tableSummary: document.getElementById("att-table-summary"),
@@ -640,6 +767,21 @@
             manualError: document.getElementById("att-manual-error"),
             manualErrorMessage: document.getElementById("att-manual-error-message"),
             manualSubmitBtn: document.getElementById("att-manual-submit"),
+            gpsModal: document.getElementById("att-gps-modal"),
+            gpsEmployee: document.getElementById("att-gps-employee"),
+            gpsActionLabel: document.getElementById("att-gps-action-label"),
+            gpsError: document.getElementById("att-gps-error"),
+            gpsErrorMessage: document.getElementById("att-gps-error-message"),
+            gpsSubmitBtn: document.getElementById("att-gps-submit"),
+            gpsSettingsModal: document.getElementById("att-gps-settings-modal"),
+            gpsSettingsStatus: document.getElementById("att-gps-settings-status"),
+            gpsSettingsForm: document.getElementById("att-gps-settings-form"),
+            gpsLatitude: document.getElementById("att-gps-latitude"),
+            gpsLongitude: document.getElementById("att-gps-longitude"),
+            gpsRadius: document.getElementById("att-gps-radius"),
+            gpsUseCurrentBtn: document.getElementById("att-gps-use-current"),
+            gpsSettingsError: document.getElementById("att-gps-settings-error"),
+            gpsSettingsSaveBtn: document.getElementById("att-gps-settings-save"),
             toastContainer: document.getElementById("att-toast-container")
         };
 
@@ -657,6 +799,12 @@
 
         const manualState = {
             open: false,
+            employee: null,
+            action: "check_in",
+            submitting: false
+        };
+
+        const gpsState = {
             employee: null,
             action: "check_in",
             submitting: false
@@ -727,6 +875,28 @@
             const day = String(now.getDate()).padStart(2, "0");
 
             return `${year}-${month}-${day}`;
+        };
+
+        const gpsLocationHtml = (latitude, longitude, accuracy, distance) => {
+            if (latitude === null || latitude === undefined || latitude === ""
+                || longitude === null || longitude === undefined || longitude === "") {
+                return "";
+            }
+
+            const lat = Number(latitude);
+            const lng = Number(longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+
+            const coordinates = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+            const mapUrl = `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}`;
+            const accuracyLabel = Number.isFinite(Number(accuracy))
+                ? `±${Math.round(Number(accuracy))}m`
+                : "GPS";
+            const distanceLabel = Number.isFinite(Number(distance))
+                ? ` · cách cơ sở ${Math.round(Number(distance))}m`
+                : "";
+
+            return `<a class="inline-flex items-center gap-0.5 text-[10px] text-primary hover:underline font-sans whitespace-nowrap" href="${mapUrl}" target="_blank" rel="noopener noreferrer" title="${coordinates}${distanceLabel}">${accuracyLabel}${distanceLabel}</a>`;
         };
 
         const statusBadgeHtml = (employee) => {
@@ -805,7 +975,9 @@
 
         const syncBodyScroll = () => {
             const hasOpenModal = !elements.faceModal.classList.contains("hidden")
-                || !elements.manualModal.classList.contains("hidden");
+                || !elements.manualModal.classList.contains("hidden")
+                || !elements.gpsModal.classList.contains("hidden")
+                || !elements.gpsSettingsModal.classList.contains("hidden");
 
             document.body.classList.toggle("att-modal-open", hasOpenModal);
         };
@@ -859,13 +1031,14 @@
         };
 
         const renderStats = () => {
-            const { total, checkedIn, checkedOut, late, earlyLeave, notCheckedIn } = state.stats;
+            const { total, checkedIn, checkedOut, late, earlyLeave, deviceRecords, notCheckedIn } = state.stats;
 
             setText(elements.statTotal, total);
             setText(elements.statCheckedIn, checkedIn);
             setText(elements.statCheckedOut, checkedOut);
             setText(elements.statLate, late);
             setText(elements.statEarly, earlyLeave);
+            setText(elements.statDevice, deviceRecords);
             setText(elements.statNotCheckedIn, notCheckedIn);
         };
 
@@ -888,10 +1061,28 @@
 
             const canCheckIn = !employee.check_in;
             const canCheckOut = employee.check_in && !employee.check_out;
+            const canGpsAttend = state.date === getTodayString() && (canCheckIn || canCheckOut);
 
             let actions = "";
 
             if (canCheckIn || canCheckOut) {
+                const action = canCheckIn ? "check_in" : "check_out";
+                if (canGpsAttend) {
+                    actions += `
+                    <button
+                        class="flex items-center gap-1 px-space-sm py-1 bg-primary-fixed text-primary hover:bg-primary hover:text-on-primary font-label-sm text-label-sm rounded-lg transition-colors"
+                        data-gps-id="${escapeHtml(employee.employee_id)}"
+                        data-gps-action="${action}"
+                        data-employee-name="${safeName}"
+                        data-employee-code="${safeCode}"
+                        type="button"
+                        title="${canCheckIn ? "Check-in GPS" : "Check-out GPS"}"
+                    >
+                        <span class="material-symbols-outlined text-[16px]">my_location</span>
+                        <span>GPS ${canCheckIn ? "vào" : "ra"}</span>
+                    </button>
+                    `;
+                }
                 actions += `
                     <button
                         class="flex items-center gap-1 px-space-sm py-1 bg-secondary-fixed text-on-secondary-fixed hover:bg-secondary hover:text-white font-label-sm text-label-sm rounded-lg transition-colors"
@@ -919,6 +1110,7 @@
                                 <span class="font-label-md text-label-md text-on-surface font-semibold truncate">${safeName}</span>
                                 <span class="font-data-mono text-[11px] text-on-surface-variant truncate">
                                     ${safeCode}${faceRegistered ? ' <span class="text-green-600">●</span>' : ""}
+                                    ${employee.record_source === "device" ? '<span class="inline-flex items-center gap-0.5 ml-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-sans font-semibold"><span class="material-symbols-outlined text-[12px]">devices</span>Thiết bị</span>' : ""}
                                 </span>
                             </div>
                         </div>
@@ -934,9 +1126,11 @@
                     </td>
                     <td class="py-space-md px-space-md font-data-mono text-data-mono whitespace-nowrap ${employee.evaluation?.isLate ? "text-amber-600 font-semibold" : "text-on-surface-variant"}">
                         ${escapeHtml(checkIn)}
+                        ${gpsLocationHtml(employee.check_in_latitude, employee.check_in_longitude, employee.check_in_accuracy_m, employee.check_in_distance_m)}
                     </td>
                     <td class="py-space-md px-space-md font-data-mono text-data-mono whitespace-nowrap ${employee.evaluation?.isEarlyLeave ? "text-orange-600 font-semibold" : "text-on-surface-variant"}">
                         ${escapeHtml(checkOut)}
+                        ${gpsLocationHtml(employee.check_out_latitude, employee.check_out_longitude, employee.check_out_accuracy_m, employee.check_out_distance_m)}
                     </td>
                     <td class="py-space-md px-space-md">
                         ${statusBadgeHtml(employee)}
@@ -1090,6 +1284,7 @@
                     checkedOut: Number(payload.stats?.checkedOut || 0),
                     late: Number(payload.stats?.late || 0),
                     earlyLeave: Number(payload.stats?.earlyLeave || 0),
+                    deviceRecords: Number(payload.stats?.deviceRecords || 0),
                     notCheckedIn: Number(payload.stats?.notCheckedIn || 0)
                 };
 
@@ -1792,6 +1987,193 @@
             }
         };
 
+        const getBrowserPosition = () => new Promise((resolve, reject) => {
+            if (!window.isSecureContext) {
+                reject(new Error("Định vị GPS chỉ hoạt động trên HTTPS hoặc localhost."));
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                reject(new Error("Trình duyệt không hỗ trợ định vị GPS."));
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                resolve,
+                (error) => {
+                    const messages = {
+                        1: "Bạn chưa cấp quyền vị trí. Hãy cho phép định vị trong cài đặt trình duyệt.",
+                        2: "Không xác định được vị trí hiện tại. Hãy bật GPS và thử lại.",
+                        3: "Lấy vị trí quá thời gian chờ. Vui lòng thử lại."
+                    };
+                    reject(new Error(messages[error.code] || "Không thể lấy vị trí GPS."));
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 20000,
+                    maximumAge: 0
+                }
+            );
+        });
+
+        const resetGpsSubmitButton = () => {
+            elements.gpsSubmitBtn.disabled = false;
+            elements.gpsSubmitBtn.innerHTML = `
+                <span class="material-symbols-outlined text-[18px]">my_location</span>
+                <span>Lấy vị trí và chấm công</span>
+            `;
+        };
+
+        const openGpsModal = (employee, action) => {
+            if (!employee) return;
+
+            gpsState.employee = employee;
+            gpsState.action = action === "check_out" ? "check_out" : "check_in";
+            gpsState.submitting = false;
+            elements.gpsEmployee.textContent = `${employee.full_name} (${employee.employee_code})`;
+            elements.gpsActionLabel.textContent = gpsState.action === "check_in" ? "Check-in" : "Check-out";
+            elements.gpsError.classList.add("hidden");
+            elements.gpsErrorMessage.textContent = "";
+            resetGpsSubmitButton();
+            openModal(elements.gpsModal);
+        };
+
+        const closeGpsModal = () => {
+            if (gpsState.submitting) return;
+            gpsState.employee = null;
+            closeModal(elements.gpsModal);
+        };
+
+        const submitGpsAttendance = async () => {
+            if (!gpsState.employee || gpsState.submitting) return;
+
+            gpsState.submitting = true;
+            elements.gpsSubmitBtn.disabled = true;
+            elements.gpsSubmitBtn.innerHTML = `
+                <span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                <span>Đang lấy vị trí...</span>
+            `;
+            elements.gpsError.classList.add("hidden");
+
+            try {
+                const position = await getBrowserPosition();
+                const location = position.coords;
+                if (location.accuracy > 150) {
+                    throw new Error(`Độ chính xác GPS hiện là ±${Math.round(location.accuracy)} m. Hãy bật định vị chính xác và thử lại.`);
+                }
+
+                elements.gpsSubmitBtn.innerHTML = `
+                    <span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                    <span>Đang xác nhận trong vùng...</span>
+                `;
+
+                const response = await fetch(`${API_BASE}/gps`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json"
+                    },
+                    body: JSON.stringify({
+                        employee_id: gpsState.employee.id,
+                        action: gpsState.action,
+                        latitude: location.latitude,
+                        longitude: location.longitude,
+                        accuracy: location.accuracy
+                    })
+                });
+                const payload = await response.json();
+
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.message || "Không thể chấm công GPS.");
+                }
+
+                gpsState.submitting = false;
+                state.lastFocused = null;
+                closeModal(elements.gpsModal, false);
+                elements.refreshBtn.focus();
+                showToast("success", payload.message);
+                await loadData();
+            } catch (error) {
+                gpsState.submitting = false;
+                resetGpsSubmitButton();
+                elements.gpsErrorMessage.textContent = error.message;
+                elements.gpsError.classList.remove("hidden");
+                showToast("error", error.message);
+            }
+        };
+
+        const openGpsSettingsModal = () => {
+            const { gpsSettingsModal: modal } = elements;
+            elements.gpsLatitude.value = modal.dataset.latitude || "";
+            elements.gpsLongitude.value = modal.dataset.longitude || "";
+            elements.gpsRadius.value = modal.dataset.radius || "100";
+            elements.gpsSettingsError.classList.add("hidden");
+            elements.gpsSettingsStatus.textContent = modal.dataset.configured === "true"
+                ? "Đã cấu hình. Nhân viên chỉ chấm công được trong vùng này."
+                : "Chưa cấu hình vị trí cơ sở.";
+            openModal(modal);
+        };
+
+        const useCurrentLocationForGpsSettings = async () => {
+            elements.gpsUseCurrentBtn.disabled = true;
+            try {
+                const position = await getBrowserPosition();
+                elements.gpsLatitude.value = position.coords.latitude.toFixed(7);
+                elements.gpsLongitude.value = position.coords.longitude.toFixed(7);
+                showToast("success", "Đã lấy tọa độ thiết bị. Kiểm tra vị trí rồi bấm Lưu cấu hình.");
+            } catch (error) {
+                elements.gpsSettingsError.textContent = error.message;
+                elements.gpsSettingsError.classList.remove("hidden");
+            } finally {
+                elements.gpsUseCurrentBtn.disabled = false;
+            }
+        };
+
+        const saveGpsSettings = async (event) => {
+            event.preventDefault();
+            if (!elements.gpsSettingsForm.reportValidity()) return;
+
+            elements.gpsSettingsSaveBtn.disabled = true;
+            elements.gpsSettingsError.classList.add("hidden");
+
+            try {
+                const response = await fetch(`${API_BASE}/gps/settings`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json"
+                    },
+                    body: JSON.stringify({
+                        latitude: elements.gpsLatitude.value,
+                        longitude: elements.gpsLongitude.value,
+                        radius_m: elements.gpsRadius.value
+                    })
+                });
+                const payload = await response.json();
+
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.message || "Không thể lưu cấu hình GPS.");
+                }
+
+                const settings = payload.settings;
+                elements.gpsSettingsModal.dataset.latitude = settings.latitude;
+                elements.gpsSettingsModal.dataset.longitude = settings.longitude;
+                elements.gpsSettingsModal.dataset.radius = settings.radius_m;
+                elements.gpsSettingsModal.dataset.configured = String(settings.configured);
+                elements.gpsSettingsStatus.textContent = "Đã cấu hình. Nhân viên chỉ chấm công được trong vùng này.";
+                state.lastFocused = null;
+                closeModal(elements.gpsSettingsModal, false);
+                elements.gpsSettingsOpenBtn.focus();
+                showToast("success", payload.message);
+            } catch (error) {
+                elements.gpsSettingsError.textContent = error.message;
+                elements.gpsSettingsError.classList.remove("hidden");
+                showToast("error", error.message);
+            } finally {
+                elements.gpsSettingsSaveBtn.disabled = false;
+            }
+        };
+
         // ---- Sự kiện ----
 
         let searchTimer = null;
@@ -1845,6 +2227,16 @@
         });
 
         elements.tableBody.addEventListener("click", (event) => {
+            const gpsButton = event.target.closest("[data-gps-id]");
+            if (gpsButton) {
+                openGpsModal({
+                    id: gpsButton.getAttribute("data-gps-id"),
+                    full_name: gpsButton.getAttribute("data-employee-name"),
+                    employee_code: gpsButton.getAttribute("data-employee-code")
+                }, gpsButton.getAttribute("data-gps-action"));
+                return;
+            }
+
             const manualButton = event.target.closest("[data-manual-id]");
 
             if (manualButton) {
@@ -1896,6 +2288,19 @@
             element.addEventListener("click", closeManualModal);
         });
 
+        elements.gpsSettingsOpenBtn.addEventListener("click", openGpsSettingsModal);
+        elements.gpsSubmitBtn.addEventListener("click", submitGpsAttendance);
+        elements.gpsSettingsForm.addEventListener("submit", saveGpsSettings);
+        elements.gpsUseCurrentBtn.addEventListener("click", useCurrentLocationForGpsSettings);
+
+        document.querySelectorAll('[data-close-modal="gps"]').forEach((element) => {
+            element.addEventListener("click", closeGpsModal);
+        });
+
+        document.querySelectorAll('[data-close-modal="gps-settings"]').forEach((element) => {
+            element.addEventListener("click", () => closeModal(elements.gpsSettingsModal));
+        });
+
         // ESC
         document.addEventListener("keydown", (event) => {
             if (event.key !== "Escape") return;
@@ -1907,6 +2312,16 @@
 
             if (!elements.faceModal.classList.contains("hidden")) {
                 closeFaceModal();
+                return;
+            }
+
+            if (!elements.gpsModal.classList.contains("hidden")) {
+                closeGpsModal();
+                return;
+            }
+
+            if (!elements.gpsSettingsModal.classList.contains("hidden")) {
+                closeModal(elements.gpsSettingsModal);
             }
         });
 
@@ -1915,6 +2330,9 @@
         elements.dateInput.value = state.date;
         renderSkeleton();
         loadData();
+        window.setInterval(() => {
+            if (!document.hidden) loadData();
+        }, 30000);
     })();
 </script>
 
