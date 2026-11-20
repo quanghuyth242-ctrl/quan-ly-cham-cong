@@ -10,7 +10,7 @@ export const normalizeFaceStatus = (status) => {
 };
 
 // Đăng ký dữ liệu khuôn mặt (ghi mới hoặc cập nhật nếu nhân viên đã có hồ sơ)
-export const createFaceProfile = async (employeeId, descriptor, consentAt) => {
+export const createFaceProfile = async (employeeId, descriptor) => {
     if (!validateFaceDescriptor(descriptor)) {
         throw new Error("Dữ liệu khuôn mặt không hợp lệ (cần mảng 128 số).");
     }
@@ -25,9 +25,9 @@ export const createFaceProfile = async (employeeId, descriptor, consentAt) => {
     if (existing) {
         const [result] = await db.execute(
             `UPDATE face_profiles
-             SET face_embedding = ?, consent_at = ?
+             SET face_embedding = ?, consent_at = CURRENT_TIMESTAMP
              WHERE employee_id = ?`,
-            [faceEmbedding, consentAt, employeeId]
+            [faceEmbedding, employeeId]
         );
 
         return result;
@@ -35,9 +35,9 @@ export const createFaceProfile = async (employeeId, descriptor, consentAt) => {
 
     const [result] = await db.execute(
         `INSERT INTO face_profiles
-         (employee_id, face_embedding, consent_at)
-         VALUES (?, ?, ?)`,
-        [employeeId, faceEmbedding, consentAt]
+         (employee_id, face_embedding, consent_at, created_at)
+         VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        [employeeId, faceEmbedding]
     );
 
     return result;
@@ -69,7 +69,8 @@ export const getAllFaceProfiles = async () => {
             fp.employee_id,
             fp.face_embedding,
             e.employee_code,
-            e.full_name
+            e.full_name,
+            e.department
         FROM face_profiles fp
         INNER JOIN employees e
             ON fp.employee_id = e.id
@@ -82,9 +83,14 @@ export const getAllFaceProfiles = async () => {
 };
 
 // Danh sách nhân viên kèm trạng thái đăng ký khuôn mặt
-export const getEmployeesWithFaceStatus = async ({ search = "", status = "all" } = {}) => {
+export const getEmployeesWithFaceStatus = async ({
+    search = "",
+    status = "all",
+    department = ""
+} = {}) => {
     const keyword = String(search || "").trim();
     const statusFilter = normalizeFaceStatus(status);
+    const departmentFilter = String(department || "").trim().slice(0, 100);
 
     const sql = `
         SELECT
@@ -94,8 +100,8 @@ export const getEmployeesWithFaceStatus = async ({ search = "", status = "all" }
             e.email,
             e.department,
             fp.id AS face_profile_id,
-            fp.consent_at,
-            fp.created_at AS face_created_at
+            DATE_FORMAT(fp.consent_at, '%d/%m/%Y %H:%i') AS consent_at,
+            DATE_FORMAT(fp.created_at, '%d/%m/%Y') AS face_created_at
         FROM employees e
         LEFT JOIN face_profiles fp
             ON fp.employee_id = e.id
@@ -109,6 +115,10 @@ export const getEmployeesWithFaceStatus = async ({ search = "", status = "all" }
                 OR (? = 'registered' AND fp.id IS NOT NULL)
                 OR (? = 'unregistered' AND fp.id IS NULL)
             )
+            AND (
+                ? = ''
+                OR e.department = ?
+            )
         ORDER BY e.employee_code ASC
     `;
 
@@ -118,7 +128,9 @@ export const getEmployeesWithFaceStatus = async ({ search = "", status = "all" }
         keyword,
         statusFilter,
         statusFilter,
-        statusFilter
+        statusFilter,
+        departmentFilter,
+        departmentFilter
     ]);
 
     return rows;
@@ -161,8 +173,8 @@ export const getEmployeeFaceDetail = async (employeeId) => {
             e.phone,
             e.department,
             fp.id AS face_profile_id,
-            fp.consent_at,
-            fp.created_at AS face_created_at
+            DATE_FORMAT(fp.consent_at, '%d/%m/%Y %H:%i') AS consent_at,
+            DATE_FORMAT(fp.created_at, '%d/%m/%Y %H:%i') AS face_created_at
         FROM employees e
         LEFT JOIN face_profiles fp
             ON fp.employee_id = e.id
