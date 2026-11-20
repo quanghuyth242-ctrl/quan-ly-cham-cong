@@ -78,62 +78,76 @@
 </style>
 
 <!-- Tiêu đề trang -->
-<section class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+<section class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl border border-surface-container-high shadow-sm">
     <div class="flex flex-col gap-space-xs">
-        <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
+        <div class="flex items-center gap-space-sm text-primary font-label-sm text-label-sm">
             <span class="flex h-2 w-2 rounded-full bg-primary"></span>
-            <span class="uppercase tracking-wider">Chấm công &amp; theo dõi</span>
+            <span class="uppercase tracking-wider">Quản lý nhân sự · Chấm công</span>
         </div>
-        <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">
+        <h2 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">
             Bảng chấm công
         </h2>
-        <p class="font-body-md text-body-md text-on-surface-variant max-w-3xl">
-            Theo dõi trạng thái chấm công hàng ngày, nhận dữ liệu từ máy chấm công tự động và hỗ trợ nhận diện khuôn mặt, GPS.
+        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-2xl">
+            Theo dõi giờ vào/ra, ca làm và các cảnh báo trong ngày trên cùng một màn hình.
         </p>
     </div>
 
-    <div class="flex flex-wrap items-center gap-space-sm">
-        <a
-            href="/admin/devices"
-            class="flex items-center gap-space-xs bg-blue-50 hover:bg-blue-100 text-blue-800 px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors"
-        >
-            <span class="material-symbols-outlined text-[18px]">devices</span>
-            <span>Thiết bị chấm công</span>
-        </a>
-        <button
-            id="att-gps-settings-open"
-            class="flex items-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors"
-            type="button"
-        >
-            <span class="material-symbols-outlined text-[18px]">location_on</span>
-            <span>Cấu hình GPS</span>
-        </button>
-        <button
-            id="att-face-checkin"
-            class="flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md shadow-md transition-all"
-            type="button"
-        >
-            <span class="material-symbols-outlined text-[18px]">face</span>
-            <span>Chấm công khuôn mặt</span>
-        </button>
-
-        <button
-            id="att-refresh"
-            class="flex items-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            type="button"
-        >
-            <span id="att-refresh-icon" class="material-symbols-outlined text-[18px] text-on-surface-variant">refresh</span>
-            <span>Làm mới</span>
-        </button>
+    <div class="flex flex-col items-start xl:items-end gap-space-sm">
+        <div class="flex flex-wrap items-center gap-space-sm">
+            <button
+                id="att-face-checkin"
+                class="flex h-11 items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md shadow-md hover:shadow-lg transition-all"
+                type="button"
+            >
+                <span class="material-symbols-outlined text-[18px]">face</span>
+                <span>Chấm công khuôn mặt</span>
+            </button>
+            <a
+                href="/admin/devices"
+                class="flex h-11 items-center gap-space-xs bg-blue-50 hover:bg-blue-100 text-blue-800 px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors"
+            >
+                <span class="material-symbols-outlined text-[18px]">devices</span>
+                <span>Thiết bị</span>
+            </a>
+            <button
+                id="att-gps-settings-open"
+                class="flex h-11 items-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors"
+                type="button"
+            >
+                <span class="material-symbols-outlined text-[18px]">location_on</span>
+                <span>Cấu hình GPS</span>
+            </button>
+            <button
+                id="att-refresh"
+                class="flex h-11 items-center gap-space-xs bg-surface-container-high hover:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                type="button"
+            >
+                <span id="att-refresh-icon" class="material-symbols-outlined text-[18px] text-on-surface-variant">refresh</span>
+                <span>Làm mới</span>
+            </button>
+        </div>
+        <div class="flex items-center gap-space-sm">
+            <button
+                id="att-auto-sync-toggle"
+                class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-2"
+                type="button"
+                role="switch"
+                aria-checked="true"
+                aria-label="Tắt đồng bộ tự động"
+            >
+                <span id="att-auto-sync-knob" class="inline-block h-5 w-5 translate-x-5 transform rounded-full bg-white shadow transition-transform"></span>
+            </button>
+            <div class="min-w-0">
+                <p id="att-auto-sync-label" class="font-label-sm text-label-sm text-on-surface font-semibold">Đồng bộ tự động đang bật</p>
+                <p id="att-auto-sync-status" class="max-w-80 text-[11px] text-on-surface-variant">Đang chờ cập nhật dữ liệu...</p>
+            </div>
+        </div>
     </div>
 </section>
-<p class="font-body-sm text-body-sm text-on-surface-variant mt-space-sm">
-    Bản ghi sẽ tự cập nhật sau khi thiết bị gửi dữ liệu đồng bộ; bảng làm mới tự động mỗi 30 giây.
-</p>
 
 <!-- Thống kê -->
-<section class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-space-lg">
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
+<section class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-space-md">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high shadow-sm hover:shadow-md transition-shadow flex items-center justify-between gap-space-sm">
         <div class="flex flex-col min-w-0">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng NV</span>
             <span id="att-stat-total" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">—</span>
@@ -143,7 +157,7 @@
         </div>
     </div>
 
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high shadow-sm hover:shadow-md transition-shadow flex items-center justify-between gap-space-sm">
         <div class="flex flex-col min-w-0">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đã vào</span>
             <span id="att-stat-checkedin" class="font-headline-xl text-headline-xl text-secondary font-bold mt-space-xs">—</span>
@@ -153,7 +167,7 @@
         </div>
     </div>
 
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high shadow-sm hover:shadow-md transition-shadow flex items-center justify-between gap-space-sm">
         <div class="flex flex-col min-w-0">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đã ra</span>
             <span id="att-stat-checkedout" class="font-headline-xl text-headline-xl text-primary font-bold mt-space-xs">—</span>
@@ -163,7 +177,7 @@
         </div>
     </div>
 
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high shadow-sm hover:shadow-md transition-shadow flex items-center justify-between gap-space-sm">
         <div class="flex flex-col min-w-0">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đi muộn</span>
             <span id="att-stat-late" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">—</span>
@@ -173,7 +187,7 @@
         </div>
     </div>
 
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high shadow-sm hover:shadow-md transition-shadow flex items-center justify-between gap-space-sm">
         <div class="flex flex-col min-w-0">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Về sớm</span>
             <span id="att-stat-early" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">—</span>
@@ -183,7 +197,7 @@
         </div>
     </div>
 
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high shadow-sm hover:shadow-md transition-shadow flex items-center justify-between gap-space-sm">
         <div class="flex flex-col min-w-0">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Chưa vào</span>
             <span id="att-stat-notcheckedin" class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs">—</span>
@@ -193,7 +207,7 @@
         </div>
     </div>
 
-    <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between gap-space-sm">
+    <div class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high shadow-sm hover:shadow-md transition-shadow flex items-center justify-between gap-space-sm">
         <div class="flex flex-col min-w-0">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Qua thiết bị</span>
             <span id="att-stat-device" class="font-headline-xl text-headline-xl text-blue-700 font-bold mt-space-xs">—</span>
@@ -204,11 +218,27 @@
     </div>
 </section>
 
+<!-- Cảnh báo chấm công -->
+<section class="bg-amber-50/50 rounded-xl border border-amber-200 shadow-sm p-space-lg" aria-labelledby="att-alert-title">
+    <div class="flex items-start gap-space-sm">
+        <span class="material-symbols-outlined text-amber-600 text-[22px] mt-0.5">warning</span>
+        <div class="min-w-0 flex-1">
+            <h3 id="att-alert-title" class="font-label-md text-label-md text-on-surface font-semibold">
+                Cảnh báo đi muộn / về sớm
+            </h3>
+            <p id="att-alert-summary" class="font-body-sm text-body-sm text-on-surface-variant mt-0.5" role="status" aria-live="polite">
+                Đang tải dữ liệu cảnh báo...
+            </p>
+        </div>
+    </div>
+    <ul id="att-alert-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-space-sm mt-space-md"></ul>
+</section>
+
 <!-- Danh sách chấm công -->
 <section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-    <div class="p-space-lg border-b border-surface-container-high">
-        <div class="flex flex-col xl:flex-row xl:items-end gap-space-md">
-            <div class="w-full xl:w-48">
+    <div class="p-space-lg border-b border-surface-container-high bg-surface-container-low/50">
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-space-md items-end">
+            <div class="w-full xl:col-span-2">
                 <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-date">
                     Ngày chấm công
                 </label>
@@ -220,7 +250,7 @@
                 >
             </div>
 
-            <div class="flex-1 min-w-0">
+            <div class="min-w-0 xl:col-span-4">
                 <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-search">
                     Tìm kiếm nhân viên
                 </label>
@@ -237,7 +267,7 @@
                 </div>
             </div>
 
-            <div class="w-full xl:w-48">
+            <div class="w-full xl:col-span-2">
                 <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-department">
                     Phòng ban
                 </label>
@@ -253,7 +283,7 @@
                 </div>
             </div>
 
-            <div class="w-full xl:w-48">
+            <div class="w-full xl:col-span-2">
                 <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-shift">
                     Ca làm
                 </label>
@@ -269,7 +299,7 @@
                 </div>
             </div>
 
-            <div class="w-full xl:w-48">
+            <div class="w-full xl:col-span-2">
                 <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-status">
                     Trạng thái
                 </label>
@@ -290,7 +320,7 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-space-sm">
+            <div class="flex flex-wrap items-center gap-space-sm sm:col-span-2 xl:col-span-12 xl:justify-end">
                 <button
                     id="att-apply-filter"
                     class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md shadow-md transition-all"
@@ -780,14 +810,25 @@
             },
             requestId: 0,
             historyRequestId: 0,
-            lastFocused: null
+            lastFocused: null,
+            autoSyncEnabled: true,
+            syncInProgress: false,
+            lastSyncAt: null,
+            syncError: null
         };
+
+        let autoSyncTimer = null;
+        let autoSyncInFlight = false;
 
         const elements = {
             refreshBtn: document.getElementById("att-refresh"),
             refreshIcon: document.getElementById("att-refresh-icon"),
             faceCheckinBtn: document.getElementById("att-face-checkin"),
             gpsSettingsOpenBtn: document.getElementById("att-gps-settings-open"),
+            autoSyncToggle: document.getElementById("att-auto-sync-toggle"),
+            autoSyncKnob: document.getElementById("att-auto-sync-knob"),
+            autoSyncLabel: document.getElementById("att-auto-sync-label"),
+            autoSyncStatus: document.getElementById("att-auto-sync-status"),
             dateInput: document.getElementById("att-date"),
             searchInput: document.getElementById("att-search"),
             departmentSelect: document.getElementById("att-department"),
@@ -805,6 +846,8 @@
             tableBody: document.getElementById("att-table-body"),
             tableSummary: document.getElementById("att-table-summary"),
             tableDate: document.getElementById("att-table-date"),
+            alertSummary: document.getElementById("att-alert-summary"),
+            alertList: document.getElementById("att-alert-list"),
             faceModal: document.getElementById("att-face-modal"),
             faceVideo: document.getElementById("att-face-video"),
             facePlaceholder: document.getElementById("att-face-placeholder"),
@@ -1154,6 +1197,48 @@
             return `<span class="font-data-mono whitespace-nowrap">${hours} giờ</span>`;
         };
 
+        const renderAttendanceAlerts = () => {
+            const alerts = [];
+
+            state.employees.forEach((employee) => {
+                const evaluation = employee.evaluation;
+                if (!evaluation?.isWorkingDay) return;
+
+                if (employee.check_in && evaluation.isLate) {
+                    alerts.push({
+                        employee,
+                        type: "late",
+                        message: `Đi muộn ${Math.max(0, Number(evaluation.lateMinutes) || 0)} phút`
+                    });
+                }
+
+                if (employee.check_out && evaluation.isEarlyLeave) {
+                    alerts.push({
+                        employee,
+                        type: "early",
+                        message: `Về sớm ${Math.max(0, Number(evaluation.earlyLeaveMinutes) || 0)} phút`
+                    });
+                }
+            });
+
+            const lateCount = alerts.filter(({ type }) => type === "late").length;
+            const earlyCount = alerts.length - lateCount;
+
+            elements.alertSummary.textContent = alerts.length
+                ? `${lateCount} cảnh báo đi muộn · ${earlyCount} cảnh báo về sớm trong danh sách hiện tại`
+                : "Không ghi nhận trường hợp đi muộn hoặc về sớm trong danh sách hiện tại.";
+
+            elements.alertList.innerHTML = alerts.map(({ employee, message }) => `
+                <li class="flex items-center justify-between gap-space-sm rounded-lg bg-amber-50 border border-amber-200 px-space-md py-space-sm">
+                    <span class="min-w-0 truncate font-label-sm text-label-sm text-on-surface">
+                        ${escapeHtml(employee.full_name)}
+                        <span class="font-data-mono text-[11px] text-on-surface-variant">(${escapeHtml(employee.employee_code)})</span>
+                    </span>
+                    <span class="shrink-0 font-label-sm text-label-sm font-semibold text-amber-800 whitespace-nowrap">${escapeHtml(message)}</span>
+                </li>
+            `).join("");
+        };
+
         const renderRow = (employee) => {
             const initials = getInitials(employee.full_name);
             const safeName = escapeHtml(employee.full_name);
@@ -1267,6 +1352,8 @@
         };
 
         const renderTable = () => {
+            renderAttendanceAlerts();
+
             if (state.employees.length === 0) {
                 elements.tableBody.innerHTML = `
                     <tr>
@@ -1296,6 +1383,8 @@
         };
 
         const renderErrorState = (message) => {
+            state.employees = [];
+            renderAttendanceAlerts();
             elements.tableBody.innerHTML = `
                 <tr>
                     <td colspan="10" class="py-space-2xl px-space-lg">
@@ -1372,10 +1461,59 @@
             }
         };
 
-        const loadData = async () => {
+        const renderAutoSyncStatus = () => {
+            const lastUpdated = state.lastSyncAt
+                ? `Cập nhật thành công lúc ${state.lastSyncAt.toLocaleTimeString("vi-VN")}`
+                : "Chưa có lần cập nhật thành công";
+            let status = "Tự động cập nhật đã tạm dừng";
+
+            if (state.syncError) {
+                status = `Không cập nhật được: ${state.syncError}`;
+            } else if (state.syncInProgress) {
+                status = "Đang cập nhật dữ liệu...";
+            } else if (state.autoSyncEnabled) {
+                status = "Tự động cập nhật mỗi 30 giây";
+            }
+
+            elements.autoSyncToggle.setAttribute("aria-checked", String(state.autoSyncEnabled));
+            elements.autoSyncToggle.setAttribute(
+                "aria-label",
+                state.autoSyncEnabled ? "Tắt đồng bộ tự động" : "Bật đồng bộ tự động"
+            );
+            elements.autoSyncToggle.classList.toggle("bg-primary", state.autoSyncEnabled);
+            elements.autoSyncToggle.classList.toggle("bg-surface-container-high", !state.autoSyncEnabled);
+            elements.autoSyncKnob.classList.toggle("translate-x-5", state.autoSyncEnabled);
+            elements.autoSyncKnob.classList.toggle("translate-x-0", !state.autoSyncEnabled);
+            elements.autoSyncLabel.textContent = state.autoSyncEnabled
+                ? "Đồng bộ tự động đang bật"
+                : "Đồng bộ tự động đang tắt";
+            elements.autoSyncStatus.textContent = `${status} · ${lastUpdated}`;
+        };
+
+        const startAutoSync = () => {
+            if (autoSyncTimer !== null) {
+                window.clearInterval(autoSyncTimer);
+                autoSyncTimer = null;
+            }
+
+            if (!state.autoSyncEnabled) return;
+
+            autoSyncTimer = window.setInterval(() => {
+                if (!document.hidden) {
+                    loadData({ background: true });
+                }
+            }, 30000);
+        };
+
+        const loadData = async ({ background = false } = {}) => {
+            if (background && autoSyncInFlight) return;
+            if (background) autoSyncInFlight = true;
+
             const requestId = ++state.requestId;
 
-            setLoading(true);
+            state.syncInProgress = true;
+            if (!background) setLoading(true);
+            renderAutoSyncStatus();
 
             try {
                 const params = new URLSearchParams();
@@ -1421,6 +1559,8 @@
                     throw new Error(payload.message || "Không thể lấy bảng chấm công.");
                 }
 
+                state.lastSyncAt = new Date();
+                state.syncError = null;
                 state.employees = Array.isArray(payload.employees) ? payload.employees : [];
                 state.date = payload.date || state.date;
                 state.stats = {
@@ -1451,15 +1591,20 @@
             } catch (error) {
                 if (requestId !== state.requestId) return;
 
-                state.employees = [];
-                renderErrorState(error.message);
-                elements.tableSummary.textContent = "Không tải được dữ liệu";
-                elements.tableDate.textContent = "";
-                showToast("error", error.message);
+                state.syncError = error.message;
+                if (!background) {
+                    renderErrorState(error.message);
+                    elements.tableSummary.textContent = "Không tải được dữ liệu";
+                    elements.tableDate.textContent = "";
+                    showToast("error", error.message);
+                }
             } finally {
                 if (requestId === state.requestId) {
-                    setLoading(false);
+                    state.syncInProgress = false;
+                    if (!background) setLoading(false);
+                    renderAutoSyncStatus();
                 }
+                if (background) autoSyncInFlight = false;
             }
         };
 
@@ -2456,6 +2601,16 @@
 
         elements.refreshBtn.addEventListener("click", loadData);
 
+        elements.autoSyncToggle.addEventListener("click", () => {
+            state.autoSyncEnabled = !state.autoSyncEnabled;
+            renderAutoSyncStatus();
+            startAutoSync();
+
+            if (state.autoSyncEnabled) {
+                loadData({ background: true });
+            }
+        });
+
         elements.applyFilterBtn.addEventListener("click", () => {
             window.clearTimeout(searchTimer);
             state.search = elements.searchInput.value.trim();
@@ -2632,11 +2787,15 @@
         // Khởi tạo
         state.date = getTodayString();
         elements.dateInput.value = state.date;
+        renderAutoSyncStatus();
         renderSkeleton();
         loadData();
-        window.setInterval(() => {
-            if (!document.hidden) loadData();
-        }, 30000);
+        startAutoSync();
+        document.addEventListener("visibilitychange", () => {
+            if (state.autoSyncEnabled && !document.hidden) {
+                loadData({ background: true });
+            }
+        });
     })();
 </script>
 

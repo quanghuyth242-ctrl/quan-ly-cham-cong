@@ -21,7 +21,11 @@ import {
     clearFaceFailures,
     isValidAction
 } from "../services/attendanceService.js";
-import { evaluateAttendance } from "../services/shiftScheduleService.js";
+import {
+    buildAttendanceSchedule,
+    evaluateAttendance,
+    getShiftSchedulesForEmployeesOnDate
+} from "../services/shiftScheduleService.js";
 import { writeAttendanceAuditLog } from "../services/attendanceAuditService.js";
 import {
     AttendanceGpsError,
@@ -309,13 +313,23 @@ export const getAttendanceData = async (req, res) => {
             getAllShifts()
         ]);
 
+        const shiftSchedules = await getShiftSchedulesForEmployeesOnDate(
+            rows.map((row) => row.employee_id),
+            date
+        );
+
         const employees = await Promise.all(
             rows.map(async (row) => {
+                const schedule = buildAttendanceSchedule(
+                    shiftSchedules.get(row.employee_id) || null,
+                    date
+                );
                 const evaluation = await evaluateAttendance({
                     employeeId: row.employee_id,
                     workDate: date,
                     checkIn: row.check_in,
-                    checkOut: row.check_out
+                    checkOut: row.check_out,
+                    schedule
                 });
 
                 return {
@@ -326,19 +340,24 @@ export const getAttendanceData = async (req, res) => {
             })
         );
 
-        const stats = {
-            total: employees.length,
-            checkedIn: employees.filter((row) => row.check_in).length,
-            checkedOut: employees.filter((row) => row.check_out).length,
-            late: employees.filter(
-                (row) => row.check_in && row.evaluation.isLate
-            ).length,
-            earlyLeave: employees.filter(
-                (row) => row.check_out && row.evaluation.isEarlyLeave
-            ).length,
-            deviceRecords: employees.filter((row) => row.record_source === "device").length,
-            notCheckedIn: employees.filter((row) => !row.check_in).length
-        };
+        const stats = employees.reduce((totals, row) => {
+            totals.total += 1;
+            if (row.check_in) totals.checkedIn += 1;
+            if (row.check_out) totals.checkedOut += 1;
+            if (row.check_in && row.evaluation.isLate) totals.late += 1;
+            if (row.check_out && row.evaluation.isEarlyLeave) totals.earlyLeave += 1;
+            if (row.record_source === "device") totals.deviceRecords += 1;
+            if (!row.check_in) totals.notCheckedIn += 1;
+            return totals;
+        }, {
+            total: 0,
+            checkedIn: 0,
+            checkedOut: 0,
+            late: 0,
+            earlyLeave: 0,
+            deviceRecords: 0,
+            notCheckedIn: 0
+        });
 
         return res.status(200).json({
             success: true,
