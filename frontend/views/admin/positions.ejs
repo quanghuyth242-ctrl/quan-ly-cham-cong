@@ -1,0 +1,29 @@
+<%- include("../partials/adminHead", { pageTitle: "Quản lý chức vụ", activePage: "employees", user }) %>
+<section class="flex flex-col gap-space-xl">
+    <%- include("../partials/alerts", { success, error }) %>
+    <a href="/admin/employees" class="inline-flex items-center gap-space-xs text-primary font-label-md text-label-md hover:underline w-fit"><span class="material-symbols-outlined">arrow_back</span>Quay lại quản lý nhân sự</a>
+    <section class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-lg md:p-space-xl rounded-2xl border border-surface-container-high/60 shadow-sm">
+        <div><p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Cơ cấu nhân sự</p><h1 class="font-headline-lg text-headline-lg text-primary">Quản lý chức vụ</h1><p class="font-body-md text-body-md text-on-surface-variant">Tạo và quản lý chức vụ trong hồ sơ nhân viên.</p></div>
+        <div class="flex items-center gap-space-sm px-space-lg py-space-md bg-primary-fixed rounded-xl text-primary"><span class="material-symbols-outlined">work</span><strong class="font-headline-sm text-headline-sm"><%= positions.length %></strong><span>chức vụ</span></div>
+    </section>
+    <section class="grid grid-cols-1 xl:grid-cols-3 gap-space-lg items-start">
+        <article class="bg-surface-container-lowest p-space-lg rounded-2xl border border-surface-container-high/60 shadow-sm">
+            <h2 class="font-headline-sm text-headline-sm text-primary mb-space-sm">Thêm chức vụ</h2><p class="font-body-sm text-body-sm text-on-surface-variant mb-space-lg">Chức vụ mới sẽ dùng được trong hồ sơ nhân viên.</p>
+            <form action="/admin/positions" method="POST" class="flex flex-col gap-space-md"><label for="position_name" class="font-label-md text-label-md">Tên chức vụ</label><input id="position_name" name="position_name" required maxlength="100" placeholder="Ví dụ: Kế toán viên" class="w-full px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-xl"><button class="px-space-lg py-space-sm bg-primary text-on-primary rounded-xl font-label-md">Thêm chức vụ</button></form>
+        </article>
+        <section class="xl:col-span-2 bg-surface-container-lowest rounded-2xl border border-surface-container-high/60 shadow-sm overflow-hidden">
+            <div class="p-space-lg border-b border-outline-variant"><h2 class="font-headline-sm text-headline-sm text-primary">Danh sách chức vụ</h2><p class="font-body-sm text-body-sm text-on-surface-variant">Đổi tên sẽ cập nhật hồ sơ nhân viên. Chỉ xóa chức vụ chưa có người được gán.</p></div>
+            <% if (positions.length === 0) { %><div class="p-space-2xl text-center text-on-surface-variant">Chưa có chức vụ nào. Thêm chức vụ đầu tiên để gán cho nhân viên.</div><% } else { %>
+            <div class="divide-y divide-outline-variant"><% positions.forEach((position) => { %>
+                <article class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md p-space-lg">
+                    <div><h3 class="font-label-md text-label-md text-on-surface"><%= position.position_name %></h3><p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs"><strong><%= position.employee_count %></strong> nhân viên · Tạo ngày <%= position.created_date %></p></div>
+                    <div class="flex flex-col sm:flex-row gap-space-sm lg:flex-1 lg:justify-end">
+                        <form action="/admin/positions/<%= position.id %>/update" method="POST" class="flex flex-1 gap-space-xs lg:max-w-md"><label class="sr-only" for="position-<%= position.id %>">Tên chức vụ</label><input id="position-<%= position.id %>" name="position_name" value="<%= position.position_name %>" required maxlength="100" class="min-w-0 flex-1 px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-xl"><button class="px-space-md py-space-sm bg-surface-container-high text-on-surface rounded-xl font-label-md">Lưu tên</button></form>
+                        <form action="/admin/positions/<%= position.id %>/delete" method="POST" onsubmit="return confirm('Xóa chức vụ này?');"><button type="submit" <%= position.employee_count > 0 ? "disabled" : "" %> class="px-space-md py-space-sm text-red-700 rounded-xl font-label-md disabled:opacity-40 disabled:cursor-not-allowed" title="<%= position.employee_count > 0 ? 'Chuyển nhân viên trước khi xóa' : 'Xóa chức vụ' %>">Xóa</button></form>
+                    </div>
+                </article>
+            <% }); %></div><% } %>
+        </section>
+    </section>
+</section>
+<%- include("../partials/adminFoot") %>

@@ -1,0 +1,98 @@
+<%- include("../partials/adminHead", {
+    pageTitle: "Quản lý phòng ban",
+    activePage: "employees",
+    user: user
+}) %>
+
+<section class="flex flex-col gap-space-xl">
+    <%- include("../partials/alerts", { success: success, error: error }) %>
+
+    <a href="/admin/employees" class="inline-flex items-center gap-space-xs text-primary font-label-md text-label-md hover:underline w-fit">
+        <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+        Quay lại quản lý nhân sự
+    </a>
+
+    <section class="relative overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-lg md:p-space-xl rounded-2xl border border-surface-container-high/60 shadow-sm">
+        <div class="absolute inset-y-0 left-0 w-1 bg-primary"></div>
+        <div class="flex flex-col gap-space-xs">
+            <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
+                <span class="flex h-2 w-2 rounded-full bg-primary-container"></span>
+                <span class="uppercase tracking-wider">Cơ cấu nhân sự</span>
+            </div>
+            <h1 class="font-headline-lg text-headline-lg text-primary tracking-tight">Quản lý phòng ban</h1>
+            <p class="font-body-md text-body-md text-on-surface-variant">Tạo, đổi tên và theo dõi số nhân viên thuộc từng phòng ban.</p>
+        </div>
+        <div class="flex items-center gap-space-sm px-space-lg py-space-md bg-primary-fixed rounded-2xl text-primary">
+            <span class="material-symbols-outlined text-[24px]">corporate_fare</span>
+            <span class="font-headline-sm text-headline-sm font-bold"><%= departments.length %></span>
+            <span class="font-label-md text-label-md">phòng ban</span>
+        </div>
+    </section>
+
+    <section class="grid grid-cols-1 xl:grid-cols-3 gap-space-lg items-start">
+        <article class="bg-surface-container-lowest p-space-lg sm:p-space-xl rounded-2xl border border-surface-container-high/60 shadow-sm xl:col-span-1">
+            <div class="flex items-center gap-space-sm text-primary mb-space-xs">
+                <span class="material-symbols-outlined">add_business</span>
+                <h2 class="font-headline-sm text-headline-sm">Thêm phòng ban</h2>
+            </div>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mb-space-lg">Phòng ban mới sẽ xuất hiện trong biểu mẫu hồ sơ nhân viên.</p>
+            <form action="/admin/departments" method="POST" class="flex flex-col gap-space-md">
+                <label for="department_name" class="font-label-md text-label-md text-on-surface">Tên phòng ban</label>
+                <input id="department_name" name="department_name" type="text" maxlength="100" required placeholder="Ví dụ: Phòng Kế toán" class="w-full px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+                <button type="submit" class="inline-flex items-center justify-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-md text-label-md transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">add</span>Thêm phòng ban
+                </button>
+            </form>
+        </article>
+
+        <section class="xl:col-span-2 bg-surface-container-lowest rounded-2xl border border-surface-container-high/60 shadow-sm overflow-hidden" aria-labelledby="department-list-title">
+            <div class="flex items-center justify-between gap-space-md p-space-lg sm:p-space-xl border-b border-outline-variant">
+                <div>
+                    <h2 id="department-list-title" class="font-headline-sm text-headline-sm text-primary">Danh sách phòng ban</h2>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Đổi tên phòng ban sẽ cập nhật hồ sơ của toàn bộ nhân viên đang thuộc phòng ban đó.</p>
+                </div>
+                <span class="px-space-sm py-1 bg-surface-container-low rounded-full font-label-sm text-label-sm text-on-surface-variant"><%= departments.length %></span>
+            </div>
+
+            <% if (departments.length === 0) { %>
+                <div class="flex flex-col items-center gap-space-sm p-space-2xl text-center text-on-surface-variant">
+                    <span class="material-symbols-outlined text-[40px]">corporate_fare</span>
+                    <span class="font-label-md text-label-md">Chưa có phòng ban nào</span>
+                    <span class="font-body-sm text-body-sm">Thêm phòng ban đầu tiên để gán cho nhân viên.</span>
+                </div>
+            <% } else { %>
+                <div class="divide-y divide-outline-variant">
+                    <% departments.forEach((department) => { %>
+                        <article class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md p-space-lg hover:bg-surface-container-low/60 transition-colors">
+                            <div class="flex items-start gap-space-sm min-w-0 lg:w-56">
+                                <span class="material-symbols-outlined text-primary mt-0.5">corporate_fare</span>
+                                <div class="min-w-0">
+                                    <h3 class="font-label-md text-label-md text-on-surface break-words"><%= department.department_name %></h3>
+                                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">
+                                        <strong><%= department.employee_count %></strong> nhân viên · Tạo ngày <%= department.created_date %>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex flex-col sm:flex-row gap-space-sm lg:flex-1 lg:justify-end">
+                                <form action="/admin/departments/<%= department.id %>/update" method="POST" class="flex flex-1 gap-space-xs lg:max-w-md">
+                                    <label class="sr-only" for="department-<%= department.id %>">Tên phòng ban</label>
+                                    <input id="department-<%= department.id %>" name="department_name" value="<%= department.department_name %>" maxlength="100" required class="min-w-0 flex-1 px-space-md py-space-sm bg-surface-container-low border border-outline-variant rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+                                    <button type="submit" class="inline-flex items-center justify-center gap-space-xs px-space-md py-space-sm bg-surface-container-high hover:bg-surface-variant text-on-surface rounded-xl font-label-md text-label-md transition-colors" title="Lưu tên phòng ban">
+                                        <span class="material-symbols-outlined text-[18px]">save</span><span class="hidden sm:inline">Lưu tên</span>
+                                    </button>
+                                </form>
+                                <form action="/admin/departments/<%= department.id %>/delete" method="POST" onsubmit="return confirm('Xóa phòng ban này?');">
+                                    <button type="submit" <%= department.employee_count > 0 ? "disabled" : "" %> class="inline-flex w-full items-center justify-center gap-space-xs px-space-md py-space-sm text-red-700 hover:bg-red-50 rounded-xl font-label-md text-label-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed" title="<%= department.employee_count > 0 ? 'Chuyển nhân viên ra khỏi phòng ban trước khi xóa' : 'Xóa phòng ban' %>">
+                                        <span class="material-symbols-outlined text-[18px]">delete</span><span>Xóa</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </article>
+                    <% }); %>
+                </div>
+            <% } %>
+        </section>
+    </section>
+</section>
+
+<%- include("../partials/adminFoot") %>

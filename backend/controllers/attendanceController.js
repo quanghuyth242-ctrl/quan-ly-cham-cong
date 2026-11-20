@@ -275,6 +275,41 @@ export const gpsAttendance = async (req, res) => {
 };
 
 // Bảng chấm công theo ngày, bao gồm cả nhân viên chưa chấm công.
+const getAttendanceCheck = (date, row, evaluation, now = new Date()) => {
+    if (!evaluation?.assigned) {
+        return { code: "no_schedule", label: "Chưa phân ca", detail: "Chưa có ca làm được phân cho ngày này.", needsReview: false };
+    }
+    if (!evaluation.isWorkingDay) {
+        return { code: "day_off", label: "Ngày nghỉ", detail: "Không có lịch làm việc trong ngày này.", needsReview: false };
+    }
+
+    const today = getTodayDateString(now);
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const toMinutes = (value) => {
+        const match = String(value || "").match(/^(\d{1,2}):(\d{2})/);
+        return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+    };
+    const startMinutes = toMinutes(evaluation.expectedStart);
+    const endMinutes = toMinutes(evaluation.expectedEnd);
+    const isPastDate = date < today;
+    const isFutureDate = date > today;
+    const hasStarted = isPastDate || (!isFutureDate && startMinutes !== null && currentMinutes >= startMinutes);
+    const hasEnded = isPastDate || (!isFutureDate && endMinutes !== null && currentMinutes >= endMinutes);
+
+    if (!row.check_in) {
+        if (!hasStarted) return { code: "not_due", label: "Chưa đến giờ", detail: "Ca làm chưa bắt đầu.", needsReview: false };
+        if (hasEnded) return { code: "absent", label: "Vắng mặt", detail: "Đã hết ca nhưng chưa có lượt check-in.", needsReview: true };
+        return { code: "not_checked_in", label: "Chưa check-in", detail: "Ca đã bắt đầu nhưng chưa ghi nhận check-in.", needsReview: true };
+    }
+
+    if (!row.check_out) {
+        if (hasEnded) return { code: "missing_checkout", label: "Thiếu check-out", detail: "Đã hết ca nhưng chưa có lượt check-out.", needsReview: true };
+        return { code: "in_progress", label: "Đang làm", detail: "Đã check-in, đang trong ca làm.", needsReview: false };
+    }
+
+    return { code: "complete", label: "Đã hoàn tất", detail: "Đã ghi nhận đủ check-in và check-out.", needsReview: false };
+};
+
 export const getAttendanceData = async (req, res) => {
     try {
         const rawDate = String(req.query.date || "").trim();
@@ -307,8 +342,9 @@ export const getAttendanceData = async (req, res) => {
             });
         }
 
+        const auditStatuses = ["absent", "missing_checkout", "no_schedule", "needs_review"];
         const [rows, departments, shifts] = await Promise.all([
-            getRosterForDate({ date, search, department, status, shiftId }),
+            getRosterForDate({ date, search, department, status: auditStatuses.includes(status) ? "all" : status, shiftId }),
             getDepartments(),
             getAllShifts()
         ]);
@@ -335,12 +371,19 @@ export const getAttendanceData = async (req, res) => {
                 return {
                     ...row,
                     face_registered: Boolean(row.face_profile_id),
-                    evaluation
+                    evaluation,
+                    attendance_check: getAttendanceCheck(date, row, evaluation)
                 };
             })
         );
 
-        const stats = employees.reduce((totals, row) => {
+        const filteredEmployees = auditStatuses.includes(status)
+            ? employees.filter((employee) => status === "needs_review"
+                ? employee.attendance_check.needsReview
+                : employee.attendance_check.code === status)
+            : employees;
+
+        const stats = filteredEmployees.reduce((totals, row) => {
             totals.total += 1;
             if (row.check_in) totals.checkedIn += 1;
             if (row.check_out) totals.checkedOut += 1;
@@ -348,6 +391,7 @@ export const getAttendanceData = async (req, res) => {
             if (row.check_out && row.evaluation.isEarlyLeave) totals.earlyLeave += 1;
             if (row.record_source === "device") totals.deviceRecords += 1;
             if (!row.check_in) totals.notCheckedIn += 1;
+            if (row.attendance_check.needsReview) totals.needsReview += 1;
             return totals;
         }, {
             total: 0,
@@ -356,13 +400,14 @@ export const getAttendanceData = async (req, res) => {
             late: 0,
             earlyLeave: 0,
             deviceRecords: 0,
-            notCheckedIn: 0
+            notCheckedIn: 0,
+            needsReview: 0
         });
 
         return res.status(200).json({
             success: true,
             date,
-            employees,
+            employees: filteredEmployees,
             departments,
             shifts,
             stats

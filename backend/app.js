@@ -14,6 +14,8 @@ import { requireAdmin } from "./middlewares/authMiddleware.js";
 import { getOverviewNotifications } from "./services/notificationService.js";
 import adminDeviceRoutes from "./routers/adminDeviceRoutes.js";
 import adminEmployeeRoutes from "./routers/adminEmployeeRoutes.js";
+import adminDepartmentRoutes from "./routers/adminDepartmentRoutes.js";
+import adminPositionRoutes from "./routers/adminPositionRoutes.js";
 import deviceApiRoutes from "./routers/deviceApiRoutes.js";
 const app = express();
 
@@ -67,6 +69,8 @@ app.use("/admin/attendance", AttendanceRouter);
 // Quản lý thiết bị và nhân sự
 app.use("/admin/devices", requireAdmin, adminDeviceRoutes);
 app.use("/admin/employees", requireAdmin, adminEmployeeRoutes);
+app.use("/admin/departments", requireAdmin, adminDepartmentRoutes);
+app.use("/admin/positions", requireAdmin, adminPositionRoutes);
 app.use("/api/devices", deviceApiRoutes);
 
 app.get("/", async (req, res) => {

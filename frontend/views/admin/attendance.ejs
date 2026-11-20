@@ -146,7 +146,7 @@
 </section>
 
 <!-- Thống kê -->
-<section class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-space-md">
+<section class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8 gap-space-md">
     <div class="bg-surface-container-lowest p-space-lg rounded-xl border border-surface-container-high shadow-sm hover:shadow-md transition-shadow flex items-center justify-between gap-space-sm">
         <div class="flex flex-col min-w-0">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tổng NV</span>
@@ -216,6 +216,16 @@
             <span class="material-symbols-outlined text-[20px]">fingerprint</span>
         </div>
     </div>
+
+    <button data-attendance-status-filter="needs_review" class="text-left bg-amber-50 p-space-lg rounded-xl border border-amber-200 shadow-sm hover:shadow-md hover:border-amber-400 transition-all flex items-center justify-between gap-space-sm" type="button" title="Lọc các trường hợp cần kiểm tra">
+        <div class="flex flex-col min-w-0">
+            <span class="font-label-sm text-label-sm text-amber-800 uppercase tracking-wider">Cần kiểm tra</span>
+            <span id="att-stat-needs-review" class="font-headline-xl text-headline-xl text-amber-800 font-bold mt-space-xs">—</span>
+        </div>
+        <div class="w-9 h-9 rounded-xl bg-white/70 text-amber-700 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[20px]">fact_check</span>
+        </div>
+    </button>
 </section>
 
 <!-- Cảnh báo chấm công -->
@@ -224,7 +234,7 @@
         <span class="material-symbols-outlined text-amber-600 text-[22px] mt-0.5">warning</span>
         <div class="min-w-0 flex-1">
             <h3 id="att-alert-title" class="font-label-md text-label-md text-on-surface font-semibold">
-                Cảnh báo đi muộn / về sớm
+                Kiểm tra trạng thái chấm công
             </h3>
             <p id="att-alert-summary" class="font-body-sm text-body-sm text-on-surface-variant mt-0.5" role="status" aria-live="polite">
                 Đang tải dữ liệu cảnh báo...
@@ -315,6 +325,10 @@
                         <option value="not_checked_in">Chưa check-in</option>
                         <option value="late">Đi muộn</option>
                         <option value="early_leave">Về sớm</option>
+                        <option value="absent">Vắng mặt (hết ca, chưa check-in)</option>
+                        <option value="missing_checkout">Thiếu check-out</option>
+                        <option value="no_schedule">Chưa phân ca</option>
+                        <option value="needs_review">Cần kiểm tra</option>
                     </select>
                     <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
                 </div>
@@ -806,7 +820,8 @@
                 late: 0,
                 earlyLeave: 0,
                 deviceRecords: 0,
-                notCheckedIn: 0
+                notCheckedIn: 0,
+                needsReview: 0
             },
             requestId: 0,
             historyRequestId: 0,
@@ -843,6 +858,7 @@
             statEarly: document.getElementById("att-stat-early"),
             statDevice: document.getElementById("att-stat-device"),
             statNotCheckedIn: document.getElementById("att-stat-notcheckedin"),
+            statNeedsReview: document.getElementById("att-stat-needs-review"),
             tableBody: document.getElementById("att-table-body"),
             tableSummary: document.getElementById("att-table-summary"),
             tableDate: document.getElementById("att-table-date"),
@@ -1011,6 +1027,22 @@
         };
 
         const statusBadgeHtml = (employee) => {
+            const checked = employee.attendance_check;
+            if (checked?.code === "absent") {
+                return `<span title="${escapeHtml(checked.detail)}" class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Vắng mặt</span>`;
+            }
+            if (checked?.code === "missing_checkout") {
+                return `<span title="${escapeHtml(checked.detail)}" class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>Thiếu check-out</span>`;
+            }
+            if (checked?.code === "no_schedule") {
+                return `<span title="${escapeHtml(checked.detail)}" class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant border border-outline-variant text-[11px] font-semibold whitespace-nowrap">Chưa phân ca</span>`;
+            }
+            if (checked?.code === "not_checked_in") {
+                return `<span title="${escapeHtml(checked.detail)}" class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-semibold whitespace-nowrap">Chưa check-in</span>`;
+            }
+            if (checked?.code === "not_due") {
+                return `<span title="${escapeHtml(checked.detail)}" class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-semibold whitespace-nowrap">Chưa đến giờ</span>`;
+            }
             if (!employee.check_in) {
                 return `<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-outline"></span>Chưa chấm</span>`;
             }
@@ -1146,7 +1178,7 @@
         };
 
         const renderStats = () => {
-            const { total, checkedIn, checkedOut, late, earlyLeave, deviceRecords, notCheckedIn } = state.stats;
+            const { total, checkedIn, checkedOut, late, earlyLeave, deviceRecords, notCheckedIn, needsReview } = state.stats;
 
             setText(elements.statTotal, total);
             setText(elements.statCheckedIn, checkedIn);
@@ -1155,6 +1187,7 @@
             setText(elements.statEarly, earlyLeave);
             setText(elements.statDevice, deviceRecords);
             setText(elements.statNotCheckedIn, notCheckedIn);
+            setText(elements.statNeedsReview, needsReview);
         };
 
         const updateSummary = () => {
@@ -1202,6 +1235,9 @@
 
             state.employees.forEach((employee) => {
                 const evaluation = employee.evaluation;
+                if (employee.attendance_check?.needsReview) {
+                    alerts.push({ employee, type: "review", message: employee.attendance_check.label });
+                }
                 if (!evaluation?.isWorkingDay) return;
 
                 if (employee.check_in && evaluation.isLate) {
@@ -1222,11 +1258,12 @@
             });
 
             const lateCount = alerts.filter(({ type }) => type === "late").length;
-            const earlyCount = alerts.length - lateCount;
+            const earlyCount = alerts.filter(({ type }) => type === "early").length;
+            const reviewCount = alerts.filter(({ type }) => type === "review").length;
 
             elements.alertSummary.textContent = alerts.length
-                ? `${lateCount} cảnh báo đi muộn · ${earlyCount} cảnh báo về sớm trong danh sách hiện tại`
-                : "Không ghi nhận trường hợp đi muộn hoặc về sớm trong danh sách hiện tại.";
+                ? `${reviewCount} cần kiểm tra · ${lateCount} đi muộn · ${earlyCount} về sớm trong danh sách hiện tại`
+                : "Không phát hiện trạng thái cần kiểm tra, đi muộn hoặc về sớm trong danh sách hiện tại.";
 
             elements.alertList.innerHTML = alerts.map(({ employee, message }) => `
                 <li class="flex items-center justify-between gap-space-sm rounded-lg bg-amber-50 border border-amber-200 px-space-md py-space-sm">
@@ -1234,7 +1271,7 @@
                         ${escapeHtml(employee.full_name)}
                         <span class="font-data-mono text-[11px] text-on-surface-variant">(${escapeHtml(employee.employee_code)})</span>
                     </span>
-                    <span class="shrink-0 font-label-sm text-label-sm font-semibold text-amber-800 whitespace-nowrap">${escapeHtml(message)}</span>
+                    <span class="shrink-0 font-label-sm text-label-sm font-semibold text-amber-800 whitespace-nowrap" title="${escapeHtml(employee.attendance_check?.detail || message)}">${escapeHtml(message)}</span>
                 </li>
             `).join("");
         };
@@ -1570,7 +1607,8 @@
                     late: Number(payload.stats?.late || 0),
                     earlyLeave: Number(payload.stats?.earlyLeave || 0),
                     deviceRecords: Number(payload.stats?.deviceRecords || 0),
-                    notCheckedIn: Number(payload.stats?.notCheckedIn || 0)
+                    notCheckedIn: Number(payload.stats?.notCheckedIn || 0),
+                    needsReview: Number(payload.stats?.needsReview || 0)
                 };
 
                 if (Array.isArray(payload.departments)) {
@@ -2659,6 +2697,15 @@
         elements.statusSelect.addEventListener("change", () => {
             state.status = elements.statusSelect.value;
             loadData();
+        });
+
+        document.querySelectorAll("[data-attendance-status-filter]").forEach((button) => {
+            button.addEventListener("click", () => {
+                state.status = button.dataset.attendanceStatusFilter;
+                elements.statusSelect.value = state.status;
+                loadData();
+                elements.statusSelect.scrollIntoView({ behavior: "smooth", block: "center" });
+            });
         });
 
         elements.shiftSelect.addEventListener("change", () => {

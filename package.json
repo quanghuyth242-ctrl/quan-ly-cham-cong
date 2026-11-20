@@ -12,6 +12,8 @@
     "init:shift-module": "node backend/scripts/initShiftModule.js",
     "init:device-module": "node backend/scripts/initDeviceModule.js",
     "init:employee-status": "node backend/scripts/initEmployeeStatusModule.js",
+    "init:departments": "node backend/scripts/initDepartmentModule.js",
+    "init:positions": "node backend/scripts/initPositionModule.js",
     "init:face-profiles": "node backend/scripts/initFaceProfiles.js",
     "seed:devices": "node backend/scripts/seedSampleDevices.js",
     "seed:shifts": "node backend/scripts/seedSampleShifts.js",
