@@ -110,7 +110,7 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[980px] text-left">
+                <table class="w-full min-w-[1100px] text-left">
                     <thead class="bg-surface-container-low">
                         <tr class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
                             <th class="px-space-lg py-space-md font-medium">Thiết bị</th>
@@ -118,12 +118,13 @@
                             <th class="px-space-md py-space-md font-medium">Trạng thái</th>
                             <th class="px-space-md py-space-md font-medium">Heartbeat gần nhất</th>
                             <th class="px-space-lg py-space-md font-medium">Đồng bộ gần nhất</th>
+                            <th class="px-space-md py-space-md font-medium">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-outline-variant">
                         <% if (devices.length === 0) { %>
                             <tr>
-                                <td colspan="5" class="px-space-lg py-space-2xl text-center">
+                                <td colspan="6" class="px-space-lg py-space-2xl text-center">
                                     <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
                                         <span class="material-symbols-outlined text-[40px]">devices_other</span>
                                         <span class="font-label-md text-label-md">Chưa có thiết bị nào được đăng ký.</span>
@@ -173,6 +174,37 @@
                                             <span class="text-[11px]"><%= device.last_sync_count %> bản ghi gần nhất</span>
                                         <% } %>
                                     </div>
+                                </td>
+                                <td class="px-space-md py-space-md">
+                                    <details>
+                                        <summary class="cursor-pointer text-primary font-label-md text-label-md">Sửa</summary>
+                                        <form action="/admin/devices/<%= device.id %>/update" method="POST" class="mt-space-sm min-w-[220px] flex flex-col gap-space-xs">
+                                            <label class="font-label-sm text-label-sm">Tên thiết bị
+                                                <input name="name" value="<%= device.name %>" maxlength="120" required class="w-full px-space-sm py-1 border border-outline-variant rounded">
+                                            </label>
+                                            <label class="font-label-sm text-label-sm">Vị trí
+                                                <input name="location" value="<%= device.location || '' %>" maxlength="150" class="w-full px-space-sm py-1 border border-outline-variant rounded">
+                                            </label>
+                                            <label class="font-label-sm text-label-sm">Loại thiết bị
+                                                <select name="device_type" required class="w-full px-space-sm py-1 border border-outline-variant rounded">
+                                                    <option value="biometric" <%= device.device_type === 'biometric' ? 'selected' : '' %>>Vân tay / Face ID</option>
+                                                    <option value="camera" <%= device.device_type === 'camera' ? 'selected' : '' %>>Camera</option>
+                                                    <option value="network" <%= device.device_type === 'network' ? 'selected' : '' %>>Thiết bị mạng</option>
+                                                    <option value="other" <%= device.device_type === 'other' ? 'selected' : '' %>>Khác</option>
+                                                </select>
+                                            </label>
+                                            <label class="font-label-sm text-label-sm">Trạng thái
+                                                <select name="is_active" required class="w-full px-space-sm py-1 border border-outline-variant rounded">
+                                                    <option value="1" <%= device.is_active ? 'selected' : '' %>>Đang hoạt động</option>
+                                                    <option value="0" <%= !device.is_active ? 'selected' : '' %>>Ngừng hoạt động</option>
+                                                </select>
+                                            </label>
+                                            <button type="submit" class="px-space-sm py-1 bg-primary text-on-primary rounded">Lưu thay đổi</button>
+                                        </form>
+                                    </details>
+                                    <form action="/admin/devices/<%= device.id %>/delete" method="POST" class="mt-space-xs" onsubmit="return confirm('Xóa thiết bị này? Lịch sử sự kiện của thiết bị sẽ bị xóa, dữ liệu chấm công tổng hợp vẫn được giữ.');">
+                                        <button type="submit" class="font-label-sm text-label-sm text-red-700 hover:text-red-900">Xóa thiết bị</button>
+                                    </form>
                                 </td>
                             </tr>
                         <% }); %>

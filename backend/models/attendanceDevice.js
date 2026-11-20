@@ -44,6 +44,50 @@ export const create = async (data) => {
     return result.insertId;
 };
 
+export const update = async (id, data) => {
+    const [result] = await db.execute(
+        `UPDATE attendance_devices
+            SET name = ?, location = ?, device_type = ?, is_active = ?
+          WHERE id = ?`,
+        [data.name, data.location || null, data.device_type, data.is_active ? 1 : 0, id]
+    );
+
+    return result.affectedRows > 0;
+};
+
+export const existsById = async (id) => {
+    const [rows] = await db.execute(
+        "SELECT id FROM attendance_devices WHERE id = ? LIMIT 1",
+        [id]
+    );
+
+    return rows.length > 0;
+};
+
+export const removeById = async (id) => {
+    const connection = await db.getConnection();
+
+    try {
+        await connection.beginTransaction();
+        await connection.execute(
+            "DELETE FROM attendance_device_events WHERE device_id = ?",
+            [id]
+        );
+        const [result] = await connection.execute(
+            "DELETE FROM attendance_devices WHERE id = ?",
+            [id]
+        );
+        await connection.commit();
+
+        return result.affectedRows > 0;
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
+};
+
 export const findByCode = async (deviceCode) => {
     const [rows] = await db.execute(
         `SELECT id, device_code, token_hash, is_active
