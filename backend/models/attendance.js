@@ -61,6 +61,16 @@ export const getDepartments = async () => {
     return rows.map((row) => row.department);
 };
 
+export const getAllShifts = async () => {
+    const [rows] = await db.execute(
+        `SELECT id, shift_code, shift_name, status
+           FROM work_shifts
+          ORDER BY shift_code ASC`
+    );
+
+    return rows;
+};
+
 /**
  * Danh sách nhân viên kèm bản ghi chấm công của một ngày.
  * Nhân viên chưa chấm công vẫn xuất hiện để quản trị viên có thể
@@ -70,7 +80,8 @@ export const getRosterForDate = async ({
     date,
     search = "",
     department = "",
-    status = "all"
+    status = "all",
+    shiftId = null
 } = {}) => {
     const conditions = [];
     const params = [date];
@@ -99,6 +110,25 @@ export const getRosterForDate = async ({
         conditions.push(statusCondition);
     }
 
+    if (shiftId !== null && shiftId !== undefined) {
+        conditions.push(
+            `EXISTS (
+                SELECT 1
+                  FROM employee_shift_assignments sa
+                  INNER JOIN work_shifts ws
+                    ON ws.id = sa.shift_id
+                  INNER JOIN shift_workdays sw
+                    ON sw.shift_id = ws.id
+                   AND sw.weekday = WEEKDAY(?) + 1
+                 WHERE sa.employee_id = e.id
+                   AND sa.status = 'active'
+                   AND ? BETWEEN sa.start_date AND sa.end_date
+                   AND ws.id = ?
+            )`
+        );
+        params.push(date, date, shiftId);
+    }
+
     const whereClause = conditions.length > 0
         ? `WHERE ${conditions.join(" AND ")}`
         : "";
@@ -124,6 +154,10 @@ export const getRosterForDate = async ({
                a.check_out_accuracy_m,
                a.check_out_distance_m,
                a.record_source,
+               COALESCE(
+                   ROUND(GREATEST(0, TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out)) / 60, 2),
+                   0
+               ) AS total_hours,
                a.status
           FROM employees e
           LEFT JOIN attendance a
@@ -281,6 +315,7 @@ const BASE_SELECT = `
            a.check_out_longitude,
            a.check_out_accuracy_m,
            a.check_out_distance_m,
+           a.record_source,
            COALESCE(
                ROUND(GREATEST(0, TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out)) / 60, 2),
                0
@@ -392,6 +427,7 @@ export const findHistoryByEmployee = async (employeeId) => {
                 a.check_out_longitude,
                 a.check_out_accuracy_m,
                 a.check_out_distance_m,
+                a.record_source,
                 COALESCE(
                     ROUND(GREATEST(0, TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out)) / 60, 2),
                     0

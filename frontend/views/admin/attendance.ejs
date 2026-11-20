@@ -254,6 +254,22 @@
             </div>
 
             <div class="w-full xl:w-48">
+                <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-shift">
+                    Ca làm
+                </label>
+                <div class="relative">
+                    <select
+                        id="att-shift"
+                        class="w-full appearance-none bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-space-md pr-space-xl py-space-sm rounded-xl outline-none focus:bg-surface-container focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                        name="shiftId"
+                    >
+                        <option value="">Tất cả ca làm</option>
+                    </select>
+                    <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
+                </div>
+            </div>
+
+            <div class="w-full xl:w-48">
                 <label class="font-label-sm text-label-sm text-on-surface block mb-space-xs" for="att-status">
                     Trạng thái
                 </label>
@@ -295,7 +311,7 @@
     </div>
 
     <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
+        <table class="w-full min-w-[1180px] text-left border-collapse">
             <thead>
                 <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
                     <th class="py-space-md px-space-lg font-semibold">Nhân viên</th>
@@ -303,6 +319,9 @@
                     <th class="py-space-md px-space-md font-semibold">Ca làm</th>
                     <th class="py-space-md px-space-md font-semibold">Check-in</th>
                     <th class="py-space-md px-space-md font-semibold">Check-out</th>
+                    <th class="py-space-md px-space-md font-semibold">Đi muộn</th>
+                    <th class="py-space-md px-space-md font-semibold">Về sớm</th>
+                    <th class="py-space-md px-space-md font-semibold">Số giờ</th>
                     <th class="py-space-md px-space-md font-semibold">Trạng thái</th>
                     <th class="py-space-md px-space-lg font-semibold text-right">Thao tác</th>
                 </tr>
@@ -686,6 +705,48 @@
     </div>
 </div>
 
+<!-- Modal lịch sử chấm công -->
+<div
+    id="att-history-modal"
+    class="fixed inset-0 z-[75] hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="att-history-title"
+    aria-hidden="true"
+>
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-close-modal="history"></div>
+    <div class="relative flex min-h-full items-center justify-center p-space-lg">
+        <section class="w-full max-w-7xl max-h-[calc(100vh-2rem)] overflow-hidden bg-surface-container-lowest rounded-xl shadow-xl flex flex-col">
+            <div class="flex items-center justify-between gap-space-md px-space-xl py-space-lg border-b border-surface-container-high shrink-0">
+                <div class="min-w-0">
+                    <h3 id="att-history-title" class="font-headline-sm text-headline-sm text-primary font-semibold truncate">Lịch sử chấm công</h3>
+                    <p id="att-history-description" class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs"></p>
+                </div>
+                <button class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-modal="history" type="button" aria-label="Đóng">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="overflow-auto p-space-lg">
+                <table class="w-full min-w-[1120px] text-left">
+                    <thead class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase">
+                        <tr>
+                            <th class="px-space-md py-space-sm">Ngày</th>
+                            <th class="px-space-md py-space-sm">Ca làm</th>
+                            <th class="px-space-md py-space-sm">Check-in</th>
+                            <th class="px-space-md py-space-sm">Check-out</th>
+                            <th class="px-space-md py-space-sm">Đi muộn</th>
+                            <th class="px-space-md py-space-sm">Về sớm</th>
+                            <th class="px-space-md py-space-sm">Số giờ</th>
+                            <th class="px-space-md py-space-sm">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody id="att-history-body" class="divide-y divide-surface-container-low text-body-sm text-on-surface"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+
 <!-- Thông báo -->
 <div
     id="att-toast-container"
@@ -704,6 +765,7 @@
             date: "",
             search: "",
             department: "",
+            shiftId: "",
             status: "all",
             employees: [],
             departments: [],
@@ -717,6 +779,7 @@
                 notCheckedIn: 0
             },
             requestId: 0,
+            historyRequestId: 0,
             lastFocused: null
         };
 
@@ -728,6 +791,7 @@
             dateInput: document.getElementById("att-date"),
             searchInput: document.getElementById("att-search"),
             departmentSelect: document.getElementById("att-department"),
+            shiftSelect: document.getElementById("att-shift"),
             statusSelect: document.getElementById("att-status"),
             applyFilterBtn: document.getElementById("att-apply-filter"),
             resetFilterBtn: document.getElementById("att-reset-filter"),
@@ -782,6 +846,10 @@
             gpsUseCurrentBtn: document.getElementById("att-gps-use-current"),
             gpsSettingsError: document.getElementById("att-gps-settings-error"),
             gpsSettingsSaveBtn: document.getElementById("att-gps-settings-save"),
+            historyModal: document.getElementById("att-history-modal"),
+            historyTitle: document.getElementById("att-history-title"),
+            historyDescription: document.getElementById("att-history-description"),
+            historyBody: document.getElementById("att-history-body"),
             toastContainer: document.getElementById("att-toast-container")
         };
 
@@ -977,7 +1045,8 @@
             const hasOpenModal = !elements.faceModal.classList.contains("hidden")
                 || !elements.manualModal.classList.contains("hidden")
                 || !elements.gpsModal.classList.contains("hidden")
-                || !elements.gpsSettingsModal.classList.contains("hidden");
+                || !elements.gpsSettingsModal.classList.contains("hidden")
+                || !elements.historyModal.classList.contains("hidden");
 
             document.body.classList.toggle("att-modal-open", hasOpenModal);
         };
@@ -1024,6 +1093,9 @@
                     <td class="py-space-md px-space-md"><div class="h-3 bg-surface-container-high rounded w-16"></div></td>
                     <td class="py-space-md px-space-md"><div class="h-3 bg-surface-container-high rounded w-14"></div></td>
                     <td class="py-space-md px-space-md"><div class="h-3 bg-surface-container-high rounded w-14"></div></td>
+                    <td class="py-space-md px-space-md"><div class="h-3 bg-surface-container-high rounded w-16"></div></td>
+                    <td class="py-space-md px-space-md"><div class="h-3 bg-surface-container-high rounded w-16"></div></td>
+                    <td class="py-space-md px-space-md"><div class="h-3 bg-surface-container-high rounded w-16"></div></td>
                     <td class="py-space-md px-space-md"><div class="h-5 bg-surface-container-high rounded-full w-20"></div></td>
                     <td class="py-space-md px-space-lg"><div class="h-7 bg-surface-container-high rounded-lg w-28 ml-auto"></div></td>
                 </tr>
@@ -1047,6 +1119,41 @@
             elements.tableDate.textContent = `Ngày: ${formatDate(state.date + "T00:00:00")}`;
         };
 
+        const attendanceMetric = (employee, metric) => {
+            const evaluation = employee.evaluation;
+            if (!employee.check_in || !evaluation?.assigned || !evaluation.isWorkingDay) {
+                return '<span class="text-on-surface-variant">—</span>';
+            }
+
+            if (metric === "late") {
+                const minutes = Math.max(0, Number(evaluation.lateMinutes) || 0);
+                return minutes > 0
+                    ? `<span class="font-label-sm text-amber-700 whitespace-nowrap">Trễ ${minutes} phút</span>`
+                    : '<span class="text-green-700 whitespace-nowrap">Đúng giờ</span>';
+            }
+
+            if (!employee.check_out) {
+                return '<span class="text-on-surface-variant">—</span>';
+            }
+
+            const minutes = Math.max(0, Number(evaluation.earlyLeaveMinutes) || 0);
+            return minutes > 0
+                ? `<span class="font-label-sm text-orange-700 whitespace-nowrap">Sớm ${minutes} phút</span>`
+                : '<span class="text-green-700 whitespace-nowrap">Đủ giờ</span>';
+        };
+
+        const workedHours = (employee) => {
+            if (!employee.check_in) {
+                return '<span class="text-on-surface-variant">—</span>';
+            }
+            if (!employee.check_out) {
+                return '<span class="text-blue-700 whitespace-nowrap">Đang làm</span>';
+            }
+
+            const hours = Math.max(0, Number(employee.total_hours) || 0);
+            return `<span class="font-data-mono whitespace-nowrap">${hours} giờ</span>`;
+        };
+
         const renderRow = (employee) => {
             const initials = getInitials(employee.full_name);
             const safeName = escapeHtml(employee.full_name);
@@ -1063,7 +1170,19 @@
             const canCheckOut = employee.check_in && !employee.check_out;
             const canGpsAttend = state.date === getTodayString() && (canCheckIn || canCheckOut);
 
-            let actions = "";
+            let actions = `
+                <button
+                    class="flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-container text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
+                    data-history-id="${escapeHtml(employee.employee_id)}"
+                    data-employee-name="${safeName}"
+                    data-employee-code="${safeCode}"
+                    type="button"
+                    title="Xem toàn bộ lịch sử chấm công"
+                >
+                    <span class="material-symbols-outlined text-[16px]">history</span>
+                    <span>Lịch sử</span>
+                </button>
+            `;
 
             if (canCheckIn || canCheckOut) {
                 const action = canCheckIn ? "check_in" : "check_out";
@@ -1132,6 +1251,9 @@
                         ${escapeHtml(checkOut)}
                         ${gpsLocationHtml(employee.check_out_latitude, employee.check_out_longitude, employee.check_out_accuracy_m, employee.check_out_distance_m)}
                     </td>
+                    <td class="py-space-md px-space-md">${attendanceMetric(employee, "late")}</td>
+                    <td class="py-space-md px-space-md">${attendanceMetric(employee, "early")}</td>
+                    <td class="py-space-md px-space-md">${workedHours(employee)}</td>
                     <td class="py-space-md px-space-md">
                         ${statusBadgeHtml(employee)}
                     </td>
@@ -1148,7 +1270,7 @@
             if (state.employees.length === 0) {
                 elements.tableBody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="py-space-2xl px-space-lg">
+                        <td colspan="10" class="py-space-2xl px-space-lg">
                             <div class="flex flex-col items-center justify-center gap-space-sm text-center">
                                 <div class="w-14 h-14 rounded-full bg-surface-container-low text-on-surface-variant flex items-center justify-center">
                                     <span class="material-symbols-outlined text-[28px]">group_off</span>
@@ -1176,7 +1298,7 @@
         const renderErrorState = (message) => {
             elements.tableBody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="py-space-2xl px-space-lg">
+                    <td colspan="10" class="py-space-2xl px-space-lg">
                         <div class="flex flex-col items-center justify-center gap-space-sm text-center">
                             <div class="w-14 h-14 rounded-full bg-error-container text-on-error-container flex items-center justify-center">
                                 <span class="material-symbols-outlined text-[28px]">cloud_off</span>
@@ -1231,6 +1353,25 @@
             }
         };
 
+        const populateShifts = (shifts) => {
+            elements.shiftSelect.innerHTML = `<option value="">Tất cả ca làm</option>`;
+
+            shifts.forEach((shift) => {
+                const option = document.createElement("option");
+                option.value = String(shift.id);
+                const inactiveLabel = Number(shift.status) === 1 ? "" : " (Ngừng hoạt động)";
+                option.textContent = `${shift.shift_code} · ${shift.shift_name}${inactiveLabel}`;
+                elements.shiftSelect.appendChild(option);
+            });
+
+            if (state.shiftId && shifts.some((shift) => String(shift.id) === state.shiftId)) {
+                elements.shiftSelect.value = state.shiftId;
+            } else {
+                state.shiftId = "";
+                elements.shiftSelect.value = "";
+            }
+        };
+
         const loadData = async () => {
             const requestId = ++state.requestId;
 
@@ -1249,6 +1390,10 @@
 
                 if (state.department) {
                     params.set("department", state.department);
+                }
+
+                if (state.shiftId) {
+                    params.set("shiftId", state.shiftId);
                 }
 
                 if (state.status && state.status !== "all") {
@@ -1292,6 +1437,9 @@
                     state.departments = payload.departments;
                     populateDepartments(payload.departments);
                 }
+                if (Array.isArray(payload.shifts)) {
+                    populateShifts(payload.shifts);
+                }
 
                 if (elements.dateInput.value !== state.date) {
                     elements.dateInput.value = state.date;
@@ -1319,10 +1467,12 @@
             window.clearTimeout(searchTimer);
             elements.searchInput.value = "";
             elements.departmentSelect.value = "";
+            elements.shiftSelect.value = "";
             elements.statusSelect.value = "all";
             elements.dateInput.value = getTodayString();
             state.search = "";
             state.department = "";
+            state.shiftId = "";
             state.status = "all";
             state.date = getTodayString();
             loadData();
@@ -2174,6 +2324,132 @@
             }
         };
 
+        const historyLocationHtml = (label, latitude, longitude, accuracy, distance) => {
+            if (latitude === null || latitude === undefined || latitude === ""
+                || longitude === null || longitude === undefined || longitude === "") {
+                return "";
+            }
+
+            const lat = Number(latitude);
+            const lng = Number(longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+
+            const mapUrl = `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}`;
+            const accuracyText = Number.isFinite(Number(accuracy))
+                ? ` · ±${Math.round(Number(accuracy))} m`
+                : "";
+            const distanceText = Number.isFinite(Number(distance))
+                ? ` · cách cơ sở ${Math.round(Number(distance))} m`
+                : "";
+
+            return `<a class="block text-[11px] text-primary hover:underline font-sans" href="${mapUrl}" target="_blank" rel="noopener noreferrer">${label}${accuracyText}${distanceText}</a>`;
+        };
+
+        const historyStatusBadgeHtml = (record) => {
+            const statusClass = {
+                present: "bg-green-50 text-green-700",
+                late: "bg-orange-50 text-orange-700",
+                absent: "bg-red-50 text-red-700"
+            }[record.status] || "bg-surface-container-high text-on-surface-variant";
+
+            return `<span class="inline-flex px-space-sm py-1 rounded-full ${statusClass} text-xs font-semibold">${escapeHtml(record.status_label || record.status || "Chưa xác định")}</span>`;
+        };
+
+        const closeAttendanceHistory = () => {
+            state.historyRequestId += 1;
+            closeModal(elements.historyModal);
+        };
+
+        const openAttendanceHistory = async (employee) => {
+            if (!employee?.id) return;
+
+            const requestId = ++state.historyRequestId;
+            elements.historyTitle.textContent = `${employee.employee_code} · ${employee.full_name}`;
+            elements.historyDescription.textContent = "Đang tải lịch sử chấm công...";
+            elements.historyBody.innerHTML = '<tr><td colspan="8" class="px-space-md py-space-xl text-center text-on-surface-variant">Đang tải...</td></tr>';
+            openModal(elements.historyModal);
+
+            try {
+                const response = await fetch(
+                    `${API_BASE}/employee/${encodeURIComponent(employee.id)}/history`,
+                    {
+                        headers: { Accept: "application/json" },
+                        cache: "no-store"
+                    }
+                );
+                let payload = {};
+
+                try {
+                    payload = await response.json();
+                } catch {
+                    throw new Error("Máy chủ trả về dữ liệu lịch sử không hợp lệ.");
+                }
+
+                if (!response.ok) {
+                    throw new Error(payload.error || "Không thể tải lịch sử chấm công.");
+                }
+                if (!Array.isArray(payload.records)) {
+                    throw new Error("Dữ liệu lịch sử chấm công không hợp lệ.");
+                }
+                if (requestId !== state.historyRequestId) return;
+
+                const records = payload.records;
+                elements.historyDescription.textContent = `${records.length} ngày chấm công đã ghi nhận`;
+                elements.historyBody.innerHTML = records.length
+                    ? records.map((record) => {
+                        const lateMinutes = Number(record.late_minutes || 0);
+                        const earlyMinutes = Number(record.early_leave_minutes || 0);
+                        const lateStatus = record.status === "absent"
+                            ? '<span class="text-outline">—</span>'
+                            : lateMinutes > 0
+                                ? `<span class="font-label-md text-orange-700">Trễ ${lateMinutes} phút</span>`
+                                : record.status === "late"
+                                    ? '<span class="font-label-md text-orange-700">Đi muộn</span>'
+                                    : record.has_schedule
+                                        ? '<span class="text-green-700">Đúng giờ</span>'
+                                        : '<span class="text-outline">—</span>';
+                        const earlyStatus = record.status === "absent"
+                            ? '<span class="text-outline">—</span>'
+                            : earlyMinutes > 0
+                                ? `<span class="font-label-md text-red-700">Sớm ${earlyMinutes} phút</span>`
+                                : record.has_schedule && record.check_out
+                                    ? '<span class="text-green-700">Đủ giờ</span>'
+                                    : '<span class="text-outline">—</span>';
+                        const shiftHtml = record.has_schedule
+                            ? `<div class="flex flex-col"><span class="font-label-md text-on-surface">${record.shift_code ? `<span class="font-data-mono text-primary mr-1">${escapeHtml(record.shift_code)}</span>` : ""}${escapeHtml(record.shift_name || "—")}</span><span class="font-body-sm text-on-surface-variant">${escapeHtml(record.scheduled_start || "—")} – ${escapeHtml(record.scheduled_end || "—")}</span></div>`
+                            : '<span class="font-body-sm text-outline">Không có ca áp dụng</span>';
+                        const deviceBadge = record.record_source === "device"
+                            ? '<span class="inline-flex mt-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-semibold">Thiết bị</span>'
+                            : "";
+
+                        return `
+                            <tr>
+                                <td class="px-space-md py-space-sm font-data-mono">
+                                    ${escapeHtml(record.work_date || "—")}
+                                    ${deviceBadge}
+                                </td>
+                                <td class="px-space-md py-space-sm">${shiftHtml}</td>
+                                <td class="px-space-md py-space-sm font-data-mono">
+                                    <div class="flex flex-col">${escapeHtml(record.check_in || "—")}${historyLocationHtml("Vào · xem bản đồ", record.check_in_latitude, record.check_in_longitude, record.check_in_accuracy_m, record.check_in_distance_m)}</div>
+                                </td>
+                                <td class="px-space-md py-space-sm font-data-mono">
+                                    <div class="flex flex-col">${escapeHtml(record.check_out || "—")}${historyLocationHtml("Ra · xem bản đồ", record.check_out_latitude, record.check_out_longitude, record.check_out_accuracy_m, record.check_out_distance_m)}</div>
+                                </td>
+                                <td class="px-space-md py-space-sm">${lateStatus}</td>
+                                <td class="px-space-md py-space-sm">${earlyStatus}</td>
+                                <td class="px-space-md py-space-sm font-data-mono">${Number(record.total_hours || 0)} giờ</td>
+                                <td class="px-space-md py-space-sm">${historyStatusBadgeHtml(record)}</td>
+                            </tr>
+                        `;
+                    }).join("")
+                    : '<tr><td colspan="8" class="px-space-md py-space-xl text-center text-on-surface-variant">Chưa có lịch sử chấm công.</td></tr>';
+            } catch (error) {
+                if (requestId !== state.historyRequestId) return;
+                elements.historyDescription.textContent = "Không thể tải lịch sử";
+                elements.historyBody.innerHTML = `<tr><td colspan="8" class="px-space-md py-space-xl text-center text-error">${escapeHtml(error.message)}</td></tr>`;
+            }
+        };
+
         // ---- Sự kiện ----
 
         let searchTimer = null;
@@ -2184,6 +2460,7 @@
             window.clearTimeout(searchTimer);
             state.search = elements.searchInput.value.trim();
             state.department = elements.departmentSelect.value;
+            state.shiftId = elements.shiftSelect.value;
             state.status = elements.statusSelect.value;
             state.date = elements.dateInput.value || getTodayString();
             loadData();
@@ -2206,6 +2483,7 @@
             window.clearTimeout(searchTimer);
             state.search = elements.searchInput.value.trim();
             state.department = elements.departmentSelect.value;
+            state.shiftId = elements.shiftSelect.value;
             state.status = elements.statusSelect.value;
             state.date = elements.dateInput.value || getTodayString();
             loadData();
@@ -2213,6 +2491,8 @@
 
         elements.dateInput.addEventListener("change", () => {
             state.date = elements.dateInput.value || getTodayString();
+            state.shiftId = "";
+            elements.shiftSelect.value = "";
             loadData();
         });
 
@@ -2226,7 +2506,22 @@
             loadData();
         });
 
+        elements.shiftSelect.addEventListener("change", () => {
+            state.shiftId = elements.shiftSelect.value;
+            loadData();
+        });
+
         elements.tableBody.addEventListener("click", (event) => {
+            const historyButton = event.target.closest("[data-history-id]");
+            if (historyButton) {
+                openAttendanceHistory({
+                    id: historyButton.getAttribute("data-history-id"),
+                    full_name: historyButton.getAttribute("data-employee-name"),
+                    employee_code: historyButton.getAttribute("data-employee-code")
+                });
+                return;
+            }
+
             const gpsButton = event.target.closest("[data-gps-id]");
             if (gpsButton) {
                 openGpsModal({
@@ -2301,9 +2596,18 @@
             element.addEventListener("click", () => closeModal(elements.gpsSettingsModal));
         });
 
+        document.querySelectorAll('[data-close-modal="history"]').forEach((element) => {
+            element.addEventListener("click", closeAttendanceHistory);
+        });
+
         // ESC
         document.addEventListener("keydown", (event) => {
             if (event.key !== "Escape") return;
+
+            if (!elements.historyModal.classList.contains("hidden")) {
+                closeAttendanceHistory();
+                return;
+            }
 
             if (!elements.manualModal.classList.contains("hidden")) {
                 closeManualModal();
