@@ -204,6 +204,7 @@ const validateEventPayload = (body) => {
 const renderDevicePage = async (req, res, {
     error = null,
     newDevice = null,
+    successMessage = null,
     statusCode = 200
 } = {}) => {
     const devices = await AttendanceDeviceModel.findAll();
@@ -219,7 +220,7 @@ const renderDevicePage = async (req, res, {
         },
         onlineWindowMinutes: AttendanceDeviceModel.ONLINE_WINDOW_MINUTES,
         newDevice,
-        success: newDevice ? "Đã đăng ký thiết bị. Hãy lưu khóa kết nối vì khóa chỉ hiển thị một lần." : null,
+        success: newDevice ? "Đã đăng ký thiết bị. Hãy lưu khóa kết nối vì khóa chỉ hiển thị một lần." : successMessage,
         error
     });
 };
@@ -239,7 +240,12 @@ const renderDeviceError = (req, res, error, statusCode = 500) => res
 export const index = async (req, res) => {
     try {
         const newDevice = req.session.deviceSetup || null;
-        const response = await renderDevicePage(req, res, { newDevice });
+        const response = await renderDevicePage(req, res, {
+            newDevice,
+            successMessage: req.query.deleted === "1"
+                ? "Đã xóa thiết bị. Dữ liệu chấm công tổng hợp vẫn được giữ nguyên."
+                : req.query.updated === "1" ? "Đã cập nhật thiết bị." : null
+        });
         if (newDevice) delete req.session.deviceSetup;
         return response;
     } catch (error) {
@@ -313,6 +319,93 @@ export const create = async (req, res) => {
         } catch (renderError) {
             console.error("Lỗi tải danh sách thiết bị sau khi đăng ký thất bại:", renderError);
             return renderDeviceError(req, res, message);
+        }
+    }
+};
+
+export const update = async (req, res) => {
+    const id = /^\d+$/.test(String(req.params.id || "")) ? Number(req.params.id) : 0;
+    const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
+    const location = typeof req.body.location === "string" ? req.body.location.trim() : "";
+    const deviceType = typeof req.body.device_type === "string"
+        ? req.body.device_type.trim()
+        : "";
+    const isActiveValue = req.body.is_active;
+    const errors = [];
+
+    if (!id) errors.push("Mã thiết bị không hợp lệ.");
+    if (!name || name.length > 120) errors.push("Tên thiết bị là bắt buộc và tối đa 120 ký tự.");
+    if (location.length > 150) errors.push("Vị trí không được vượt quá 150 ký tự.");
+    if (!DEVICE_TYPES.has(deviceType)) errors.push("Loại thiết bị không hợp lệ.");
+    if (isActiveValue !== "1" && isActiveValue !== "0") errors.push("Trạng thái thiết bị không hợp lệ.");
+
+    try {
+        if (errors.length > 0) {
+            return await renderDevicePage(req, res, {
+                error: errors.join(" "),
+                statusCode: 400
+            });
+        }
+
+        if (!(await AttendanceDeviceModel.existsById(id))) {
+            return await renderDevicePage(req, res, {
+                error: "Không tìm thấy thiết bị cần cập nhật.",
+                statusCode: 404
+            });
+        }
+
+        await AttendanceDeviceModel.update(id, {
+            name,
+            location,
+            device_type: deviceType,
+            is_active: isActiveValue === "1"
+        });
+
+        return res.redirect("/admin/devices?updated=1");
+    } catch (error) {
+        console.error("Lỗi cập nhật thiết bị:", error);
+        try {
+            return await renderDevicePage(req, res, {
+                error: "Không thể cập nhật thiết bị. Vui lòng thử lại.",
+                statusCode: 500
+            });
+        } catch (renderError) {
+            console.error("Lỗi tải danh sách thiết bị sau khi cập nhật thất bại:", renderError);
+            return renderDeviceError(req, res, "Không thể cập nhật thiết bị. Vui lòng thử lại.");
+        }
+    }
+};
+
+export const remove = async (req, res) => {
+    const id = /^\d+$/.test(String(req.params.id || "")) ? Number(req.params.id) : 0;
+
+    if (!id) {
+        return renderDevicePage(req, res, {
+            error: "Mã thiết bị không hợp lệ.",
+            statusCode: 400
+        });
+    }
+
+    try {
+        const removed = await AttendanceDeviceModel.removeById(id);
+        if (!removed) {
+            return await renderDevicePage(req, res, {
+                error: "Không tìm thấy thiết bị cần xóa.",
+                statusCode: 404
+            });
+        }
+
+        return res.redirect("/admin/devices?deleted=1");
+    } catch (error) {
+        console.error("Lỗi xóa thiết bị:", error);
+        try {
+            return await renderDevicePage(req, res, {
+                error: "Không thể xóa thiết bị. Vui lòng thử lại.",
+                statusCode: 500
+            });
+        } catch (renderError) {
+            console.error("Lỗi tải danh sách thiết bị sau khi xóa thất bại:", renderError);
+            return renderDeviceError(req, res, "Không thể xóa thiết bị. Vui lòng thử lại.");
         }
     }
 };
