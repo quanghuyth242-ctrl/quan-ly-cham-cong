@@ -8,6 +8,7 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const EVENT_TIMESTAMP_PATTERN = /^(\d{4}-\d{2}-\d{2})[ T]([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
 const DEVICE_TYPES = new Set(["biometric", "camera", "network", "other"]);
+const DEVICE_SYNC_MODES = new Set(["events", "records"]);
 const EMPTY_STATS = { total: 0, online: 0, offline: 0 };
 const SYNC_STATUS_VALUES = {
     present: "present",
@@ -23,6 +24,71 @@ const isValidDate = (value) => {
     if (!DATE_PATTERN.test(value)) return false;
     const date = new Date(`${value}T00:00:00Z`);
     return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+
+const validateDeviceSettings = (body = {}) => {
+    const errors = [];
+    const rawServerUrl = typeof body.server_url === "string" ? body.server_url.trim() : "";
+    const rawInterval = body.heartbeat_interval_seconds === undefined || body.heartbeat_interval_seconds === ""
+        ? 60
+        : Number(body.heartbeat_interval_seconds);
+    const syncMode = typeof body.sync_mode === "string" && body.sync_mode.trim()
+        ? body.sync_mode.trim()
+        : "events";
+    const autoSyncValue = body.auto_sync_enabled === undefined
+        ? "1"
+        : String(body.auto_sync_enabled);
+    const rawSyncInterval = body.sync_interval_minutes === undefined || body.sync_interval_minutes === ""
+        ? 5
+        : Number(body.sync_interval_minutes);
+    let serverUrl = null;
+
+    if (rawServerUrl) {
+        try {
+            const parsedUrl = new URL(rawServerUrl);
+            if (!["http:", "https:"].includes(parsedUrl.protocol)
+                || !parsedUrl.hostname
+                || parsedUrl.username
+                || parsedUrl.password
+                || parsedUrl.search
+                || parsedUrl.hash
+                || rawServerUrl.length > 255) {
+                errors.push("Địa chỉ máy chủ phải là URL HTTP/HTTPS hợp lệ, không kèm tài khoản hoặc tham số truy vấn.");
+            } else {
+                serverUrl = parsedUrl.toString().replace(/\/+$/, "");
+                if (serverUrl.length > 255) {
+                    errors.push("Địa chỉ máy chủ không được vượt quá 255 ký tự.");
+                    serverUrl = null;
+                }
+            }
+        } catch {
+            errors.push("Địa chỉ máy chủ không hợp lệ. Ví dụ: http://192.168.1.10:3000.");
+        }
+    }
+
+    if (!Number.isInteger(rawInterval) || rawInterval < 10 || rawInterval > 3600) {
+        errors.push("Chu kỳ heartbeat phải từ 10 đến 3600 giây.");
+    }
+    if (autoSyncValue !== "1" && autoSyncValue !== "0") {
+        errors.push("Trạng thái tự đồng bộ không hợp lệ.");
+    }
+    if (!Number.isInteger(rawSyncInterval) || rawSyncInterval < 1 || rawSyncInterval > 1440) {
+        errors.push("Chu kỳ đồng bộ phải từ 1 đến 1440 phút.");
+    }
+    if (!DEVICE_SYNC_MODES.has(syncMode)) {
+        errors.push("Vui lòng chọn chế độ đồng bộ hợp lệ.");
+    }
+
+    return {
+        settings: {
+            server_url: serverUrl,
+            heartbeat_interval_seconds: rawInterval,
+            sync_mode: syncMode,
+            auto_sync_enabled: autoSyncValue === "1",
+            sync_interval_minutes: rawSyncInterval
+        },
+        errors
+    };
 };
 
 const authenticateDevice = async (req) => {
@@ -291,7 +357,9 @@ export const create = async (req, res) => {
     const deviceType = typeof req.body.device_type === "string"
         ? req.body.device_type.trim()
         : "";
+    const { settings, errors: settingErrors } = validateDeviceSettings(req.body);
     const errors = [];
+    errors.push(...settingErrors);
 
     if (!DEVICE_CODE_PATTERN.test(deviceCode)) {
         errors.push("Mã thiết bị phải dài 2–64 ký tự, bắt đầu bằng chữ hoặc số và chỉ gồm chữ, số, dấu gạch ngang hoặc gạch dưới.");
@@ -326,11 +394,12 @@ export const create = async (req, res) => {
             device_code: deviceCode,
             name,
             location,
+            ...settings,
             device_type: deviceType,
             token_hash: tokenHash
         });
 
-        req.session.deviceSetup = { deviceCode, name, token };
+        req.session.deviceSetup = { deviceCode, name, token, ...settings };
         return res.redirect("/admin/devices");
     } catch (error) {
         console.error("Lỗi đăng ký thiết bị:", error);
@@ -358,8 +427,10 @@ export const update = async (req, res) => {
     const deviceType = typeof req.body.device_type === "string"
         ? req.body.device_type.trim()
         : "";
+    const { settings, errors: settingErrors } = validateDeviceSettings(req.body);
     const isActiveValue = req.body.is_active;
     const errors = [];
+    errors.push(...settingErrors);
 
     if (!id) errors.push("Mã thiết bị không hợp lệ.");
     if (!name || name.length > 120) errors.push("Tên thiết bị là bắt buộc và tối đa 120 ký tự.");
@@ -385,6 +456,7 @@ export const update = async (req, res) => {
         await AttendanceDeviceModel.update(id, {
             name,
             location,
+            ...settings,
             device_type: deviceType,
             is_active: isActiveValue === "1"
         });
@@ -453,6 +525,32 @@ export const heartbeat = async (req, res) => {
     } catch (error) {
         console.error("Lỗi nhận heartbeat từ thiết bị:", error);
         return res.status(500).json({ error: "Không thể cập nhật trạng thái thiết bị." });
+    }
+};
+
+export const getConfiguration = async (req, res) => {
+    try {
+        const device = await authenticateDevice(req);
+        if (!device) {
+            return res.status(401).json({ error: "Mã thiết bị hoặc khóa kết nối không hợp lệ." });
+        }
+
+        res.set("Cache-Control", "no-store");
+        const apiBase = device.server_url ? `${device.server_url}/api/devices/${device.device_code}` : `/api/devices/${device.device_code}`;
+        return res.json({
+            device_code: device.device_code,
+            server_url: device.server_url,
+            heartbeat_interval_seconds: device.heartbeat_interval_seconds,
+            sync_mode: device.sync_mode,
+            auto_sync_enabled: device.auto_sync_enabled,
+            sync_interval_minutes: device.sync_interval_minutes,
+            config_url: `${apiBase}/config`,
+            heartbeat_url: `${apiBase}/heartbeat`,
+            sync_url: `${apiBase}/${device.sync_mode === "events" ? "events" : "sync"}`
+        });
+    } catch (error) {
+        console.error("Lỗi tải cấu hình thiết bị:", error);
+        return res.status(500).json({ error: "Không thể tải cấu hình thiết bị." });
     }
 };
 

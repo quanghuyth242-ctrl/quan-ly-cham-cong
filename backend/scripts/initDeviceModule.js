@@ -21,6 +21,11 @@ const main = async () => {
             device_code VARCHAR(64) NOT NULL,
             name VARCHAR(120) NOT NULL,
             location VARCHAR(150) NULL,
+            server_url VARCHAR(255) NULL,
+            heartbeat_interval_seconds INT UNSIGNED NOT NULL DEFAULT 60,
+            sync_mode ENUM('events', 'records') NOT NULL DEFAULT 'events',
+            auto_sync_enabled TINYINT(1) NOT NULL DEFAULT 1,
+            sync_interval_minutes INT UNSIGNED NOT NULL DEFAULT 5,
             device_type VARCHAR(24) NOT NULL,
             token_hash CHAR(64) NOT NULL,
             last_seen_at DATETIME(6) NULL,
@@ -68,6 +73,36 @@ const main = async () => {
     if (!(await columnExists("attendance_devices", "last_sync_count"))) {
         await db.execute(
             "ALTER TABLE attendance_devices ADD COLUMN last_sync_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER last_sync_at"
+        );
+    }
+
+    if (!(await columnExists("attendance_devices", "server_url"))) {
+        await db.execute(
+            "ALTER TABLE attendance_devices ADD COLUMN server_url VARCHAR(255) NULL AFTER location"
+        );
+    }
+
+    if (!(await columnExists("attendance_devices", "heartbeat_interval_seconds"))) {
+        await db.execute(
+            "ALTER TABLE attendance_devices ADD COLUMN heartbeat_interval_seconds INT UNSIGNED NOT NULL DEFAULT 60 AFTER server_url"
+        );
+    }
+
+    if (!(await columnExists("attendance_devices", "sync_mode"))) {
+        await db.execute(
+            "ALTER TABLE attendance_devices ADD COLUMN sync_mode ENUM('events', 'records') NOT NULL DEFAULT 'events' AFTER heartbeat_interval_seconds"
+        );
+    }
+
+    if (!(await columnExists("attendance_devices", "auto_sync_enabled"))) {
+        await db.execute(
+            "ALTER TABLE attendance_devices ADD COLUMN auto_sync_enabled TINYINT(1) NOT NULL DEFAULT 1 AFTER sync_mode"
+        );
+    }
+
+    if (!(await columnExists("attendance_devices", "sync_interval_minutes"))) {
+        await db.execute(
+            "ALTER TABLE attendance_devices ADD COLUMN sync_interval_minutes INT UNSIGNED NOT NULL DEFAULT 5 AFTER auto_sync_enabled"
         );
     }
 
