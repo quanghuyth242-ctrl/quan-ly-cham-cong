@@ -252,7 +252,7 @@
         <div class="w-full max-w-2xl bg-surface-container-lowest rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.18)] overflow-hidden">
             <div class="flex items-center justify-between px-space-xl py-space-lg border-b border-surface-container-high">
                 <div class="flex flex-col">
-                    <h3 id="shift-modal-title" class="font-headline-md text-headline-md text-primary font-semibold">Thêm ca làm việc</h3>
+                    <h3 id="shift-modal-title" class="font-headline-md text-headline-md text-primary font-semibold"><%= formFeedback?.mode === 'update' ? 'Chỉnh sửa ca làm việc' : 'Thêm ca làm việc' %></h3>
                     <p class="font-body-sm text-body-sm text-on-surface-variant">Khung giờ làm việc và ngày áp dụng trong tuần.</p>
                 </div>
                 <button class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-shift-modal type="button" aria-label="Đóng">
@@ -260,7 +260,7 @@
                 </button>
             </div>
 
-            <form id="shift-form" action="/admin/shifts/create" method="POST" class="p-space-xl flex flex-col gap-space-lg">
+            <form id="shift-form" action="<%= formFeedback?.mode === 'update' ? '/admin/shifts/' + formFeedback.shiftId + '/update' : '/admin/shifts/create' %>" method="POST" class="p-space-xl flex flex-col gap-space-lg">
                 <div id="shift-form-error" class="<%= formFeedback ? 'flex' : 'hidden' %> items-start gap-space-sm p-space-md rounded-xl bg-error-container/60 border border-error/30 text-on-error-container text-body-md" role="alert">
                     <span class="material-symbols-outlined text-[20px]">error</span>
                     <span id="shift-form-error-text"><%= formFeedback?.error || '' %></span>
@@ -344,7 +344,7 @@
         const errorText = document.getElementById('shift-form-error-text');
         const shiftCodeInput = document.getElementById('shift_code');
         const shiftCodeHint = document.getElementById('shift-code-hint');
-        let createMode = true;
+        let createMode = <%= formFeedback?.mode === 'update' ? 'false' : 'true' %>;
         let codeSuggestionTimer = null;
         let codeSuggestionRequest = 0;
         let codeSuggestionController = null;
@@ -528,7 +528,12 @@
 
         <% if (formFeedback) { %>
             openModal();
-            document.getElementById('shift_code').focus();
+            <% if (formFeedback.mode === 'update') { %>
+                shiftCodeHint.textContent = 'Mã ca cố định, không thể chỉnh sửa.';
+                document.getElementById('shift_name').focus();
+            <% } else { %>
+                document.getElementById('shift_code').focus();
+            <% } %>
         <% } %>
     });
 </script>
