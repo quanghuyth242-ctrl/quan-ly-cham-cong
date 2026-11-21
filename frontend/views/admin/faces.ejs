@@ -445,6 +445,15 @@
                     </button>
 
                     <button
+                        id="face-detail-verify-btn"
+                        class="hidden items-center justify-center gap-space-xs bg-teal-50 text-teal-800 hover:bg-teal-100 px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors"
+                        type="button"
+                    >
+                        <span class="material-symbols-outlined text-[18px]">verified_user</span>
+                        <span>Xác thực danh tính</span>
+                    </button>
+
+                    <button
                         id="face-detail-delete-btn"
                         class="hidden items-center justify-center gap-space-xs bg-error-container text-on-error-container hover:bg-error hover:text-white px-space-lg py-space-sm rounded-xl font-label-md text-label-md transition-colors"
                         type="button"
@@ -751,6 +760,7 @@
             department: "",
             employees: [],
             metadataLoaded: false,
+            metadataLoadedAt: 0,
             autoSyncEnabled: true,
             syncInProgress: false,
             lastSyncAt: null,
@@ -810,6 +820,7 @@
             detailConsentAt: document.getElementById("face-detail-consent-at"),
             detailRegisterBtn: document.getElementById("face-detail-register-btn"),
             detailUpdateBtn: document.getElementById("face-detail-update-btn"),
+            detailVerifyBtn: document.getElementById("face-detail-verify-btn"),
             detailDeleteBtn: document.getElementById("face-detail-delete-btn"),
             deleteModal: document.getElementById("face-delete-modal"),
             deleteName: document.getElementById("face-delete-name"),
@@ -1060,6 +1071,20 @@
             const actions = registered
                 ? `
                     <button
+                        class="flex items-center gap-1 px-space-sm py-1 bg-teal-50 text-teal-800 hover:bg-teal-100 font-label-sm text-label-sm rounded-lg transition-colors"
+                        data-capture-id="${escapeHtml(employee.id)}"
+                        data-capture-mode="verify"
+                        data-employee-name="${safeName}"
+                        data-employee-code="${safeCode}"
+                        data-employee-department="${escapeHtml(employee.department || "")}"
+                        data-face-profile-id="${escapeHtml(employee.face_profile_id || "")}"
+                        type="button"
+                        title="Xác thực danh tính nhân viên"
+                    >
+                        <span class="material-symbols-outlined text-[16px]">verified_user</span>
+                        <span>Xác thực</span>
+                    </button>
+                    <button
                         class="flex items-center gap-1 px-space-sm py-1 bg-secondary-fixed text-on-secondary-fixed hover:bg-secondary hover:text-white font-label-sm text-label-sm rounded-lg transition-colors"
                         data-capture-id="${escapeHtml(employee.id)}"
                         data-capture-mode="update"
@@ -1253,7 +1278,8 @@
 
             autoSyncTimer = window.setInterval(() => {
                 if (!document.hidden) {
-                    loadData({ background: true, refreshMetadata: true });
+                    const refreshMetadata = Date.now() - state.metadataLoadedAt >= 300000;
+                    loadData({ background: true, refreshMetadata });
                 }
             }, 30000);
         };
@@ -1325,6 +1351,7 @@
                         registrationRate: Number(payload.stats.registrationRate || 0)
                     };
                     state.metadataLoaded = true;
+                    state.metadataLoadedAt = Date.now();
                     renderStats();
                 }
 
@@ -1362,7 +1389,7 @@
         };
 
         const hideDetailActions = () => {
-            [elements.detailRegisterBtn, elements.detailUpdateBtn, elements.detailDeleteBtn].forEach((button) => {
+            [elements.detailRegisterBtn, elements.detailUpdateBtn, elements.detailVerifyBtn, elements.detailDeleteBtn].forEach((button) => {
                 button.classList.add("hidden");
                 button.classList.remove("flex");
             });
@@ -1423,6 +1450,8 @@
             elements.detailRegisterBtn.classList.toggle("flex", !registered);
             elements.detailUpdateBtn.classList.toggle("hidden", !registered);
             elements.detailUpdateBtn.classList.toggle("flex", registered);
+            elements.detailVerifyBtn.classList.toggle("hidden", !registered);
+            elements.detailVerifyBtn.classList.toggle("flex", registered);
             elements.detailDeleteBtn.classList.toggle("hidden", !registered);
             elements.detailDeleteBtn.classList.toggle("flex", registered);
         };
@@ -1990,18 +2019,18 @@
                 elements.captureSaveBtn.disabled = false;
                 elements.captureRetakeBtn.disabled = false;
                 elements.captureSaveBtn.innerHTML = `
-                    <span class="material-symbols-outlined text-[18px]">${captureState.mode === "recognize" ? "face_search" : "save"}</span>
-                    <span>${captureState.mode === "recognize" ? "Nhận diện khuôn mặt" : captureState.mode === "update" ? "Xác nhận cập nhật" : "Xác nhận đăng ký"}</span>
+                    <span class="material-symbols-outlined text-[18px]">${["recognize", "verify"].includes(captureState.mode) ? "verified_user" : "save"}</span>
+                    <span>${captureState.mode === "recognize" ? "Nhận diện khuôn mặt" : captureState.mode === "verify" ? "Xác thực danh tính" : captureState.mode === "update" ? "Xác nhận cập nhật" : "Xác nhận đăng ký"}</span>
                 `;
                 setText(
                     elements.captureReviewName,
-                    captureState.mode === "recognize"
+                    ["recognize", "verify"].includes(captureState.mode)
                         ? "Khuôn mặt đã sẵn sàng để nhận diện"
                         : `${captureState.employee.full_name} (${captureState.employee.employee_code})`
                 );
                 setText(
                     elements.captureReviewMessage,
-                    captureState.mode === "recognize"
+                    ["recognize", "verify"].includes(captureState.mode)
                         ? "Descriptor tạm thời sẽ được gửi để so khớp với hồ sơ đã đăng ký. Ảnh và descriptor không được lưu."
                         : captureState.mode === "update"
                             ? "Descriptor 128 chiều mới đã sẵn sàng. Hồ sơ cũ sẽ được cập nhật sau khi xác nhận."
@@ -2029,18 +2058,24 @@
 
         const saveCaptureDescriptor = async () => {
             const isRecognition = captureState.mode === "recognize";
-            if ((!captureState.employee && !isRecognition) || !captureState.descriptor || captureState.saving) return;
+            const isVerification = captureState.mode === "verify";
+            const isLookup = isRecognition || isVerification;
+            if ((!captureState.employee && !isLookup) || !captureState.descriptor || captureState.saving) return;
 
             const employee = captureState.employee;
             const mode = captureState.mode;
             const endpoint = isRecognition
                 ? `${API_BASE}/recognize`
+                : isVerification
+                    ? `${API_BASE}/verify/${employee.id}`
                 : mode === "update"
                     ? `${API_BASE}/${employee.id}`
                     : `${API_BASE}/${employee.id}/register`;
-            const method = isRecognition ? "POST" : mode === "update" ? "PUT" : "POST";
+            const method = isRecognition || isVerification ? "POST" : mode === "update" ? "PUT" : "POST";
             const confirmLabel = isRecognition
                 ? "Nhận diện khuôn mặt"
+                : isVerification
+                    ? "Xác thực danh tính"
                 : mode === "update"
                     ? "Xác nhận cập nhật"
                     : "Xác nhận đăng ký";
@@ -2051,7 +2086,7 @@
             elements.captureRetakeBtn.disabled = true;
             elements.captureSaveBtn.innerHTML = `
                 <span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                <span>${isRecognition ? "Đang nhận diện..." : "Đang lưu..."}</span>
+                <span>${isRecognition ? "Đang nhận diện..." : isVerification ? "Đang xác thực..." : "Đang lưu..."}</span>
             `;
 
             const controller = new AbortController();
@@ -2083,8 +2118,9 @@
                     throw new Error(payload.message || "Không thể lưu dữ liệu khuôn mặt.");
                 }
 
-                if (isRecognition) {
-                    const matchedEmployee = payload.matched ? payload.employee : null;
+                if (isLookup) {
+                    const isMatch = isVerification ? payload.verified : payload.matched;
+                    const matchedEmployee = isMatch ? (payload.employee || employee) : null;
                     const distance = Number(payload.distance);
                     const distanceText = Number.isFinite(distance)
                         ? ` Khoảng cách so khớp: ${distance.toFixed(4)}.`
@@ -2093,13 +2129,13 @@
                     setText(
                         elements.captureReviewName,
                         matchedEmployee
-                            ? `${matchedEmployee.full_name} (${matchedEmployee.employee_code})`
-                            : "Không tìm thấy nhân viên phù hợp"
+                            ? `${isVerification ? "Đã xác thực: " : ""}${matchedEmployee.full_name} (${matchedEmployee.employee_code})`
+                            : isVerification ? "Không xác thực được danh tính nhân viên" : "Không tìm thấy nhân viên phù hợp"
                     );
                     setText(
                         elements.captureReviewMessage,
                         matchedEmployee
-                            ? `${matchedEmployee.department || "Chưa có phòng ban"}.${distanceText} Dữ liệu khuôn mặt chỉ dùng cho lần nhận diện này.`
+                            ? `${matchedEmployee.department || "Chưa có phòng ban"}.${distanceText} ${isVerification ? "Ảnh và descriptor không được lưu." : "Dữ liệu khuôn mặt chỉ dùng cho lần nhận diện này."}`
                             : payload.message || "Không tìm thấy hồ sơ khuôn mặt phù hợp. Hãy thử chụp lại."
                     );
                     captureState.descriptor = null;
@@ -2108,10 +2144,10 @@
                     elements.captureRetakeBtn.disabled = false;
                     elements.captureSaveBtn.innerHTML = `
                         <span class="material-symbols-outlined text-[18px]">${matchedEmployee ? "check_circle" : "info"}</span>
-                        <span>${matchedEmployee ? "Đã nhận diện" : "Không có kết quả"}</span>
+                        <span>${matchedEmployee ? (isVerification ? "Đã xác thực" : "Đã nhận diện") : (isVerification ? "Không xác thực" : "Không có kết quả")}</span>
                     `;
                     setCaptureStatus(
-                        matchedEmployee ? "Đã tìm thấy hồ sơ nhân viên" : "Không tìm thấy hồ sơ phù hợp",
+                        matchedEmployee ? (isVerification ? "Xác minh danh tính thành công" : "Đã tìm thấy hồ sơ nhân viên") : (isVerification ? "Danh tính chưa được xác minh" : "Không tìm thấy hồ sơ phù hợp"),
                         matchedEmployee ? "success" : "warning"
                     );
                     return;
@@ -2138,7 +2174,7 @@
                 elements.captureSaveBtn.disabled = false;
                 elements.captureRetakeBtn.disabled = false;
                 elements.captureSaveBtn.innerHTML = `
-                    <span class="material-symbols-outlined text-[18px]">${isRecognition ? "face_search" : "save"}</span>
+                    <span class="material-symbols-outlined text-[18px]">${isLookup ? "verified_user" : "save"}</span>
                     <span>${confirmLabel}</span>
                 `;
                 showCaptureError(message);
@@ -2150,6 +2186,7 @@
 
         const openCaptureModal = (employee, mode) => {
             const isRecognition = mode === "recognize";
+            const isVerification = mode === "verify";
 
             if (!isRecognition && (!employee || !employee.id)) {
                 showToast("error", "Không xác định được nhân viên cần đăng ký.");
@@ -2160,6 +2197,8 @@
             captureState.employee = isRecognition ? null : employee;
             captureState.mode = isRecognition
                 ? "recognize"
+                : mode === "verify"
+                    ? "verify"
                 : mode === "update"
                     ? "update"
                     : "register";
@@ -2169,9 +2208,12 @@
             captureState.capturing = false;
 
             const isUpdate = captureState.mode === "update";
+            const isReadOnlyCheck = isRecognition || isVerification;
 
             elements.captureTitle.textContent = isRecognition
                 ? "Nhận diện khuôn mặt"
+                : isVerification
+                    ? "Xác thực danh tính nhân viên"
                 : isUpdate
                     ? "Cập nhật khuôn mặt"
                     : "Đăng ký khuôn mặt";
@@ -2181,33 +2223,33 @@
             );
             setText(elements.captureEmployeeCode, isRecognition ? "" : employee.employee_code);
             setText(elements.captureEmployeeAvatar, isRecognition ? "?" : getInitials(employee.full_name));
-            elements.captureConsentTitle.textContent = isRecognition
-                ? "Xác nhận đồng ý nhận diện khuôn mặt"
+            elements.captureConsentTitle.textContent = isReadOnlyCheck
+                ? isVerification ? "Xác nhận đồng ý xác thực danh tính" : "Xác nhận đồng ý nhận diện khuôn mặt"
                 : "Xác nhận sự đồng ý của nhân viên";
-            elements.captureConsentDescription.textContent = isRecognition
-                ? "Chỉ tiếp tục khi người trước camera đã được thông báo và đồng ý cho việc so khớp khuôn mặt với hồ sơ đã đăng ký."
+            elements.captureConsentDescription.textContent = isReadOnlyCheck
+                ? `Chỉ tiếp tục khi ${isVerification ? "nhân viên được chọn" : "người trước camera"} đã được thông báo và đồng ý cho việc so khớp khuôn mặt với hồ sơ đã đăng ký.`
                 : "Trước khi thu thập dữ liệu khuôn mặt, quản trị viên cần xác nhận nhân viên đã được thông báo và đồng ý.";
-            elements.captureConsentLabel.textContent = isRecognition
-                ? "Tôi xác nhận người trước camera đã được thông báo và đồng ý sử dụng dữ liệu khuôn mặt để so khớp hồ sơ."
+            elements.captureConsentLabel.textContent = isReadOnlyCheck
+                ? `Tôi xác nhận ${isVerification ? "nhân viên được chọn" : "người trước camera"} đã được thông báo và đồng ý sử dụng dữ liệu khuôn mặt để so khớp hồ sơ.`
                 : "Tôi xác nhận nhân viên đã được thông báo và đồng ý cho việc thu thập, lưu trữ descriptor khuôn mặt 128 chiều để phục vụ chấm công.";
-            elements.capturePrivacyNote.textContent = isRecognition
-                ? "Khung hình được xử lý trực tiếp trên trình duyệt. Descriptor tạm thời được gửi lên máy chủ để so khớp, không lưu ảnh hoặc descriptor nhận diện."
+            elements.capturePrivacyNote.textContent = isReadOnlyCheck
+                ? "Khung hình được xử lý trên trình duyệt. Descriptor chỉ được gửi tạm thời để so khớp với hồ sơ, không lưu ảnh hoặc descriptor xác minh."
                 : "Hệ thống chỉ lưu descriptor 128 chiều, không lưu ảnh khuôn mặt. Dữ liệu được dùng để đối chiếu khi chấm công.";
             setText(
                 elements.captureReviewName,
-                isRecognition ? "Sẵn sàng nhận diện" : `${employee.full_name} (${employee.employee_code})`
+                isRecognition ? "Sẵn sàng nhận diện" : isVerification ? `Xác minh ${employee.full_name} (${employee.employee_code})` : `${employee.full_name} (${employee.employee_code})`
             );
             setText(
                 elements.captureReviewMessage,
-                isRecognition
-                    ? "Chụp khuôn mặt để tìm hồ sơ phù hợp. Ảnh và descriptor không được lưu."
+                isReadOnlyCheck
+                    ? isVerification ? "Chụp khuôn mặt để đối chiếu riêng với hồ sơ của nhân viên này. Ảnh và descriptor không được lưu." : "Chụp khuôn mặt để tìm hồ sơ phù hợp. Ảnh và descriptor không được lưu."
                     : isUpdate
                         ? "Descriptor 128 chiều mới đã sẵn sàng. Hồ sơ cũ sẽ được cập nhật sau khi xác nhận."
                         : "Descriptor 128 chiều đã sẵn sàng. Không có ảnh nào được lưu."
             );
             elements.captureSaveBtn.innerHTML = `
-                <span class="material-symbols-outlined text-[18px]">${isRecognition ? "face_search" : "save"}</span>
-                <span>${isRecognition ? "Nhận diện khuôn mặt" : isUpdate ? "Xác nhận cập nhật" : "Xác nhận đăng ký"}</span>
+                <span class="material-symbols-outlined text-[18px]">${isReadOnlyCheck ? "verified_user" : "save"}</span>
+                <span>${isRecognition ? "Nhận diện khuôn mặt" : isVerification ? "Xác thực danh tính" : isUpdate ? "Xác nhận cập nhật" : "Xác nhận đăng ký"}</span>
             `;
 
             elements.captureConsent.checked = false;
@@ -2219,7 +2261,7 @@
             elements.captureRetryBtn.classList.remove("flex");
             hideCaptureError();
             elements.capturePlaceholder.classList.remove("hidden");
-            elements.captureHint.textContent = isRecognition
+            elements.captureHint.textContent = isReadOnlyCheck
                 ? "Chỉ để một người trong khung hình, nhìn thẳng vào camera và giữ khuôn mặt trong khung oval."
                 : "Giữ khuôn mặt trong khung oval, nhìn thẳng vào camera và chỉ để một người trong khung hình.";
             setCaptureStatus("Xác nhận đồng ý để tiếp tục", "info");
@@ -2314,7 +2356,7 @@
                     employee_code: captureButton.getAttribute("data-employee-code"),
                     department: captureButton.getAttribute("data-employee-department") || "",
                     face_profile_id: captureButton.getAttribute("data-face-profile-id") || null
-                }, captureButton.getAttribute("data-capture-mode") === "update" ? "update" : "register");
+                }, captureButton.getAttribute("data-capture-mode") || "register");
                 return;
             }
 
@@ -2337,6 +2379,11 @@
         elements.detailUpdateBtn.addEventListener("click", () => {
             if (state.detailEmployee) {
                 openCaptureModal(state.detailEmployee, "update");
+            }
+        });
+        elements.detailVerifyBtn.addEventListener("click", () => {
+            if (state.detailEmployee) {
+                openCaptureModal(state.detailEmployee, "verify");
             }
         });
         elements.detailDeleteBtn.addEventListener("click", () => {
@@ -2405,7 +2452,8 @@
 
         document.addEventListener("visibilitychange", () => {
             if (state.autoSyncEnabled && !document.hidden) {
-                loadData({ background: true, refreshMetadata: true });
+                const refreshMetadata = Date.now() - state.metadataLoadedAt >= 300000;
+                loadData({ background: true, refreshMetadata });
             }
         });
 

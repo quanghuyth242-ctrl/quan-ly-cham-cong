@@ -5,7 +5,8 @@ import {
     getEmployeeFaceDetail,
     deleteFaceProfile,
     createFaceProfile,
-    getAllFaceProfiles
+    getAllFaceProfiles,
+    getFaceProfileByEmployeeId
 } from "../models/FaceModel.js";
 import {
     isFaceDescriptorUsable,
@@ -17,7 +18,8 @@ import { getDepartments } from "../models/EmployeeModel.js";
 // Danh sách nhân viên và trạng thái khuôn mặt
 export const getFaceEmployees = async (req, res) => {
     try {
-        const { search = "", status = "all" } = req.query;
+        const search = String(req.query.search || "").trim().slice(0, 100);
+        const { status = "all" } = req.query;
         const department = String(req.query.department || "").trim().slice(0, 100);
         const includeMeta = String(req.query.includeMeta || "").toLowerCase() !== "false";
 
@@ -153,7 +155,7 @@ const saveFaceProfile = async (req, res, mode) => {
             });
         }
 
-        await createFaceProfile(employeeId, descriptor);
+        await createFaceProfile(employeeId, descriptor, mode);
 
         // Không ghi descriptor vào log, chỉ ghi thao tác và nhân viên liên quan.
         await writeFaceAuditLog({
@@ -179,6 +181,13 @@ const saveFaceProfile = async (req, res, mode) => {
                 : "Cập nhật khuôn mặt thành công"
         });
     } catch (error) {
+        if (error.code === "ER_DUP_ENTRY" && mode === "register") {
+            return res.status(409).json({
+                success: false,
+                message: "Nhân viên vừa được đăng ký khuôn mặt ở một thao tác khác. Vui lòng tải lại danh sách."
+            });
+        }
+
         console.error(
             `Lỗi ${mode === "register" ? "đăng ký" : "cập nhật"} khuôn mặt:`,
             error
@@ -263,6 +272,61 @@ export const recognizeFaceProfile = async (req, res) => {
             success: false,
             message: "Không thể nhận diện khuôn mặt. Vui lòng thử lại."
         });
+    }
+};
+
+// Xác minh khuôn mặt với hồ sơ của đúng nhân viên được chọn, không tìm kiếm toàn bộ nhân sự.
+export const verifyFaceIdentity = async (req, res) => {
+    try {
+        const employeeId = Number(req.params.employeeId);
+        const { descriptor, consent } = req.body || {};
+
+        if (!Number.isSafeInteger(employeeId) || employeeId <= 0) {
+            return res.status(400).json({ success: false, message: "ID nhân viên không hợp lệ." });
+        }
+        if (consent !== true) {
+            return res.status(400).json({ success: false, message: "Cần xác nhận người được xác minh đồng ý xử lý khuôn mặt." });
+        }
+        if (!isFaceDescriptorUsable(descriptor)) {
+            return res.status(400).json({ success: false, message: "Dữ liệu khuôn mặt không hợp lệ. Vui lòng chụp lại." });
+        }
+
+        const [employee, profile] = await Promise.all([
+            getEmployeeFaceDetail(employeeId),
+            getFaceProfileByEmployeeId(employeeId)
+        ]);
+        if (!employee) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy nhân viên." });
+        }
+        if (!profile) {
+            return res.status(404).json({ success: false, message: "Nhân viên chưa có hồ sơ khuôn mặt để xác minh." });
+        }
+
+        const result = findMatchingEmployee(descriptor, [{
+            ...profile,
+            employee_code: employee.employee_code,
+            full_name: employee.full_name,
+            department: employee.department
+        }]);
+        const verified = Boolean(result.matched);
+        await writeFaceAuditLog({
+            action: verified ? "verify_face_identity_success" : "verify_face_identity_failed",
+            actor: req.session.user,
+            employee: { id: employee.id, employee_code: employee.employee_code, full_name: employee.full_name },
+            detail: verified ? `Đã xác minh danh tính (độ lệch ${result.distance}).` : "Khuôn mặt không khớp hồ sơ nhân viên được chọn.",
+            req
+        });
+
+        return res.status(200).json({
+            success: true,
+            verified,
+            employee: { employee_code: employee.employee_code, full_name: employee.full_name, department: employee.department },
+            distance: result.distance,
+            message: verified ? "Xác thực danh tính thành công." : "Khuôn mặt không khớp với hồ sơ nhân viên được chọn."
+        });
+    } catch (error) {
+        console.error("Lỗi xác thực danh tính khuôn mặt:", error);
+        return res.status(500).json({ success: false, message: "Không thể xác thực danh tính. Vui lòng thử lại." });
     }
 };
 

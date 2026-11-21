@@ -10,7 +10,7 @@ export const normalizeFaceStatus = (status) => {
 };
 
 // Đăng ký dữ liệu khuôn mặt (ghi mới hoặc cập nhật nếu nhân viên đã có hồ sơ)
-export const createFaceProfile = async (employeeId, descriptor) => {
+export const createFaceProfile = async (employeeId, descriptor, mode = "register") => {
     if (!validateFaceDescriptor(descriptor)) {
         throw new Error("Dữ liệu khuôn mặt không hợp lệ (cần mảng 128 số).");
     }
@@ -20,9 +20,7 @@ export const createFaceProfile = async (employeeId, descriptor) => {
         "utf8"
     );
 
-    const existing = await getFaceProfileByEmployeeId(employeeId);
-
-    if (existing) {
+    if (mode === "update") {
         const [result] = await db.execute(
             `UPDATE face_profiles
              SET face_embedding = ?, consent_at = CURRENT_TIMESTAMP
