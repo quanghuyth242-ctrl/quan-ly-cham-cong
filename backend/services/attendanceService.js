@@ -208,7 +208,8 @@ export const recordAttendance = async ({ employeeId, action, workDate, location 
             const evaluation = await evaluateAttendance({
                 employeeId: normalizedEmployeeId,
                 workDate,
-                checkIn
+                checkIn,
+                schedule
             });
 
             const attendance = await insertCheckIn(connection, {
@@ -255,7 +256,8 @@ export const recordAttendance = async ({ employeeId, action, workDate, location 
             employeeId: normalizedEmployeeId,
             workDate,
             checkIn: existing.check_in,
-            checkOut
+            checkOut,
+            schedule
         });
 
         const attendance = await updateCheckOut(connection, {

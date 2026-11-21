@@ -259,6 +259,20 @@
     <ul id="att-alert-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-space-sm mt-space-md"></ul>
 </section>
 
+<!-- Nhật ký sự kiện chấm công cập nhật định kỳ -->
+<section class="bg-surface-container-lowest rounded-xl border border-surface-container-high shadow-sm overflow-hidden" aria-labelledby="att-live-log-title">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm px-space-lg py-space-md border-b border-surface-container-high">
+        <div>
+            <h3 id="att-live-log-title" class="font-label-md text-label-md text-on-surface font-semibold">Nhật ký chấm công thời gian thực</h3>
+            <p class="text-[12px] text-on-surface-variant mt-1">Tự cập nhật mỗi 10 giây · Chỉ hiển thị lượt ghi nhận thành công</p>
+        </div>
+        <span class="inline-flex items-center gap-2 text-[12px] text-secondary"><span class="h-2 w-2 rounded-full bg-secondary animate-pulse"></span><span id="att-live-log-updated">Đang kết nối...</span></span>
+    </div>
+    <div id="att-live-log" class="divide-y divide-surface-container-low max-h-80 overflow-y-auto" aria-live="polite" aria-relevant="additions text">
+        <p class="px-space-lg py-space-md text-sm text-on-surface-variant">Đang tải nhật ký...</p>
+    </div>
+</section>
+
 <!-- Danh sách chấm công -->
 <section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
     <div class="p-space-lg border-b border-surface-container-high bg-surface-container-low/50">
@@ -861,6 +875,8 @@
             status: "all",
             employees: [],
             departments: [],
+            metadataLoaded: false,
+            metadataLoadedAt: 0,
             stats: {
                 total: 0,
                 checkedIn: 0,
@@ -885,6 +901,11 @@
 
         let autoSyncTimer = null;
         let autoSyncInFlight = false;
+        let liveLogTimer = null;
+        let liveLogInFlight = false;
+        let lastLiveEventKey = null;
+        let liveLogPrimed = false;
+        let lastLiveLogDate = null;
 
         const elements = {
             refreshBtn: document.getElementById("att-refresh"),
@@ -916,6 +937,8 @@
             tableBody: document.getElementById("att-table-body"),
             tableSummary: document.getElementById("att-table-summary"),
             tableDate: document.getElementById("att-table-date"),
+            liveLog: document.getElementById("att-live-log"),
+            liveLogUpdated: document.getElementById("att-live-log-updated"),
             alertSummary: document.getElementById("att-alert-summary"),
             alertList: document.getElementById("att-alert-list"),
             faceModal: document.getElementById("att-face-modal"),
@@ -1063,6 +1086,50 @@
             const day = String(now.getDate()).padStart(2, "0");
 
             return `${year}-${month}-${day}`;
+        };
+
+        const loadLiveAttendanceEvents = async () => {
+            if (liveLogInFlight || document.hidden) return;
+            const date = state.date || getTodayString();
+            if (date !== getTodayString() && lastLiveLogDate === date) return;
+            liveLogInFlight = true;
+            try {
+                const response = await fetch(`${API_BASE}/events?date=${encodeURIComponent(date)}&limit=30`, {
+                    headers: { Accept: "application/json" },
+                    cache: "no-store"
+                });
+                const payload = await response.json();
+                if (!response.ok || !payload.success) throw new Error(payload.message || "Không tải được nhật ký.");
+
+                const events = payload.events || [];
+                lastLiveLogDate = date;
+                if (!events.length) {
+                    elements.liveLog.innerHTML = `<p class="px-space-lg py-space-md text-sm text-on-surface-variant">Chưa có lượt chấm công thành công trong ngày này.</p>`;
+                } else {
+                    elements.liveLog.innerHTML = events.map((event) => {
+                        const isCheckIn = event.action === "check_in";
+                        const employee = event.employee || {};
+                        const at = new Date(event.at);
+                        const time = Number.isNaN(at.getTime()) ? "—" : at.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+                        const method = { face: "Khuôn mặt", gps: "GPS", manual: "Thủ công", device: "Thiết bị" }[event.method] || event.method || "Hệ thống";
+                        return `<article class="flex items-center gap-space-md px-space-lg py-space-sm"><span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${isCheckIn ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"}"><span class="material-symbols-outlined">${isCheckIn ? "login" : "logout"}</span></span><div class="min-w-0 flex-1"><p class="truncate text-sm font-medium text-on-surface">${escapeHtml(employee.full_name || "Nhân viên")}</p><p class="text-xs text-on-surface-variant">${escapeHtml(employee.employee_code || "")} · ${isCheckIn ? "Check-in" : "Check-out"} · ${escapeHtml(method)}</p></div><time class="shrink-0 text-sm font-semibold text-on-surface">${escapeHtml(time)}</time></article>`;
+                    }).join("");
+
+                    const newest = events[0];
+                    const newestKey = `${newest.at}|${newest.employee?.id}|${newest.action}`;
+                    if (liveLogPrimed && lastLiveEventKey && newestKey !== lastLiveEventKey) {
+                        elements.liveLog.firstElementChild?.classList.add("bg-emerald-50/50");
+                    }
+                    lastLiveEventKey = newestKey;
+                    liveLogPrimed = true;
+                }
+
+                elements.liveLogUpdated.textContent = `Cập nhật ${new Date(payload.refreshedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+            } catch (_error) {
+                elements.liveLogUpdated.textContent = "Mất kết nối nhật ký";
+            } finally {
+                liveLogInFlight = false;
+            }
         };
 
         const gpsLocationHtml = (latitude, longitude, accuracy, distance) => {
@@ -1667,6 +1734,7 @@
                 if (state.status && state.status !== "all") {
                     params.set("status", state.status);
                 }
+                if (!state.metadataLoaded || Date.now() - state.metadataLoadedAt > 300000) params.set("includeMetadata", "1");
 
                 const query = params.toString();
                 const response = await fetch(`${API_BASE}/data${query ? `?${query}` : ""}`, {
@@ -1708,12 +1776,16 @@
                 };
 
                 if (Array.isArray(payload.departments)) {
-                    state.departments = payload.departments;
-                    populateDepartments(payload.departments);
+                    if (payload.departments.length || !state.metadataLoaded || Date.now() - state.metadataLoadedAt > 300000) {
+                        state.departments = payload.departments;
+                        populateDepartments(payload.departments);
+                    }
                 }
-                if (Array.isArray(payload.shifts)) {
+                if (Array.isArray(payload.shifts) && (payload.shifts.length || !state.metadataLoaded || Date.now() - state.metadataLoadedAt > 300000)) {
                     populateShifts(payload.shifts);
                 }
+                state.metadataLoaded = true;
+                if (params.get("includeMetadata") === "1") state.metadataLoadedAt = Date.now();
 
                 if (elements.dateInput.value !== state.date) {
                     elements.dateInput.value = state.date;
@@ -2988,11 +3060,14 @@
         renderAutoSyncStatus();
         renderSkeleton();
         loadData();
+        loadLiveAttendanceEvents();
+        liveLogTimer = window.setInterval(loadLiveAttendanceEvents, 10000);
         startAutoSync();
         document.addEventListener("visibilitychange", () => {
             if (state.autoSyncEnabled && !document.hidden) {
                 loadData({ background: true });
             }
+            if (!document.hidden) loadLiveAttendanceEvents();
         });
     })();
 </script>

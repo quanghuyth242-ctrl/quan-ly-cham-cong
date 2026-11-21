@@ -1,4 +1,4 @@
-import { appendFile, mkdir } from "node:fs/promises";
+import { appendFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -53,5 +53,26 @@ export const writeAttendanceAuditLog = async ({
     } catch (error) {
         // Không chặn thao tác chính nếu ghi log thất bại.
         console.warn("Không ghi được nhật ký chấm công:", error.message);
+    }
+};
+
+/** Đọc các sự kiện chấm công thành công gần nhất để hiển thị trên bảng quản trị. */
+export const getRecentAttendanceEvents = async ({ date, limit = 30 } = {}) => {
+    try {
+        const content = await readFile(LOG_FILE, "utf8");
+        const safeLimit = Math.min(100, Math.max(1, Number(limit) || 30));
+        return content.split(/\r?\n/).filter(Boolean).reverse().flatMap((line) => {
+            try {
+                const event = JSON.parse(line);
+                if (event.result !== "success" || !["check_in", "check_out"].includes(event.action)) return [];
+                if (date && event.workDate !== date) return [];
+                return [{ at: event.at, action: event.action, method: event.method, workDate: event.workDate, employee: event.employee, detail: event.detail }];
+            } catch {
+                return [];
+            }
+        }).slice(0, safeLimit);
+    } catch (error) {
+        if (error.code === "ENOENT") return [];
+        throw error;
     }
 };
