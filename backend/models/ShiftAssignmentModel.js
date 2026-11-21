@@ -140,29 +140,99 @@ export const findConflict = async (employeeId, startDate, endDate, excludeId = n
     return rows[0] || null;
 };
 
-export const create = async (data) => {
-    const [result] = await db.execute(
-        `INSERT INTO employee_shift_assignments
-            (employee_id, shift_id, start_date, end_date, status, note)
-         VALUES (?, ?, ?, ?, 'active', ?)`,
-        [data.employee_id, data.shift_id, data.start_date, data.end_date, data.note]
+const assertCanSaveAssignment = async (connection, data, excludeId = null) => {
+    const [employees] = await connection.execute(
+        "SELECT id FROM employees WHERE id = ? AND is_active = 1 FOR UPDATE",
+        [data.employee_id]
+    );
+    if (employees.length === 0) {
+        const error = new Error("Nhân viên không tồn tại hoặc đã ngừng hoạt động.");
+        error.code = "SHIFT_ASSIGNMENT_EMPLOYEE_INACTIVE";
+        throw error;
+    }
+
+    const [shifts] = await connection.execute(
+        "SELECT id FROM work_shifts WHERE id = ? AND status = 1 FOR UPDATE",
+        [data.shift_id]
+    );
+    if (shifts.length === 0) {
+        const error = new Error("Ca làm việc không tồn tại hoặc đã ngừng hoạt động.");
+        error.code = "SHIFT_ASSIGNMENT_SHIFT_INACTIVE";
+        throw error;
+    }
+
+    const [conflicts] = await connection.execute(
+        `SELECT a.id,
+                DATE_FORMAT(a.start_date, '%Y-%m-%d') AS start_date,
+                DATE_FORMAT(a.end_date, '%Y-%m-%d') AS end_date,
+                s.shift_name
+           FROM employee_shift_assignments a
+           INNER JOIN work_shifts s ON s.id = a.shift_id
+          WHERE a.employee_id = ?
+            AND a.status = 'active'
+            AND a.start_date <= ?
+            AND a.end_date >= ?
+            AND (? IS NULL OR a.id <> ?)
+          LIMIT 1`,
+        [data.employee_id, data.end_date, data.start_date, excludeId, excludeId]
     );
 
-    return result.insertId;
+    if (conflicts.length > 0) {
+        const error = new Error("Khoảng thời gian phân ca bị trùng.");
+        error.code = "SHIFT_ASSIGNMENT_CONFLICT";
+        error.conflict = conflicts[0];
+        throw error;
+    }
+};
+
+export const create = async (data) => {
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+        await assertCanSaveAssignment(connection, data);
+
+        const [result] = await connection.execute(
+            `INSERT INTO employee_shift_assignments
+                (employee_id, shift_id, start_date, end_date, status, note)
+             VALUES (?, ?, ?, ?, 'active', ?)`,
+            [data.employee_id, data.shift_id, data.start_date, data.end_date, data.note]
+        );
+
+        await connection.commit();
+        return result.insertId;
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
 };
 
 export const update = async (id, data) => {
-    await db.execute(
-        `UPDATE employee_shift_assignments
-            SET employee_id = ?,
-                shift_id = ?,
-                start_date = ?,
-                end_date = ?,
-                note = ?,
-                status = 'active'
-          WHERE id = ?`,
-        [data.employee_id, data.shift_id, data.start_date, data.end_date, data.note, id]
-    );
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+        await assertCanSaveAssignment(connection, data, id);
+
+        await connection.execute(
+            `UPDATE employee_shift_assignments
+                SET employee_id = ?,
+                    shift_id = ?,
+                    start_date = ?,
+                    end_date = ?,
+                    note = ?,
+                    status = 'active'
+              WHERE id = ?`,
+            [data.employee_id, data.shift_id, data.start_date, data.end_date, data.note, id]
+        );
+
+        await connection.commit();
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
 };
 
 export const cancel = async (id) => {

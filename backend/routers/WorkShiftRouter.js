@@ -4,6 +4,7 @@ import * as WorkShiftController from "../controllers/WorkShiftController.js";
 const router = express.Router();
 
 router.get("/", WorkShiftController.index);
+router.get("/sync-state", WorkShiftController.scheduleSyncState);
 router.get("/suggest-code", WorkShiftController.suggestCode);
 router.post("/create", WorkShiftController.create);
 router.post("/:id/update", WorkShiftController.update);
