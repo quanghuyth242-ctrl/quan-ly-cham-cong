@@ -5,6 +5,7 @@ import {
     getFaceEmployees,
     getFaceEmployeeDetail,
     recognizeFaceProfile,
+    verifyFaceIdentity,
     registerFaceProfile,
     updateFaceProfile,
     removeFaceProfile
@@ -26,6 +27,7 @@ router.get("/data", getFaceEmployees);
 
 // API nhận diện hồ sơ khuôn mặt (không ghi nhận chấm công)
 router.post("/recognize", recognizeFaceProfile);
+router.post("/verify/:employeeId", verifyFaceIdentity);
 
 // API đăng ký khuôn mặt
 router.post("/:employeeId/register", registerFaceProfile);
