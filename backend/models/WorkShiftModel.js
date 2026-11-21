@@ -195,7 +195,27 @@ export const update = async (id, data) => {
 };
 
 export const remove = async (id) => {
-    await db.execute("DELETE FROM work_shifts WHERE id = ?", [id]);
+    const [result] = await db.execute(
+        `DELETE FROM work_shifts
+          WHERE id = ?
+            AND NOT EXISTS (
+                SELECT 1
+                  FROM employee_shift_assignments
+                 WHERE shift_id = work_shifts.id
+            )`,
+        [id]
+    );
+
+    if (result.affectedRows > 0) {
+        return { deleted: true, reason: null };
+    }
+
+    const shift = await findById(id);
+    if (!shift) {
+        return { deleted: false, reason: "not_found" };
+    }
+
+    return { deleted: false, reason: "has_assignments", assignmentCount: await countAssignments(id) };
 };
 
 export const setStatus = async (id, status) => {

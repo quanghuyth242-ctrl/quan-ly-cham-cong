@@ -318,15 +318,19 @@ export const remove = async (req, res) => {
             });
         }
 
-        const assignmentCount = await WorkShiftModel.countAssignments(shift.id);
+        const result = await WorkShiftModel.remove(shift.id);
 
-        if (assignmentCount > 0) {
+        if (result.reason === "has_assignments") {
             return redirectWith(res, "/admin/shifts", {
-                error: `Không thể xóa ca "${shift.shift_name}" vì đã có ${assignmentCount} phân ca sử dụng. Hãy ngừng hoạt động ca thay vì xóa.`
+                error: `Không thể xóa ca "${shift.shift_name}" vì đã có ${result.assignmentCount} phân ca sử dụng. Hãy ngừng hoạt động ca thay vì xóa.`
             });
         }
 
-        await WorkShiftModel.remove(shift.id);
+        if (!result.deleted) {
+            return redirectWith(res, "/admin/shifts", {
+                error: "Ca làm việc không tồn tại hoặc đã được xóa."
+            });
+        }
 
         redirectWith(res, "/admin/shifts", {
             success: `Đã xóa ca làm việc "${shift.shift_name}".`
