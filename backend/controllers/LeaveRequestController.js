@@ -1,90 +1,438 @@
-export const index = async (req, res) => {
-    const success = req.query.success || null;
-    const error = req.query.error || null;
-    const activeTab = ["leave", "explanation", "list"].includes(req.query.tab)
-        ? req.query.tab
-        : "leave";
+import * as AttendanceRequestModel from "../models/AttendanceRequestModel.js";
+import {
+    buildAttendanceSchedule,
+    getShiftSchedulesForEmployeeRange
+} from "../services/shiftScheduleService.js";
 
-    // Dữ liệu mẫu để hiển thị giao diện (chưa kết nối CSDL)
-    const requests = [
-        {
-            id: 1,
-            code: "NP-2026-001",
-            type: "leave",
-            typeLabel: "Nghỉ phép",
-            employeeName: req.session.user?.username || "Nguyễn Văn A",
-            employeeId: req.session.user?.employee_id || "NV-0001",
-            department: "Kỹ thuật",
-            fromDate: "2026-11-20",
-            toDate: "2026-11-21",
-            reason: "Việc gia đình cần giải quyết.",
-            status: "pending",
-            statusLabel: "Chờ duyệt",
-            createdAt: "2026-11-16 08:30"
-        },
-        {
-            id: 2,
-            code: "GT-2026-014",
-            type: "explanation",
-            typeLabel: "Giải trình đi muộn",
-            employeeName: req.session.user?.username || "Nguyễn Văn A",
-            employeeId: req.session.user?.employee_id || "NV-0001",
-            department: "Kỹ thuật",
-            fromDate: "2026-11-15",
-            toDate: "2026-11-15",
-            reason: "Kẹt xe đột xuất trên đường đi làm, đã check-in lúc 08:45.",
-            status: "approved",
-            statusLabel: "Đã duyệt",
-            createdAt: "2026-11-15 09:10"
-        },
-        {
-            id: 3,
-            code: "NV-2026-002",
-            type: "resignation",
-            typeLabel: "Nghỉ việc",
-            employeeName: "Trần Thị B",
-            employeeId: "NV-0024",
-            department: "Kinh doanh",
-            fromDate: "2026-12-01",
-            toDate: "2026-12-15",
-            reason: "Chuyển công tác sang môi trường mới, bàn giao trong 14 ngày.",
-            status: "rejected",
-            statusLabel: "Từ chối",
-            createdAt: "2026-11-10 14:20"
-        }
-    ];
-
-    const stats = {
-        total: requests.length,
-        pending: requests.filter((item) => item.status === "pending").length,
-        approved: requests.filter((item) => item.status === "approved").length,
-        rejected: requests.filter((item) => item.status === "rejected").length
-    };
-
-    res.render("requests/index", {
-        user: req.session.user,
-        success,
-        error,
-        activeTab,
-        requests,
-        stats
-    });
+const isValidDate = (value) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return false;
+    const date = new Date(`${value}T00:00:00Z`);
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 };
 
-export const createLeave = async (req, res) => {
-    // Giao diện demo: chưa lưu CSDL
-    const params = new URLSearchParams({
-        success: "Đã ghi nhận đơn nghỉ. (Giao diện demo, chưa lưu vào hệ thống)",
-        tab: "list"
-    });
-    res.redirect(`/admin/requests?${params.toString()}`);
+const isValidTime = (value) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value || "");
+
+const redirect = (res, values) => {
+    const query = new URLSearchParams(values);
+    return res.redirect(`/admin/requests?${query.toString()}`);
+};
+
+const toWorkdays = (request, schedules) => {
+    const byDate = [];
+    const current = new Date(`${request.from_date}T00:00:00Z`);
+    const last = new Date(`${request.to_date}T00:00:00Z`);
+
+    while (current <= last) {
+        const date = current.toISOString().slice(0, 10);
+        const assignment = schedules.find((schedule) => date >= schedule.start_date && date <= schedule.end_date);
+        if (assignment) {
+            const dailySchedule = buildAttendanceSchedule(assignment, date);
+            if (dailySchedule.isWorkingDay && assignment.morning_start && assignment.afternoon_end) {
+                byDate.push({ date, start: assignment.morning_start, end: assignment.afternoon_end });
+            }
+        }
+        current.setUTCDate(current.getUTCDate() + 1);
+    }
+    return byDate;
+};
+
+export const index = async (req, res) => {
+    const activeTab = ["explanation", "business_trip", "overtime", "list"].includes(req.query.tab)
+        ? req.query.tab
+        : "list";
+    try {
+        const [requests, employees] = await Promise.all([
+            AttendanceRequestModel.findAll(),
+            AttendanceRequestModel.getEmployees()
+        ]);
+        const stats = {
+            total: requests.length,
+            pending: requests.filter((item) => ["pending", "awaiting_employee"].includes(item.status)).length,
+            approved: requests.filter((item) => item.status === "approved").length,
+            rejected: requests.filter((item) => item.status === "rejected").length
+        };
+        return res.render("requests/index", {
+            user: req.session.user,
+            success: req.query.success || null,
+            error: req.query.error || null,
+            activeTab,
+            requests: requests.map((item) => ({
+                ...item,
+                code: item.request_code,
+                type: item.request_type,
+                typeLabel: {
+                    business_trip: "Công tác",
+                    overtime: "Tăng ca",
+                    leave: {
+                        annual: "Nghỉ phép năm",
+                        sick: "Nghỉ ốm",
+                        unpaid: "Nghỉ không lương",
+                        personal: "Nghỉ việc riêng"
+                    }[item.category] || "Nghỉ phép",
+                    resignation: "Nghỉ việc",
+                    explanation: "Giải trình"
+                }[item.request_type] || item.request_type,
+                employeeName: item.employee_name,
+                employeeId: item.employee_code,
+                fromDate: item.from_date,
+                toDate: item.to_date,
+                statusLabel: item.status === "awaiting_employee" ? "Chờ nhân viên xác nhận"
+                    : item.status === "rejected" && item.employee_response === "rejected" ? "Nhân viên từ chối"
+                    : { pending: "Chờ duyệt", approved: "Đã duyệt", rejected: "Từ chối" }[item.status],
+                createdAt: item.created_date,
+                canReview: item.status === "pending"
+            })),
+            employees,
+            stats
+        });
+    } catch (error) {
+        console.error("Lỗi tải danh sách đơn nhân sự:", error);
+        return res.status(500).render("requests/index", {
+            user: req.session.user,
+            success: null,
+            error: "Không thể tải dữ liệu đơn. Vui lòng thử lại.",
+            activeTab,
+            requests: [],
+            employees: [],
+            stats: { total: 0, pending: 0, approved: 0, rejected: 0 }
+        });
+    }
+};
+
+export const employeeLeaveForm = async (req, res) => {
+    if (req.session.user?.role !== "employee") return res.status(403).send("Chỉ nhân viên mới có thể gửi đơn nghỉ.");
+    try {
+        const employee = await AttendanceRequestModel.findEmployeeForUser(req.session.user);
+        if (!employee) {
+            return res.status(403).render("requests/employeeLeave", {
+                user: req.session.user, employee: null, requests: [], error: "Tài khoản chưa được liên kết với hồ sơ nhân viên. Vui lòng liên hệ quản trị viên.", success: null
+            });
+        }
+        const requests = await AttendanceRequestModel.findEmployeeLeaveRequests(employee.id);
+        return res.render("requests/employeeLeave", { user: req.session.user, employee, requests, error: req.query.error || null, success: req.query.success || null });
+    } catch (error) {
+        console.error("Lỗi tải đơn nghỉ của nhân viên:", error);
+        return res.status(500).send("Không thể tải trang đơn nghỉ.");
+    }
+};
+
+export const createEmployeeLeave = async (req, res) => {
+    if (req.session.user?.role !== "employee") return res.status(403).send("Chỉ nhân viên mới có thể gửi đơn nghỉ.");
+    const category = String(req.body.category || "").trim();
+    const type = category === "resignation" ? "resignation" : "leave";
+    const fromDate = String(req.body.from_date || "").trim();
+    const toDate = String(req.body.to_date || "").trim();
+    const reason = String(req.body.reason || "").trim();
+    const fail = (message) => res.redirect(`/requests/leave?error=${encodeURIComponent(message)}`);
+    if (!["annual", "sick", "unpaid", "personal", "resignation"].includes(category)) return fail("Vui lòng chọn loại đơn nghỉ.");
+    if (!isValidDate(fromDate) || !isValidDate(toDate) || toDate < fromDate) return fail("Khoảng ngày nghỉ không hợp lệ.");
+    const spanDays = (Date.parse(`${toDate}T00:00:00Z`) - Date.parse(`${fromDate}T00:00:00Z`)) / 86400000 + 1;
+    if (spanDays > 366) return fail("Mỗi đơn không vượt quá 366 ngày.");
+    if (reason.length < 10 || reason.length > 5000) return fail("Lý do cần từ 10 đến 5.000 ký tự.");
+    try {
+        const employee = await AttendanceRequestModel.findEmployeeForUser(req.session.user);
+        if (!employee) return fail("Tài khoản chưa được liên kết với hồ sơ nhân viên.");
+        const result = await AttendanceRequestModel.createEmployeeLeave({
+            employeeId: employee.id, type, category, fromDate, toDate, reason,
+            createdBy: req.session.user.username
+        });
+        if (!result.success && result.reason === "overlap") return fail("Khoảng ngày bị trùng với đơn hoặc trạng thái chấm công đã ghi nhận.");
+        return res.redirect(`/requests/leave?success=${encodeURIComponent(`Đã gửi đơn ${result.requestCode}, đang chờ admin duyệt.`)}`);
+    } catch (error) {
+        console.error("Lỗi gửi đơn nghỉ của nhân viên:", error);
+        return fail("Không thể gửi đơn nghỉ. Vui lòng thử lại.");
+    }
+};
+
+export const createBusinessTrip = async (req, res) => {
+    const employeeId = Number(req.body.employee_id);
+    const fromDate = String(req.body.from_date || "").trim();
+    const toDate = String(req.body.to_date || "").trim();
+    const destination = String(req.body.destination || "").trim();
+    const reason = String(req.body.reason || "").trim();
+
+    if (!Number.isSafeInteger(employeeId) || employeeId <= 0) {
+        return redirect(res, { tab: "business_trip", error: "Vui lòng chọn nhân viên đi công tác." });
+    }
+    if (!isValidDate(fromDate) || !isValidDate(toDate) || toDate < fromDate) {
+        return redirect(res, { tab: "business_trip", error: "Khoảng ngày công tác không hợp lệ." });
+    }
+    const spanDays = (Date.parse(`${toDate}T00:00:00Z`) - Date.parse(`${fromDate}T00:00:00Z`)) / 86400000 + 1;
+    if (spanDays > 366) return redirect(res, { tab: "business_trip", error: "Mỗi đơn công tác không vượt quá 366 ngày." });
+    if (!destination || destination.length > 255) {
+        return redirect(res, { tab: "business_trip", error: "Vui lòng nhập địa điểm công tác (không quá 255 ký tự)." });
+    }
+    if (reason.length < 10 || reason.length > 5000) {
+        return redirect(res, { tab: "business_trip", error: "Lý do công tác cần từ 10 đến 5.000 ký tự." });
+    }
+
+    try {
+        const employees = await AttendanceRequestModel.getEmployees();
+        if (!employees.some((employee) => Number(employee.id) === employeeId)) {
+            return redirect(res, { tab: "business_trip", error: "Không tìm thấy nhân viên đang hoạt động." });
+        }
+        const assignments = await getShiftSchedulesForEmployeeRange(employeeId, fromDate, toDate);
+        const schedules = toWorkdays({ from_date: fromDate, to_date: toDate }, assignments);
+        if (schedules.length === 0) {
+            return redirect(res, { tab: "business_trip", error: "Nhân viên chưa có ngày làm việc được phân ca trong khoảng công tác." });
+        }
+        const request = await AttendanceRequestModel.createBusinessTrip({
+            employeeId,
+            fromDate,
+            toDate,
+            destination,
+            reason,
+            schedules,
+            requireEmployeeConsent: true,
+            createdBy: req.session.user?.username,
+            reviewerId: req.session.user?.id
+        });
+        if (!request.success && request.reason === "overlap") {
+            return redirect(res, { tab: "business_trip", error: "Khoảng công tác bị trùng với đơn hoặc trạng thái ngày công đã ghi nhận." });
+        }
+        return redirect(res, { tab: "list", success: `Đã gửi điều động công tác ${request.requestCode}; đang chờ nhân viên xác nhận. Chấm công sẽ cập nhật sau khi nhân viên đồng ý.` });
+    } catch (error) {
+        console.error("Lỗi tạo đơn công tác:", error);
+        return redirect(res, { tab: "business_trip", error: "Không thể tạo đơn công tác. Vui lòng thử lại." });
+    }
+};
+
+export const createOvertime = async (req, res) => {
+    const employeeId = Number(req.body.employee_id);
+    const fromDate = String(req.body.from_date || "").trim();
+    const toDate = String(req.body.to_date || "").trim();
+    const startTime = String(req.body.start_time || "").trim();
+    const endTime = String(req.body.end_time || "").trim();
+    const reason = String(req.body.reason || "").trim();
+
+    if (!Number.isSafeInteger(employeeId) || employeeId <= 0) {
+        return redirect(res, { tab: "overtime", error: "Vui lòng chọn nhân viên tăng ca." });
+    }
+    if (!isValidDate(fromDate) || !isValidDate(toDate) || toDate < fromDate) {
+        return redirect(res, { tab: "overtime", error: "Khoảng ngày tăng ca không hợp lệ." });
+    }
+    if (!isValidTime(startTime) || !isValidTime(endTime) || endTime <= startTime) {
+        return redirect(res, { tab: "overtime", error: "Khung giờ tăng ca không hợp lệ; giờ kết thúc phải sau giờ bắt đầu trong cùng ngày." });
+    }
+    const spanDays = (Date.parse(`${toDate}T00:00:00Z`) - Date.parse(`${fromDate}T00:00:00Z`)) / 86400000 + 1;
+    if (spanDays > 366) return redirect(res, { tab: "overtime", error: "Mỗi đơn tăng ca không vượt quá 366 ngày." });
+    if (reason.length < 10 || reason.length > 5000) {
+        return redirect(res, { tab: "overtime", error: "Nội dung tăng ca cần từ 10 đến 5.000 ký tự." });
+    }
+
+    try {
+        const employees = await AttendanceRequestModel.getEmployees();
+        if (!employees.some((employee) => Number(employee.id) === employeeId)) {
+            return redirect(res, { tab: "overtime", error: "Không tìm thấy nhân viên đang hoạt động." });
+        }
+        const result = await AttendanceRequestModel.createOvertime({
+            employeeId,
+            fromDate,
+            toDate,
+            startTime,
+            endTime,
+            reason,
+            createdBy: req.session.user?.username,
+            reviewerId: req.session.user?.id,
+            requireEmployeeConsent: true
+        });
+        if (!result.success && result.reason === "overlap") {
+            return redirect(res, { tab: "overtime", error: "Không thể gửi đơn tăng ca trùng với đơn tăng ca khác, ngày nghỉ hoặc công tác đã ghi nhận." });
+        }
+        return redirect(res, {
+            tab: "list",
+            success: `Đã gửi đơn tăng ca ${result.requestCode} (${startTime}–${endTime}); đang chờ nhân viên xác nhận. Trạng thái sẽ cập nhật sau khi nhân viên đồng ý.`
+        });
+    } catch (error) {
+        console.error("Lỗi gửi đơn tăng ca:", error);
+        return redirect(res, { tab: "overtime", error: "Không thể gửi đơn tăng ca. Vui lòng thử lại." });
+    }
+};
+
+export const employeeOvertimeForm = async (req, res) => {
+    if (req.session.user?.role !== "employee") return res.status(403).send("Chỉ nhân viên mới có thể gửi đơn tại đây.");
+    try {
+        const employee = await AttendanceRequestModel.findEmployeeForUser(req.session.user);
+        if (!employee) {
+            return res.status(403).render("requests/employeeOvertime", {
+                user: req.session.user, employee: null, requests: [], error: "Tài khoản chưa được liên kết với hồ sơ nhân viên. Vui lòng liên hệ quản trị viên.", success: null
+            });
+        }
+        const requests = await AttendanceRequestModel.findByEmployee(employee.id);
+        return res.render("requests/employeeOvertime", { user: req.session.user, employee, requests, error: req.query.error || null, success: req.query.success || null });
+    } catch (error) {
+        console.error("Lỗi tải đơn tăng ca cá nhân:", error);
+        return res.status(500).send("Không thể tải trang đơn tăng ca.");
+    }
+};
+
+export const employeeBusinessTripForm = async (req, res) => {
+    if (req.session.user?.role !== "employee") return res.status(403).send("Chỉ nhân viên mới có thể gửi đơn tại đây.");
+    try {
+        const employee = await AttendanceRequestModel.findEmployeeForUser(req.session.user);
+        if (!employee) {
+            return res.status(403).render("requests/employeeBusinessTrip", {
+                user: req.session.user, employee: null, requests: [], error: "Tài khoản chưa được liên kết với hồ sơ nhân viên. Vui lòng liên hệ quản trị viên.", success: null
+            });
+        }
+        const requests = await AttendanceRequestModel.findByEmployee(employee.id, "business_trip");
+        return res.render("requests/employeeBusinessTrip", { user: req.session.user, employee, requests, error: req.query.error || null, success: req.query.success || null });
+    } catch (error) {
+        console.error("Lỗi tải đơn công tác cá nhân:", error);
+        return res.status(500).send("Không thể tải trang đơn công tác.");
+    }
+};
+
+export const createEmployeeBusinessTrip = async (req, res) => {
+    if (req.session.user?.role !== "employee") return res.status(403).send("Chỉ nhân viên mới có thể gửi đơn tại đây.");
+    const fromDate = String(req.body.from_date || "").trim();
+    const toDate = String(req.body.to_date || "").trim();
+    const destination = String(req.body.destination || "").trim();
+    const reason = String(req.body.reason || "").trim();
+    const fail = (message) => res.redirect(`/requests/business-trip?error=${encodeURIComponent(message)}`);
+    if (!isValidDate(fromDate) || !isValidDate(toDate) || toDate < fromDate) return fail("Khoảng ngày công tác không hợp lệ.");
+    const spanDays = (Date.parse(`${toDate}T00:00:00Z`) - Date.parse(`${fromDate}T00:00:00Z`)) / 86400000 + 1;
+    if (spanDays > 366) return fail("Mỗi đơn công tác không vượt quá 366 ngày.");
+    if (!destination || destination.length > 255) return fail("Vui lòng nhập địa điểm công tác, tối đa 255 ký tự.");
+    if (reason.length < 10 || reason.length > 5000) return fail("Lý do cần từ 10 đến 5.000 ký tự.");
+    try {
+        const employee = await AttendanceRequestModel.findEmployeeForUser(req.session.user);
+        if (!employee) return fail("Tài khoản chưa được liên kết với hồ sơ nhân viên.");
+        const result = await AttendanceRequestModel.createBusinessTrip({
+            employeeId: employee.id, fromDate, toDate, destination, reason,
+            createdBy: req.session.user.username, approveImmediately: false
+        });
+        if (!result.success && result.reason === "overlap") return fail("Khoảng ngày bị trùng với đơn hoặc trạng thái ngày công đã ghi nhận.");
+        return res.redirect(`/requests/business-trip?success=${encodeURIComponent(`Đã gửi đơn ${result.requestCode}, đang chờ admin duyệt.`)}`);
+    } catch (error) {
+        console.error("Lỗi gửi đơn công tác của nhân viên:", error);
+        return fail("Không thể gửi đơn công tác. Vui lòng thử lại.");
+    }
+};
+
+export const createEmployeeOvertime = async (req, res) => {
+    if (req.session.user?.role !== "employee") return res.status(403).send("Chỉ nhân viên mới có thể gửi đơn tại đây.");
+    const fromDate = String(req.body.from_date || "").trim();
+    const toDate = String(req.body.to_date || "").trim();
+    const startTime = String(req.body.start_time || "").trim();
+    const endTime = String(req.body.end_time || "").trim();
+    const reason = String(req.body.reason || "").trim();
+    const fail = (message) => res.redirect(`/requests/overtime?error=${encodeURIComponent(message)}`);
+    if (!isValidDate(fromDate) || !isValidDate(toDate) || toDate < fromDate) return fail("Khoảng ngày tăng ca không hợp lệ.");
+    if (!isValidTime(startTime) || !isValidTime(endTime) || endTime <= startTime) return fail("Khung giờ tăng ca không hợp lệ; giờ kết thúc phải sau giờ bắt đầu.");
+    const spanDays = (Date.parse(`${toDate}T00:00:00Z`) - Date.parse(`${fromDate}T00:00:00Z`)) / 86400000 + 1;
+    if (spanDays > 366) return fail("Mỗi đơn tăng ca không vượt quá 366 ngày.");
+    if (reason.length < 10 || reason.length > 5000) return fail("Lý do cần từ 10 đến 5.000 ký tự.");
+    try {
+        const employee = await AttendanceRequestModel.findEmployeeForUser(req.session.user);
+        if (!employee) return fail("Tài khoản chưa được liên kết với hồ sơ nhân viên.");
+        const result = await AttendanceRequestModel.createOvertime({ employeeId: employee.id, fromDate, toDate, startTime, endTime, reason, createdBy: req.session.user.username });
+        if (!result.success && result.reason === "overlap") return fail("Khoảng ngày bị trùng với đơn hoặc trạng thái chấm công đã ghi nhận.");
+        return res.redirect(`/requests/overtime?success=${encodeURIComponent(`Đã gửi đơn ${result.requestCode}, đang chờ admin duyệt.`)}`);
+    } catch (error) {
+        console.error("Lỗi gửi đơn tăng ca của nhân viên:", error);
+        return fail("Không thể gửi đơn tăng ca. Vui lòng thử lại.");
+    }
+};
+
+export const respondToAdminRequest = async (req, res) => {
+    if (req.session.user?.role !== "employee") return res.status(403).send("Chỉ nhân viên mới có thể phản hồi đơn.");
+    const id = Number(req.params.id);
+    const accepted = req.body.decision === "accept";
+    const responseNote = String(req.body.response_note || "").trim();
+    if (!Number.isSafeInteger(id) || id <= 0 || !["accept", "reject"].includes(req.body.decision)) {
+        return res.status(400).send("Yêu cầu phản hồi đơn không hợp lệ.");
+    }
+    let responsePath = "/requests/overtime";
+    try {
+        const employee = await AttendanceRequestModel.findEmployeeForUser(req.session.user);
+        if (!employee) return res.status(403).send("Tài khoản chưa được liên kết với hồ sơ nhân viên.");
+        const request = await AttendanceRequestModel.findById(id);
+        if (!request || Number(request.employee_id) !== Number(employee.id)) {
+            return res.status(404).send("Không tìm thấy đơn được gửi cho tài khoản này.");
+        }
+        if (!["business_trip", "overtime"].includes(request.request_type)) {
+            return res.status(400).send("Loại đơn này không yêu cầu xác nhận của nhân viên.");
+        }
+        responsePath = request.request_type === "overtime" ? "/requests/overtime" : "/requests/business-trip";
+        if (!accepted && (responseNote.length < 10 || responseNote.length > 500)) {
+            return res.redirect(`${responsePath}?error=${encodeURIComponent("Lý do từ chối cần từ 10 đến 500 ký tự.")}`);
+        }
+
+        let schedules = [];
+        if (accepted && request.request_type === "business_trip") {
+            const assignments = await getShiftSchedulesForEmployeeRange(employee.id, request.from_date, request.to_date);
+            schedules = toWorkdays(request, assignments);
+        }
+        const result = await AttendanceRequestModel.employeeRespond({ id, employeeId: employee.id, accepted, responseNote: accepted ? null : responseNote, schedules });
+        if (!result.success) {
+            const message = result.reason === "already_responded" ? "Đơn này đã được phản hồi trước đó."
+                : result.reason === "overlap" ? "Không thể xác nhận vì ngày công bị trùng với một đơn đã duyệt khác."
+                : result.reason === "no_scheduled_days" ? "Không thể ghi nhận vì bạn chưa có ngày làm việc được phân ca trong khoảng công tác."
+                : "Không thể phản hồi đơn này.";
+            return res.redirect(`${responsePath}?error=${encodeURIComponent(message)}`);
+        }
+        const message = accepted
+            ? `Bạn đã đồng ý đơn ${request.request_code}; hệ thống đã cập nhật chấm công cho ${result.appliedDays} ngày.`
+            : `Bạn đã từ chối đơn ${request.request_code}; hệ thống không cập nhật chấm công.`;
+        return res.redirect(`${responsePath}?success=${encodeURIComponent(message)}`);
+    } catch (error) {
+        console.error("Lỗi nhân viên phản hồi đơn:", error);
+        return res.redirect(`${responsePath}?error=${encodeURIComponent("Không thể phản hồi đơn. Vui lòng thử lại.")}`);
+    }
+};
+
+export const reviewBusinessTrip = async (req, res) => {
+    const id = Number(req.params.id);
+    const decision = req.params.decision === "approve" ? "approved" : req.params.decision === "reject" ? "rejected" : null;
+    const reviewNote = String(req.body.review_note || "").trim();
+    if (!Number.isSafeInteger(id) || id <= 0 || !decision) {
+        return redirect(res, { tab: "list", error: "Yêu cầu duyệt đơn không hợp lệ." });
+    }
+    if (decision === "rejected" && (reviewNote.length < 10 || reviewNote.length > 500)) {
+        return redirect(res, { tab: "list", error: "Lý do từ chối cần từ 10 đến 500 ký tự." });
+    }
+
+    try {
+        const request = await AttendanceRequestModel.findById(id);
+        if (!request) return redirect(res, { tab: "list", error: "Không tìm thấy đơn cần duyệt." });
+        if (request.status !== "pending") return redirect(res, { tab: "list", error: "Đơn này đã được xử lý trước đó." });
+
+        let schedules = [];
+        if (decision === "approved" && ["business_trip", "leave"].includes(request.request_type)) {
+            const assignments = await getShiftSchedulesForEmployeeRange(request.employee_id, request.from_date, request.to_date);
+            schedules = toWorkdays(request, assignments);
+        }
+
+        const result = await AttendanceRequestModel.review({
+            id,
+            decision,
+            reviewerId: req.session.user?.id,
+            reviewNote: decision === "rejected" ? reviewNote : null,
+            schedules
+        });
+        if (!result.success) {
+            const error = result.reason === "not_found" ? "Không tìm thấy đơn cần duyệt."
+                : result.reason === "already_reviewed" ? "Đơn này đã được xử lý trước đó."
+                : result.reason === "overlap" ? "Đơn bị trùng với một trạng thái ngày công đã được ghi nhận trong khoảng ngày này."
+                : result.reason === "no_scheduled_days" ? "Không thể duyệt tự động: nhân viên chưa có ngày làm việc được phân ca trong khoảng công tác."
+                : "Không thể xử lý đơn.";
+            return redirect(res, { tab: "list", error });
+        }
+
+        const message = decision === "approved" && request.request_type === "overtime"
+            ? `Đã duyệt đơn tăng ca; trạng thái tăng ca đã được cập nhật cho ${result.appliedDays} ngày.`
+            : decision === "approved" && request.request_type === "business_trip"
+            ? `Đã duyệt công tác và cập nhật đủ giờ theo ca cho ${result.autoAttendanceDays} ngày làm việc.`
+            : decision === "approved" ? "Đã duyệt đơn." : "Đã từ chối đơn.";
+        return redirect(res, { tab: "list", success: message });
+    } catch (error) {
+        console.error("Lỗi duyệt đơn nhân sự:", error);
+        return redirect(res, { tab: "list", error: "Không thể xử lý đơn. Vui lòng thử lại." });
+    }
 };
 
 export const createExplanation = async (req, res) => {
-    // Giao diện demo: chưa lưu CSDL
-    const params = new URLSearchParams({
-        success: "Đã ghi nhận đơn giải trình. (Giao diện demo, chưa lưu vào hệ thống)",
-        tab: "list"
-    });
-    res.redirect(`/admin/requests?${params.toString()}`);
+    const params = new URLSearchParams({ success: "Đơn giải trình hiện chỉ là giao diện mẫu.", tab: "explanation" });
+    return res.redirect(`/admin/requests?${params.toString()}`);
 };

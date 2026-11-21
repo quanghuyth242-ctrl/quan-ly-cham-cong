@@ -47,8 +47,8 @@ const overlapMinutes = (rangeStart, rangeEnd, partStart, partEnd) => {
 export const getShiftForDate = async (employeeId, workDate) => {
     const [rows] = await db.execute(
         `SELECT a.id AS assignment_id,
-                a.start_date,
-                a.end_date,
+                DATE_FORMAT(a.start_date, '%Y-%m-%d') AS start_date,
+                DATE_FORMAT(a.end_date, '%Y-%m-%d') AS end_date,
                 s.id AS shift_id,
                 s.shift_code,
                 s.shift_name,
@@ -137,6 +137,53 @@ export const getShiftSchedulesForEmployeesOnDate = async (employeeIds, workDate)
     }
 
     return shiftsByEmployee;
+};
+
+export const getShiftSchedulesForEmployeeRange = async (employeeId, fromDate, toDate) => {
+    const [rows] = await db.execute(
+        `SELECT a.id AS assignment_id,
+                DATE_FORMAT(a.start_date, '%Y-%m-%d') AS start_date,
+                DATE_FORMAT(a.end_date, '%Y-%m-%d') AS end_date,
+                s.id AS shift_id,
+                s.shift_code,
+                s.shift_name,
+                TIME_FORMAT(s.morning_start, '%H:%i') AS morning_start,
+                TIME_FORMAT(s.morning_end, '%H:%i') AS morning_end,
+                TIME_FORMAT(s.afternoon_start, '%H:%i') AS afternoon_start,
+                TIME_FORMAT(s.afternoon_end, '%H:%i') AS afternoon_end,
+                sw.weekday
+           FROM employee_shift_assignments a
+           INNER JOIN work_shifts s ON s.id = a.shift_id AND s.status = 1
+           LEFT JOIN shift_workdays sw ON sw.shift_id = s.id
+          WHERE a.employee_id = ?
+            AND a.status = 'active'
+            AND a.start_date <= ?
+            AND a.end_date >= ?
+          ORDER BY a.start_date DESC, a.id DESC, sw.weekday ASC`,
+        [employeeId, toDate, fromDate]
+    );
+    const schedules = new Map();
+    for (const row of rows) {
+        let schedule = schedules.get(row.assignment_id);
+        if (!schedule) {
+            schedule = {
+                assignment_id: row.assignment_id,
+                start_date: row.start_date,
+                end_date: row.end_date,
+                shift_id: row.shift_id,
+                shift_code: row.shift_code,
+                shift_name: row.shift_name,
+                morning_start: row.morning_start,
+                morning_end: row.morning_end,
+                afternoon_start: row.afternoon_start,
+                afternoon_end: row.afternoon_end,
+                workdays: []
+            };
+            schedules.set(row.assignment_id, schedule);
+        }
+        if (row.weekday !== null) schedule.workdays.push(Number(row.weekday));
+    }
+    return [...schedules.values()];
 };
 
 export const buildAttendanceSchedule = (shift, workDate) => {

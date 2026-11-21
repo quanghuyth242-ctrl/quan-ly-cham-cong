@@ -10,7 +10,8 @@ import ShiftAssignmentRouter from "./routers/ShiftAssignmentRouter.js";
 import FaceRouter from "./routers/FaceRouter.js";
 import AttendanceRouter from "./routers/attendanceRoutes.js";
 import LeaveRequestRouter from "./routers/LeaveRequestRouter.js";
-import { requireAdmin } from "./middlewares/authMiddleware.js";
+import * as LeaveRequestController from "./controllers/LeaveRequestController.js";
+import { requireAdmin, requireAuth } from "./middlewares/authMiddleware.js";
 import { getOverviewNotifications } from "./services/notificationService.js";
 import adminDeviceRoutes from "./routers/adminDeviceRoutes.js";
 import adminEmployeeRoutes from "./routers/adminEmployeeRoutes.js";
@@ -63,6 +64,13 @@ app.use("/admin/shift-assignments", requireAdmin, ShiftAssignmentRouter);
 
 // Quản lý đơn nghỉ phép, khuôn mặt và chấm công
 app.use("/admin/requests", requireAdmin, LeaveRequestRouter);
+app.get("/requests/leave", requireAuth, LeaveRequestController.employeeLeaveForm);
+app.post("/requests/leave", requireAuth, LeaveRequestController.createEmployeeLeave);
+app.get("/requests/overtime", requireAuth, LeaveRequestController.employeeOvertimeForm);
+app.post("/requests/overtime", requireAuth, LeaveRequestController.createEmployeeOvertime);
+app.get("/requests/business-trip", requireAuth, LeaveRequestController.employeeBusinessTripForm);
+app.post("/requests/business-trip", requireAuth, LeaveRequestController.createEmployeeBusinessTrip);
+app.post("/requests/:id/respond", requireAuth, LeaveRequestController.respondToAdminRequest);
 app.use("/admin/faces", requireAdmin, FaceRouter);
 app.use("/admin/attendance", AttendanceRouter);
 

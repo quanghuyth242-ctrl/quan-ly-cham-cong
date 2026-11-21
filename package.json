@@ -8,6 +8,8 @@
     "dev": "nodemon backend/app.js",
     "start": "node backend/app.js",
     "init:attendance-indexes": "node backend/scripts/initAttendanceIndexes.js",
+    "init:attendance-day-statuses": "node backend/scripts/initAttendanceDayStatuses.js",
+    "init:attendance-requests": "node backend/scripts/initAttendanceRequests.js",
     "init:gps-attendance": "node backend/scripts/initGpsAttendance.js",
     "init:shift-module": "node backend/scripts/initShiftModule.js",
     "init:device-module": "node backend/scripts/initDeviceModule.js",

@@ -27,6 +27,7 @@ import {
     getShiftSchedulesForEmployeesOnDate
 } from "../services/shiftScheduleService.js";
 import { writeAttendanceAuditLog } from "../services/attendanceAuditService.js";
+import * as AttendanceDayStatusModel from "../models/AttendanceDayStatusModel.js";
 import {
     AttendanceGpsError,
     getSettings as getAttendanceGpsSettings,
@@ -276,19 +277,44 @@ export const gpsAttendance = async (req, res) => {
 
 // Bảng chấm công theo ngày, bao gồm cả nhân viên chưa chấm công.
 const getAttendanceCheck = (date, row, evaluation, now = new Date()) => {
+    const toMinutes = (value) => {
+        if (value instanceof Date) return value.getHours() * 60 + value.getMinutes();
+        const match = String(value || "").match(/(\d{1,2}):(\d{2})/);
+        return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+    };
+    const expectedEndMinutes = toMinutes(evaluation?.expectedEnd);
+    const checkOutMinutes = toMinutes(row.check_out);
+    const overtimeMinutes = expectedEndMinutes !== null && checkOutMinutes !== null
+        ? Math.max(0, checkOutMinutes - expectedEndMinutes)
+        : 0;
+
+    if (row.day_status === "leave") {
+        return { code: "leave", label: "Nghỉ phép", detail: row.day_status_note || "Đã ghi nhận nghỉ phép.", needsReview: false, overtimeMinutes };
+    }
+    if (row.day_status === "business_trip") {
+        return { code: "business_trip", label: "Công tác", detail: row.day_status_note || "Đã ghi nhận công tác.", needsReview: false, overtimeMinutes };
+    }
+    if (row.day_status === "overtime") {
+        const overtimeRange = row.overtime_start_time && row.overtime_end_time
+            ? `${row.overtime_start_time}–${row.overtime_end_time}`
+            : null;
+        return {
+            code: "overtime",
+            label: overtimeRange ? `Tăng ca ${overtimeRange}` : overtimeMinutes ? `Tăng ca ${overtimeMinutes} phút` : "Tăng ca",
+            detail: [row.day_status_note || "Đã ghi nhận tăng ca.", overtimeRange].filter(Boolean).join(" · "),
+            needsReview: false,
+            overtimeMinutes
+        };
+    }
     if (!evaluation?.assigned) {
-        return { code: "no_schedule", label: "Chưa phân ca", detail: "Chưa có ca làm được phân cho ngày này.", needsReview: false };
+        return { code: "no_schedule", label: "Chưa phân ca", detail: "Chưa có ca làm được phân cho ngày này.", needsReview: false, overtimeMinutes };
     }
     if (!evaluation.isWorkingDay) {
-        return { code: "day_off", label: "Ngày nghỉ", detail: "Không có lịch làm việc trong ngày này.", needsReview: false };
+        return { code: "day_off", label: "Ngày nghỉ", detail: "Không có lịch làm việc trong ngày này.", needsReview: false, overtimeMinutes };
     }
 
     const today = getTodayDateString(now);
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const toMinutes = (value) => {
-        const match = String(value || "").match(/^(\d{1,2}):(\d{2})/);
-        return match ? Number(match[1]) * 60 + Number(match[2]) : null;
-    };
     const startMinutes = toMinutes(evaluation.expectedStart);
     const endMinutes = toMinutes(evaluation.expectedEnd);
     const isPastDate = date < today;
@@ -297,17 +323,17 @@ const getAttendanceCheck = (date, row, evaluation, now = new Date()) => {
     const hasEnded = isPastDate || (!isFutureDate && endMinutes !== null && currentMinutes >= endMinutes);
 
     if (!row.check_in) {
-        if (!hasStarted) return { code: "not_due", label: "Chưa đến giờ", detail: "Ca làm chưa bắt đầu.", needsReview: false };
-        if (hasEnded) return { code: "absent", label: "Vắng mặt", detail: "Đã hết ca nhưng chưa có lượt check-in.", needsReview: true };
-        return { code: "not_checked_in", label: "Chưa check-in", detail: "Ca đã bắt đầu nhưng chưa ghi nhận check-in.", needsReview: true };
+        if (!hasStarted) return { code: "not_due", label: "Chưa đến giờ", detail: "Ca làm chưa bắt đầu.", needsReview: false, overtimeMinutes };
+        if (hasEnded) return { code: "absent", label: "Vắng mặt", detail: "Đã hết ca nhưng chưa có lượt check-in.", needsReview: true, overtimeMinutes };
+        return { code: "not_checked_in", label: "Chưa check-in", detail: "Ca đã bắt đầu nhưng chưa ghi nhận check-in.", needsReview: true, overtimeMinutes };
     }
 
     if (!row.check_out) {
-        if (hasEnded) return { code: "missing_checkout", label: "Thiếu check-out", detail: "Đã hết ca nhưng chưa có lượt check-out.", needsReview: true };
-        return { code: "in_progress", label: "Đang làm", detail: "Đã check-in, đang trong ca làm.", needsReview: false };
+        if (hasEnded) return { code: "missing_checkout", label: "Thiếu check-out", detail: "Đã hết ca nhưng chưa có lượt check-out.", needsReview: true, overtimeMinutes };
+        return { code: "in_progress", label: "Đang làm", detail: "Đã check-in, đang trong ca làm.", needsReview: false, overtimeMinutes };
     }
 
-    return { code: "complete", label: "Đã hoàn tất", detail: "Đã ghi nhận đủ check-in và check-out.", needsReview: false };
+    return { code: "complete", label: "Đã hoàn tất", detail: "Đã ghi nhận đủ check-in và check-out.", needsReview: false, overtimeMinutes };
 };
 
 export const getAttendanceData = async (req, res) => {
@@ -342,7 +368,7 @@ export const getAttendanceData = async (req, res) => {
             });
         }
 
-        const auditStatuses = ["absent", "missing_checkout", "no_schedule", "needs_review"];
+        const auditStatuses = ["absent", "missing_checkout", "no_schedule", "needs_review", "overtime", "leave", "business_trip", "late", "early_leave"];
         const [rows, departments, shifts] = await Promise.all([
             getRosterForDate({ date, search, department, status: auditStatuses.includes(status) ? "all" : status, shiftId }),
             getDepartments(),
@@ -368,8 +394,25 @@ export const getAttendanceData = async (req, res) => {
                     schedule
                 });
 
+                const toMinutes = (value) => {
+                    const match = String(value || "").match(/^(\d{1,2}):(\d{2})/);
+                    return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+                };
+                const hasScheduledShift = evaluation.assigned && evaluation.isWorkingDay;
+                const regularMinutes = hasScheduledShift
+                    ? Number(evaluation.workMinutes) || 0
+                    : row.check_in && row.check_out ? (Number(row.total_hours) || 0) * 60 : 0;
+                const overtimeStart = row.day_status === "overtime" ? toMinutes(row.overtime_start_time) : null;
+                const overtimeEnd = row.day_status === "overtime" ? toMinutes(row.overtime_end_time) : null;
+                const approvedOvertimeMinutes = overtimeStart !== null && overtimeEnd !== null && overtimeEnd > overtimeStart
+                    ? overtimeEnd - overtimeStart
+                    : 0;
+
                 return {
                     ...row,
+                    regular_hours: Number((regularMinutes / 60).toFixed(2)),
+                    overtime_hours: Number((approvedOvertimeMinutes / 60).toFixed(2)),
+                    total_hours: Number(((regularMinutes + approvedOvertimeMinutes) / 60).toFixed(2)),
                     face_registered: Boolean(row.face_profile_id),
                     evaluation,
                     attendance_check: getAttendanceCheck(date, row, evaluation)
@@ -378,9 +421,12 @@ export const getAttendanceData = async (req, res) => {
         );
 
         const filteredEmployees = auditStatuses.includes(status)
-            ? employees.filter((employee) => status === "needs_review"
-                ? employee.attendance_check.needsReview
-                : employee.attendance_check.code === status)
+            ? employees.filter((employee) => {
+                if (status === "needs_review") return employee.attendance_check.needsReview;
+                if (status === "late") return Boolean(employee.evaluation?.isLate);
+                if (status === "early_leave") return Boolean(employee.evaluation?.isEarlyLeave);
+                return employee.attendance_check.code === status;
+            })
             : employees;
 
         const stats = filteredEmployees.reduce((totals, row) => {
@@ -390,8 +436,13 @@ export const getAttendanceData = async (req, res) => {
             if (row.check_in && row.evaluation.isLate) totals.late += 1;
             if (row.check_out && row.evaluation.isEarlyLeave) totals.earlyLeave += 1;
             if (row.record_source === "device") totals.deviceRecords += 1;
-            if (!row.check_in) totals.notCheckedIn += 1;
+            if (!row.check_in && !["leave", "business_trip"].includes(row.attendance_check.code)) {
+                totals.notCheckedIn += 1;
+            }
             if (row.attendance_check.needsReview) totals.needsReview += 1;
+            if (row.attendance_check.code === "overtime") totals.overtime += 1;
+            if (row.attendance_check.code === "leave") totals.leave += 1;
+            if (row.attendance_check.code === "business_trip") totals.businessTrip += 1;
             return totals;
         }, {
             total: 0,
@@ -401,7 +452,10 @@ export const getAttendanceData = async (req, res) => {
             earlyLeave: 0,
             deviceRecords: 0,
             notCheckedIn: 0,
-            needsReview: 0
+            needsReview: 0,
+            overtime: 0,
+            leave: 0,
+            businessTrip: 0
         });
 
         return res.status(200).json({
@@ -420,6 +474,51 @@ export const getAttendanceData = async (req, res) => {
             code: "ATTENDANCE_LIST_ERROR",
             message: "Không thể tải bảng chấm công. Vui lòng thử lại."
         });
+    }
+};
+
+export const saveDayStatus = async (req, res) => {
+    const employeeId = Number(req.body?.employeeId);
+    const workDate = String(req.body?.date || "").trim();
+    const requestedStatus = String(req.body?.status || "").trim();
+    const status = requestedStatus === "clear" ? "" : requestedStatus;
+    const note = String(req.body?.note || "").trim();
+    const allowedStatuses = ["", "leave", "business_trip"];
+
+    if (!Number.isSafeInteger(employeeId) || employeeId <= 0) {
+        return res.status(400).json({ success: false, message: "Mã nhân viên không hợp lệ." });
+    }
+    if (!isValidDateString(workDate)) {
+        return res.status(400).json({ success: false, message: "Ngày chấm công không hợp lệ." });
+    }
+    if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({ success: false, message: "Tăng ca cần được ghi nhận bằng đơn tăng ca; trạng thái khác không được hỗ trợ." });
+    }
+    if (note.length > 500) {
+        return res.status(400).json({ success: false, message: "Ghi chú không vượt quá 500 ký tự." });
+    }
+
+    try {
+        const employee = await findEmployeeFullById(employeeId);
+        if (!employee) return res.status(404).json({ success: false, message: "Không tìm thấy nhân viên." });
+
+        await AttendanceDayStatusModel.save({
+            employeeId,
+            workDate,
+            status,
+            note,
+            updatedBy: req.session.user?.username || null
+        });
+        return res.json({ success: true, message: status ? "Đã cập nhật trạng thái ngày công." : "Đã xóa trạng thái bổ sung." });
+    } catch (error) {
+        console.error("Lỗi cập nhật trạng thái ngày công:", error);
+        if (error.code === "REQUEST_LINKED_STATUS") {
+            return res.status(409).json({ success: false, message: error.message });
+        }
+        if (error.code === "OVERTIME_REQUEST_REQUIRED") {
+            return res.status(409).json({ success: false, message: error.message });
+        }
+        return res.status(500).json({ success: false, message: "Không thể lưu trạng thái ngày công." });
     }
 };
 
