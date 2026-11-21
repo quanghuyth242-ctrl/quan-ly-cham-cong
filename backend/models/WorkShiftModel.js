@@ -67,6 +67,39 @@ export const findByCode = async (shiftCode, excludeId = null) => {
     return rows[0] || null;
 };
 
+export const findAvailableCode = async (baseCode) => {
+    const [rows] = await db.execute(
+        `SELECT shift_code
+           FROM work_shifts
+          WHERE shift_code = ?
+             OR shift_code LIKE ?`,
+        [baseCode, `${baseCode}-%`]
+    );
+    const usedCodes = new Set(rows.map((row) => String(row.shift_code || "").toUpperCase()));
+    if (!usedCodes.has(baseCode)) return baseCode;
+
+    let suffix = 2;
+    while (usedCodes.has(`${baseCode}-${suffix}`)) suffix += 1;
+    return `${baseCode}-${suffix}`;
+};
+
+export const findNextSequentialCode = async (prefix = "CA") => {
+    const [rows] = await db.execute(
+        "SELECT shift_code FROM work_shifts WHERE shift_code LIKE ?",
+        [`${prefix}%`]
+    );
+    const usedNumbers = new Set(
+        rows.flatMap((row) => {
+            const match = String(row.shift_code || "").toUpperCase().match(new RegExp(`^${prefix}(\\d+)$`));
+            return match ? [Number(match[1])] : [];
+        })
+    );
+
+    let sequence = 1;
+    while (usedNumbers.has(sequence)) sequence += 1;
+    return `${prefix}${String(sequence).padStart(3, "0")}`;
+};
+
 export const findActive = async () => {
     const sql = `${BASE_SELECT} WHERE s.status = 1 ORDER BY s.shift_code ASC`;
     const [rows] = await db.execute(sql);

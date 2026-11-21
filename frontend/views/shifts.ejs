@@ -19,7 +19,7 @@
         <nav class="flex items-center p-1 rounded-xl bg-surface-container-high" aria-label="Chuyển mục ca và lịch trực">
             <a href="/admin/shifts" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-lg bg-surface-container-lowest text-primary shadow-sm font-label-md text-label-md">
                 <span class="material-symbols-outlined text-[18px]">schedule</span>
-                Quản lý ca
+                Danh sách ca
             </a>
             <a href="/admin/shift-assignments" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-lg text-on-surface-variant hover:text-primary font-label-md text-label-md transition-colors">
                 <span class="material-symbols-outlined text-[18px]">calendar_month</span>
@@ -154,7 +154,7 @@
                             <td class="py-space-md px-space-md">
                                 <div class="flex flex-col">
                                     <span class="font-label-md text-label-md text-on-surface font-semibold"><%= shift.shift_name %></span>
-                                    <span class="font-body-sm text-body-sm text-on-surface-variant"><%= shift.assignment_count %> phân ca đang sử dụng</span>
+                                    <span class="font-body-sm text-body-sm text-on-surface-variant"><%= shift.assignment_count %> lượt phân ca</span>
                                 </div>
                             </td>
                             <td class="py-space-md px-space-md">
@@ -261,43 +261,43 @@
             </div>
 
             <form id="shift-form" action="/admin/shifts/create" method="POST" class="p-space-xl flex flex-col gap-space-lg">
-                <div id="shift-form-error" class="hidden items-start gap-space-sm p-space-md rounded-xl bg-error-container/60 border border-error/30 text-on-error-container text-body-md">
+                <div id="shift-form-error" class="<%= formFeedback ? 'flex' : 'hidden' %> items-start gap-space-sm p-space-md rounded-xl bg-error-container/60 border border-error/30 text-on-error-container text-body-md" role="alert">
                     <span class="material-symbols-outlined text-[20px]">error</span>
-                    <span id="shift-form-error-text"></span>
+                    <span id="shift-form-error-text"><%= formFeedback?.error || '' %></span>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
                     <div class="flex flex-col gap-space-xs">
                         <label class="font-label-sm text-label-sm text-on-surface" for="shift_code">Mã ca <span class="text-error">*</span></label>
-                        <input class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="shift_code" name="shift_code" placeholder="VD: CA001" pattern="[A-Za-z0-9_-]{2,50}" maxlength="50" required type="text">
-                        <span class="font-body-sm text-body-sm text-on-surface-variant">Chữ, số, gạch ngang hoặc gạch dưới.</span>
+                        <input class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container read-only:cursor-not-allowed read-only:bg-surface-container-high" id="shift_code" name="shift_code" value="<%= formFeedback?.values?.shift_code || '' %>" placeholder="Đang tạo mã..." pattern="[A-Za-z0-9_-]{2,50}" maxlength="50" required readonly type="text" aria-describedby="shift-code-hint">
+                        <span id="shift-code-hint" class="font-body-sm text-body-sm text-on-surface-variant">Mã ca được hệ thống tạo tự động và không thể chỉnh sửa.</span>
                     </div>
 
                     <div class="flex flex-col gap-space-xs">
                         <label class="font-label-sm text-label-sm text-on-surface" for="shift_name">Tên ca <span class="text-error">*</span></label>
-                        <input class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="shift_name" name="shift_name" placeholder="VD: Ca hành chính" maxlength="100" required type="text">
+                        <input class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="shift_name" name="shift_name" value="<%= formFeedback?.values?.shift_name || '' %>" placeholder="VD: Ca hành chính" maxlength="100" required type="text">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
                     <div class="flex flex-col gap-space-xs">
                         <label class="font-label-sm text-label-sm text-on-surface" for="morning_start">Bắt đầu buổi sáng <span class="text-error">*</span></label>
-                        <input class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="morning_start" name="morning_start" required type="time">
+                        <input class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="morning_start" name="morning_start" value="<%= formFeedback?.values?.morning_start || '' %>" required type="time">
                     </div>
 
                     <div class="flex flex-col gap-space-xs">
                         <label class="font-label-sm text-label-sm text-on-surface" for="morning_end">Kết thúc buổi sáng <span class="text-error">*</span></label>
-                        <input class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="morning_end" name="morning_end" required type="time">
+                        <input class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="morning_end" name="morning_end" value="<%= formFeedback?.values?.morning_end || '' %>" required type="time">
                     </div>
 
                     <div class="flex flex-col gap-space-xs">
                         <label class="font-label-sm text-label-sm text-on-surface" for="afternoon_start">Bắt đầu buổi chiều <span class="text-error">*</span></label>
-                        <input class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="afternoon_start" name="afternoon_start" required type="time">
+                        <input class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="afternoon_start" name="afternoon_start" value="<%= formFeedback?.values?.afternoon_start || '' %>" required type="time">
                     </div>
 
                     <div class="flex flex-col gap-space-xs">
                         <label class="font-label-sm text-label-sm text-on-surface" for="afternoon_end">Kết thúc buổi chiều <span class="text-error">*</span></label>
-                        <input class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="afternoon_end" name="afternoon_end" required type="time">
+                        <input class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="afternoon_end" name="afternoon_end" value="<%= formFeedback?.values?.afternoon_end || '' %>" required type="time">
                     </div>
                 </div>
 
@@ -306,7 +306,7 @@
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-space-sm">
                         <% Object.entries(weekdayLabels).forEach(([value, label]) => { %>
                             <label class="flex items-center gap-space-sm px-space-md py-space-sm bg-surface-container-low hover:bg-surface-container rounded-xl cursor-pointer transition-colors">
-                                <input class="w-4 h-4 accent-primary" name="workdays" value="<%= value %>" type="checkbox">
+                                <input class="w-4 h-4 accent-primary" name="workdays" value="<%= value %>" <%= formFeedback ? (formFeedback.values.workdays.includes(Number(value)) ? 'checked' : '') : (value !== '7' ? 'checked' : '') %> type="checkbox">
                                 <span class="font-body-sm text-body-sm text-on-surface"><%= label %></span>
                             </label>
                         <% }) %>
@@ -316,8 +316,8 @@
                 <div class="flex flex-col gap-space-xs">
                     <label class="font-label-sm text-label-sm text-on-surface" for="shift_status">Trạng thái</label>
                     <select class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="shift_status" name="status">
-                        <option value="1">Đang hoạt động</option>
-                        <option value="0">Ngừng hoạt động</option>
+                        <option value="1" <%= !formFeedback || formFeedback.values.status === '1' ? 'selected' : '' %>>Đang hoạt động</option>
+                        <option value="0" <%= formFeedback?.values?.status === '0' ? 'selected' : '' %>>Ngừng hoạt động</option>
                     </select>
                 </div>
 
@@ -342,6 +342,12 @@
         const modalTitle = document.getElementById('shift-modal-title');
         const errorBox = document.getElementById('shift-form-error');
         const errorText = document.getElementById('shift-form-error-text');
+        const shiftCodeInput = document.getElementById('shift_code');
+        const shiftCodeHint = document.getElementById('shift-code-hint');
+        let createMode = true;
+        let codeSuggestionTimer = null;
+        let codeSuggestionRequest = 0;
+        let codeSuggestionController = null;
 
         const showError = (message) => {
             errorText.textContent = message;
@@ -377,14 +383,26 @@
         const resetForm = () => {
             form.reset();
             form.action = '/admin/shifts/create';
+            createMode = true;
             modalTitle.textContent = 'Thêm ca làm việc';
+            setFieldValue('shift_code', '');
+            setFieldValue('shift_name', '');
+            setFieldValue('morning_start', '');
+            setFieldValue('morning_end', '');
+            setFieldValue('afternoon_start', '');
+            setFieldValue('afternoon_end', '');
             setFieldValue('status', '1');
+            window.clearTimeout(codeSuggestionTimer);
+            codeSuggestionRequest += 1;
+            codeSuggestionController?.abort();
+            shiftCodeHint.textContent = 'Đang lấy mã ca chưa dùng...';
             clearError();
 
             // Mặc định chọn Thứ 2 - Thứ 7 giống ca hành chính
             form.querySelectorAll('[name="workdays"]').forEach((checkbox) => {
                 checkbox.checked = checkbox.value !== '7';
             });
+            requestShiftCodeSuggestion();
         };
 
         document.getElementById('open-create-shift').addEventListener('click', () => {
@@ -416,6 +434,8 @@
             button.addEventListener('click', () => {
                 const data = button.dataset;
 
+                createMode = false;
+                shiftCodeHint.textContent = 'Mã ca cố định, không thể chỉnh sửa.';
                 form.action = `/admin/shifts/${data.id}/update`;
                 modalTitle.textContent = 'Chỉnh sửa ca làm việc';
 
@@ -436,6 +456,36 @@
                 openModal();
             });
         });
+
+        const requestShiftCodeSuggestion = () => {
+            window.clearTimeout(codeSuggestionTimer);
+            codeSuggestionRequest += 1;
+            const requestId = codeSuggestionRequest;
+            codeSuggestionController?.abort();
+
+            if (!createMode) return;
+
+            shiftCodeInput.value = '';
+            shiftCodeHint.textContent = 'Đang tìm mã ca chưa sử dụng...';
+            codeSuggestionTimer = window.setTimeout(async () => {
+                const controller = new AbortController();
+                codeSuggestionController = controller;
+                try {
+                    const response = await fetch('/admin/shifts/suggest-code', {
+                        headers: { Accept: 'application/json' },
+                        signal: controller.signal
+                    });
+                    const payload = await response.json();
+                    if (requestId !== codeSuggestionRequest || !createMode) return;
+                    if (!response.ok || !payload.success) throw new Error(payload.message || 'Không thể tạo mã gợi ý.');
+                    shiftCodeInput.value = payload.code;
+                    shiftCodeHint.textContent = `Mã ${payload.code} được hệ thống tạo tự động và không thể chỉnh sửa.`;
+                } catch (error) {
+                    if (error.name === 'AbortError' || requestId !== codeSuggestionRequest) return;
+                    shiftCodeHint.textContent = error.message || 'Không thể tạo mã gợi ý.';
+                }
+            }, 250);
+        };
 
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
@@ -475,6 +525,11 @@
                 showError('Vui lòng chọn ít nhất một ngày làm việc trong tuần.');
             }
         });
+
+        <% if (formFeedback) { %>
+            openModal();
+            document.getElementById('shift_code').focus();
+        <% } %>
     });
 </script>
 

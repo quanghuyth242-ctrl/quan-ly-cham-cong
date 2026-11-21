@@ -30,6 +30,17 @@ const parseWorkdays = (raw) => {
     )].sort((a, b) => a - b);
 };
 
+const getShiftFormValues = (body = {}) => ({
+    shift_code: String(body.shift_code || "").trim().slice(0, 50),
+    shift_name: String(body.shift_name || "").trim().slice(0, 100),
+    morning_start: String(body.morning_start || "").trim().slice(0, 5),
+    morning_end: String(body.morning_end || "").trim().slice(0, 5),
+    afternoon_start: String(body.afternoon_start || "").trim().slice(0, 5),
+    afternoon_end: String(body.afternoon_end || "").trim().slice(0, 5),
+    status: String(body.status) === "0" ? "0" : "1",
+    workdays: parseWorkdays(body.workdays)
+});
+
 const redirectWith = (res, path, { success = null, error = null } = {}) => {
     const params = new URLSearchParams();
 
@@ -124,8 +135,11 @@ const validateShift = async (body, excludeId = null) => {
 };
 
 export const index = async (req, res) => {
+    const formFeedback = req.session.shiftCreateFeedback || null;
+    delete req.session.shiftCreateFeedback;
+
     try {
-        const search = String(req.query.search || "").trim();
+        const search = String(req.query.search || "").trim().slice(0, 100);
         const status = ["1", "0"].includes(String(req.query.status))
             ? String(req.query.status)
             : "";
@@ -141,6 +155,7 @@ export const index = async (req, res) => {
             stats,
             filters: { search, status },
             weekdayLabels: WEEKDAY_LABELS,
+            formFeedback,
             success: req.query.success || null,
             error: req.query.error || null
         });
@@ -153,33 +168,91 @@ export const index = async (req, res) => {
             stats: { total: 0, active: 0, inactive: 0 },
             filters: { search: "", status: "" },
             weekdayLabels: WEEKDAY_LABELS,
+            formFeedback,
             success: null,
             error: "Không thể tải danh sách ca làm việc. Vui lòng thử lại."
         });
     }
 };
 
+export const suggestCode = async (req, res) => {
+    const name = String(req.query.name || "").trim().slice(0, 100);
+
+    try {
+        let code;
+        if (!name) {
+            code = await WorkShiftModel.findNextSequentialCode("CA");
+        } else {
+            const normalizedName = name
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[đĐ]/g, "D");
+            let baseCode = normalizedName
+                .toUpperCase()
+                .replace(/[^A-Z0-9]+/g, "-")
+                .replace(/^-+|-+$/g, "")
+                .slice(0, 40)
+                .replace(/-+$/g, "");
+            if (baseCode.length < 2) baseCode = `${baseCode || "CA"}-CA`;
+            code = await WorkShiftModel.findAvailableCode(baseCode);
+        }
+        return res.json({ success: true, code });
+    } catch (error) {
+        console.error("Không thể tạo mã ca gợi ý:", error);
+        return res.status(500).json({ success: false, message: "Không thể tạo mã ca tự động." });
+    }
+};
+
 export const create = async (req, res) => {
     try {
-        const { data, errors } = await validateShift(req.body);
+        const generatedCode = await WorkShiftModel.findNextSequentialCode("CA");
+        const { data, errors } = await validateShift({
+            ...req.body,
+            shift_code: generatedCode
+        });
 
         if (errors.length > 0) {
-            return redirectWith(res, "/admin/shifts", { error: errors.join(" ") });
+            const values = getShiftFormValues({ ...req.body, shift_code: generatedCode });
+            const duplicateCode = errors.some((error) => error.includes("đã tồn tại"));
+            if (duplicateCode) {
+                values.shift_code = await WorkShiftModel.findNextSequentialCode("CA");
+            }
+            req.session.shiftCreateFeedback = {
+                values,
+                error: duplicateCode
+                    ? `Mã ca vừa chọn đã tồn tại. Hệ thống đã cấp mã mới ${values.shift_code}.`
+                    : errors.join(" ")
+            };
+            return redirectWith(res, "/admin/shifts");
         }
 
         await WorkShiftModel.create(data);
 
+        delete req.session.shiftCreateFeedback;
         redirectWith(res, "/admin/shifts", {
             success: `Đã thêm ca làm việc "${data.shift_name}".`
         });
     } catch (error) {
         console.log("Lỗi thêm ca:", error);
 
-        const message = error.code === "ER_DUP_ENTRY"
+        let message = error.code === "ER_DUP_ENTRY"
             ? "Mã ca đã tồn tại, vui lòng chọn mã khác."
             : "Không thể thêm ca làm việc. Vui lòng thử lại.";
 
-        redirectWith(res, "/admin/shifts", { error: message });
+        const values = getShiftFormValues(req.body);
+        if (error.code === "ER_DUP_ENTRY") {
+            try {
+                values.shift_code = await WorkShiftModel.findNextSequentialCode("CA");
+                message = `Mã ca vừa được sử dụng ở thao tác khác. Hệ thống đã cấp mã mới ${values.shift_code}.`;
+            } catch {
+                // Nếu kho dữ liệu tạm thời không phản hồi, giữ nguyên các dữ liệu form để admin thử lại.
+            }
+        }
+        req.session.shiftCreateFeedback = {
+            values,
+            error: message
+        };
+        redirectWith(res, "/admin/shifts");
     }
 };
 
@@ -193,7 +266,10 @@ export const update = async (req, res) => {
             });
         }
 
-        const { data, errors } = await validateShift(req.body, shift.id);
+        const { data, errors } = await validateShift({
+            ...req.body,
+            shift_code: shift.shift_code
+        }, shift.id);
 
         if (errors.length > 0) {
             return redirectWith(res, "/admin/shifts", { error: errors.join(" ") });
