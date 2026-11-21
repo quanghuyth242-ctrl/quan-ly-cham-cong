@@ -10,22 +10,24 @@
         </div>
         <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Đơn nghỉ &amp; Giải trình</h2>
         <p class="font-body-md text-body-md text-on-surface-variant">
-            Tạo và quản lý đơn xin nghỉ, nghỉ việc và đơn giải trình chấm công trong một nơi tập trung.
+            Nhân viên gửi đơn nghỉ phép và nghỉ việc; admin theo dõi, duyệt hoặc từ chối tại danh sách đơn.
         </p>
     </div>
 
     <div class="flex flex-wrap gap-space-sm self-start lg:self-auto">
-        <a href="/admin/requests?tab=leave" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors <%= activeTab === 'leave' ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high' %>">
-            <span class="material-symbols-outlined text-[18px]">event_busy</span>
-            <span>Tạo đơn nghỉ</span>
-        </a>
         <a href="/admin/requests?tab=explanation" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors <%= activeTab === 'explanation' ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high' %>">
             <span class="material-symbols-outlined text-[18px]">edit_document</span>
             <span>Tạo giải trình</span>
         </a>
+        <a href="/admin/requests?tab=business_trip" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors <%= activeTab === 'business_trip' ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high' %>">
+            <span class="material-symbols-outlined text-[18px]">luggage</span><span>Tạo đơn công tác</span>
+        </a>
+        <a href="/admin/requests?tab=overtime" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors <%= activeTab === 'overtime' ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high' %>">
+            <span class="material-symbols-outlined text-[18px]">more_time</span><span>Gửi đơn tăng ca</span>
+        </a>
         <a href="/admin/requests?tab=list" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors <%= activeTab === 'list' ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high' %>">
             <span class="material-symbols-outlined text-[18px]">fact_check</span>
-            <span>Danh sách đơn</span>
+            <span>Duyệt &amp; danh sách đơn</span>
         </a>
     </div>
 </section>
@@ -43,7 +45,7 @@
 
     <div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex items-center justify-between">
         <div class="flex flex-col">
-            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Chờ duyệt</span>
+            <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Chờ xử lý</span>
             <span class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs"><%= stats.pending %></span>
         </div>
         <div class="w-11 h-11 rounded-xl bg-secondary-fixed text-secondary flex items-center justify-center">
@@ -72,113 +74,52 @@
     </div>
 </section>
 
-<% if (activeTab === "leave") { %>
+<% if (activeTab === "business_trip") { %>
 <section class="grid grid-cols-1 xl:grid-cols-3 gap-space-xl items-start">
-    <div class="xl:col-span-2 bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-        <div class="p-space-xl border-b border-surface-container-high flex items-center justify-between gap-space-md">
-            <div>
-                <h3 class="font-headline-md text-headline-md text-primary font-semibold">Tạo đơn xin nghỉ / nghỉ việc</h3>
-                <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Điền đầy đủ thông tin để gửi đơn cho quản lý phê duyệt.</p>
-            </div>
-            <span class="hidden sm:inline-flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm">
-                <span class="material-symbols-outlined text-[16px]">info</span>
-                Giao diện demo
-            </span>
-        </div>
-
-        <form id="leave-form" action="/admin/requests/leave" method="POST" class="p-space-xl flex flex-col gap-space-lg">
-            <div id="leave-form-error" class="hidden items-start gap-space-sm p-space-md rounded-xl bg-error-container/60 border border-error/30 text-on-error-container text-body-md">
-                <span class="material-symbols-outlined text-[20px]">error</span>
-                <span id="leave-form-error-text"></span>
-            </div>
-
+    <article class="xl:col-span-2 bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <div class="p-space-xl border-b border-surface-container-high"><h3 class="font-headline-md text-headline-md text-primary font-semibold">Điều động nhân viên công tác</h3><p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Nhân viên cần xác nhận đồng ý. Sau khi xác nhận, hệ thống mới ghi nhận đủ giờ theo ca cho các ngày làm việc trong khoảng công tác.</p></div>
+        <form action="/admin/requests/business-trip" method="POST" class="p-space-xl flex flex-col gap-space-lg">
+            <label class="flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm text-on-surface">Nhân viên <span class="text-error">*</span></span>
+                <select name="employee_id" required class="w-full bg-surface-container-low text-on-surface font-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+                    <option value="">-- Chọn nhân viên --</option><% employees.forEach((employee) => { %><option value="<%= employee.id %>"><%= employee.employee_code %> · <%= employee.full_name %><%= employee.department ? ` · ${employee.department}` : "" %></option><% }); %>
+                </select>
+            </label>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
-                <div class="flex flex-col gap-space-xs">
-                    <label class="font-label-sm text-label-sm text-on-surface" for="leave_type">Loại đơn <span class="text-error">*</span></label>
-                    <div class="relative">
-                        <select id="leave_type" name="leave_type" required class="w-full appearance-none bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
-                            <option value="">-- Chọn loại đơn --</option>
-                            <option value="annual">Nghỉ phép năm</option>
-                            <option value="sick">Nghỉ ốm</option>
-                            <option value="unpaid">Nghỉ không lương</option>
-                            <option value="personal">Nghỉ việc riêng</option>
-                            <option value="resignation">Nghỉ việc (thôi việc)</option>
-                        </select>
-                        <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
-                    </div>
-                </div>
-
-                <div class="flex flex-col gap-space-xs">
-                    <label class="font-label-sm text-label-sm text-on-surface" for="leave_shift">Ca / bộ phận áp dụng</label>
-                    <input id="leave_shift" name="shift" type="text" placeholder="VD: Hành chính, Ca sáng..." class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
-                </div>
+                <label class="flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm text-on-surface">Từ ngày <span class="text-error">*</span></span><input name="from_date" type="date" required class="bg-surface-container-low px-space-md py-space-sm rounded-xl"></label>
+                <label class="flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm text-on-surface">Đến ngày <span class="text-error">*</span></span><input name="to_date" type="date" required class="bg-surface-container-low px-space-md py-space-sm rounded-xl"></label>
             </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
-                <div class="flex flex-col gap-space-xs">
-                    <label class="font-label-sm text-label-sm text-on-surface" for="leave_from">Từ ngày <span class="text-error">*</span></label>
-                    <input id="leave_from" name="from_date" required type="date" class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
-                </div>
-
-                <div class="flex flex-col gap-space-xs">
-                    <label class="font-label-sm text-label-sm text-on-surface" for="leave_to">Đến ngày <span class="text-error">*</span></label>
-                    <input id="leave_to" name="to_date" required type="date" class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
-                <div class="flex flex-col gap-space-xs">
-                    <label class="font-label-sm text-label-sm text-on-surface" for="leave_contact">Số điện thoại liên hệ</label>
-                    <input id="leave_contact" name="contact_phone" type="tel" placeholder="VD: 0912 345 678" class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
-                </div>
-
-                <div class="flex flex-col gap-space-xs">
-                    <label class="font-label-sm text-label-sm text-on-surface" for="leave_handover">Người bàn giao công việc</label>
-                    <input id="leave_handover" name="handover_to" type="text" placeholder="Họ tên / mã nhân viên" class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
-                </div>
-            </div>
-
-            <div class="flex flex-col gap-space-xs">
-                <label class="font-label-sm text-label-sm text-on-surface" for="leave_reason">Lý do nghỉ <span class="text-error">*</span></label>
-                <textarea id="leave_reason" name="reason" required rows="5" placeholder="Mô tả rõ lý do xin nghỉ, thời gian bàn giao và ghi chú cần thiết..." class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container resize-y"></textarea>
-                <span class="font-body-sm text-body-sm text-on-surface-variant">Tối thiểu 10 ký tự. Với đơn nghỉ việc, vui lòng nêu ngày làm việc cuối cùng và kế hoạch bàn giao.</span>
-            </div>
-
-            <div class="flex flex-col gap-space-xs">
-                <label class="font-label-sm text-label-sm text-on-surface" for="leave_attachment">Tệp đính kèm (nếu có)</label>
-                <input id="leave_attachment" name="attachment" type="file" class="block w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm px-space-md py-space-sm rounded-xl file:mr-space-md file:py-1 file:px-space-sm file:rounded-lg file:border-0 file:bg-primary-fixed file:text-primary file:font-label-sm">
-                <span class="font-body-sm text-body-sm text-on-surface-variant">Hỗ trợ minh chứng như giấy khám bệnh, đơn đề nghị, biên bản bàn giao...</span>
-            </div>
-
-            <div class="flex items-center justify-end gap-space-sm pt-space-md border-t border-surface-container-high">
-                <button type="reset" class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md rounded-xl transition-colors">Làm mới</button>
-                <button type="submit" class="flex items-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl shadow-md transition-colors">
-                    <span class="material-symbols-outlined text-[18px]">send</span>
-                    <span>Gửi đơn nghỉ</span>
-                </button>
-            </div>
+            <label class="flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm text-on-surface">Địa điểm công tác <span class="text-error">*</span></span><input name="destination" required maxlength="255" placeholder="Ví dụ: Chi nhánh Đà Nẵng" class="bg-surface-container-low px-space-md py-space-sm rounded-xl"></label>
+            <label class="flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm text-on-surface">Nội dung / lý do <span class="text-error">*</span></span><textarea name="reason" required minlength="10" maxlength="5000" rows="4" placeholder="Mục tiêu, lịch trình hoặc nội dung công tác..." class="bg-surface-container-low px-space-md py-space-sm rounded-xl resize-y"></textarea></label>
+            <div class="flex justify-end border-t border-surface-container-high pt-space-md"><button type="submit" <%= employees.length === 0 ? "disabled" : "" %> class="flex items-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md rounded-xl disabled:opacity-50"><span class="material-symbols-outlined">send</span>Gửi để nhân viên xác nhận</button></div>
         </form>
-    </div>
+    </article>
+    <aside class="bg-teal-50 border border-teal-200 p-space-xl rounded-xl"><div class="flex items-start gap-space-sm"><span class="material-symbols-outlined text-teal-700">info</span><div><h4 class="font-headline-sm text-headline-sm text-teal-900">Cập nhật sau khi nhân viên đồng ý</h4><p class="font-body-sm text-teal-900 mt-space-sm">Đơn được gửi đến nhân viên để xác nhận. Khi nhân viên đồng ý, hệ thống ghi nhận giờ check-in/check-out theo ca đã phân cho các ngày làm việc; ngày nghỉ theo lịch không tạo công.</p><p class="font-body-sm text-teal-900 mt-space-sm">Nếu nhân viên từ chối, hệ thống giữ nguyên chấm công.</p></div></div></aside>
+</section>
+<% } %>
 
-    <aside class="flex flex-col gap-space-lg">
-        <div class="bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
-            <h4 class="font-headline-sm text-headline-sm text-primary font-semibold mb-space-md">Hướng dẫn nhanh</h4>
-            <ul class="flex flex-col gap-space-sm text-body-sm text-on-surface-variant">
-                <li class="flex gap-space-sm"><span class="material-symbols-outlined text-secondary text-[18px] mt-0.5">check_circle</span><span><strong>Nghỉ phép:</strong> gửi trước ít nhất 1 ngày làm việc (trừ trường hợp khẩn cấp).</span></li>
-                <li class="flex gap-space-sm"><span class="material-symbols-outlined text-secondary text-[18px] mt-0.5">check_circle</span><span><strong>Nghỉ ốm:</strong> đính kèm giấy xác nhận y tế nếu nghỉ từ 2 ngày trở lên.</span></li>
-                <li class="flex gap-space-sm"><span class="material-symbols-outlined text-secondary text-[18px] mt-0.5">check_circle</span><span><strong>Nghỉ việc:</strong> ghi rõ ngày làm việc cuối cùng, lý do và người nhận bàn giao.</span></li>
-            </ul>
-        </div>
-        <div class="bg-surface-container-low p-space-lg rounded-xl">
-            <div class="flex items-start gap-space-sm">
-                <span class="material-symbols-outlined text-primary text-[20px]">shield_person</span>
-                <div class="flex flex-col gap-space-xs">
-                    <span class="font-label-md text-label-md text-on-surface">Lưu ý phê duyệt</span>
-                    <span class="font-body-sm text-body-sm text-on-surface-variant">Đơn sau khi gửi sẽ ở trạng thái <strong>Chờ duyệt</strong>. Quản lý có thể yêu cầu bổ sung thông tin trước khi phê duyệt.</span>
-                </div>
+<% if (activeTab === "overtime") { %>
+<section class="grid grid-cols-1 xl:grid-cols-3 gap-space-xl items-start">
+    <article class="xl:col-span-2 bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <div class="p-space-xl border-b border-surface-container-high"><h3 class="font-headline-md text-headline-md text-primary font-semibold">Gửi đơn tăng ca</h3><p class="font-body-sm text-on-surface-variant mt-space-xs">Đơn chờ nhân viên xác nhận; trạng thái tăng ca chỉ cập nhật sau khi nhân viên đồng ý.</p></div>
+        <form action="/admin/requests/overtime" method="POST" class="p-space-xl flex flex-col gap-space-lg">
+            <label class="flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm text-on-surface">Nhân viên <span class="text-error">*</span></span>
+                <select name="employee_id" required class="w-full bg-surface-container-low text-on-surface font-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+                    <option value="">-- Chọn nhân viên --</option><% employees.forEach((employee) => { %><option value="<%= employee.id %>"><%= employee.employee_code %> · <%= employee.full_name %><%= employee.department ? ` · ${employee.department}` : "" %></option><% }); %>
+                </select>
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
+                <label class="flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm text-on-surface">Từ ngày <span class="text-error">*</span></span><input name="from_date" type="date" required class="bg-surface-container-low px-space-md py-space-sm rounded-xl"></label>
+                <label class="flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm text-on-surface">Đến ngày <span class="text-error">*</span></span><input name="to_date" type="date" required class="bg-surface-container-low px-space-md py-space-sm rounded-xl"></label>
             </div>
-        </div>
-    </aside>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
+                <label class="flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm text-on-surface">Giờ bắt đầu tăng ca <span class="text-error">*</span></span><input name="start_time" type="time" required class="bg-surface-container-low px-space-md py-space-sm rounded-xl"></label>
+                <label class="flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm text-on-surface">Giờ kết thúc tăng ca <span class="text-error">*</span></span><input name="end_time" type="time" required class="bg-surface-container-low px-space-md py-space-sm rounded-xl"></label>
+            </div>
+            <label class="flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm text-on-surface">Nội dung / lý do tăng ca <span class="text-error">*</span></span><textarea name="reason" required minlength="10" maxlength="5000" rows="4" placeholder="Công việc cần hoàn thành ngoài giờ..." class="bg-surface-container-low px-space-md py-space-sm rounded-xl resize-y"></textarea></label>
+            <div class="flex justify-end border-t border-surface-container-high pt-space-md"><button type="submit" <%= employees.length === 0 ? "disabled" : "" %> class="flex items-center gap-space-xs px-space-lg py-space-sm bg-violet-700 hover:bg-violet-800 text-white font-label-md rounded-xl disabled:opacity-50"><span class="material-symbols-outlined">send</span>Gửi để nhân viên xác nhận</button></div>
+        </form>
+    </article>
+    <aside class="bg-violet-50 border border-violet-200 p-space-xl rounded-xl"><div class="flex items-start gap-space-sm"><span class="material-symbols-outlined text-violet-700">info</span><div><h4 class="font-headline-sm text-headline-sm text-violet-900">Chờ nhân viên xác nhận</h4><p class="font-body-sm text-violet-900 mt-space-sm">Hệ thống lưu giờ bắt đầu và kết thúc theo đơn, nhưng chưa cập nhật bảng chấm công cho đến khi nhân viên đồng ý.</p><p class="font-body-sm text-violet-900 mt-space-sm">Nếu nhân viên từ chối, trạng thái tăng ca không được ghi nhận.</p></div></div></aside>
 </section>
 <% } %>
 
@@ -298,6 +239,7 @@
                 <select id="request-status-filter" class="w-full appearance-none bg-surface-container-low text-on-surface font-label-sm text-label-sm py-space-sm pl-space-md pr-space-xl rounded-xl outline-none cursor-pointer">
                     <option value="">Tất cả trạng thái</option>
                     <option value="pending">Chờ duyệt</option>
+                    <option value="awaiting_employee">Chờ nhân viên xác nhận</option>
                     <option value="approved">Đã duyệt</option>
                     <option value="rejected">Từ chối</option>
                 </select>
@@ -307,6 +249,8 @@
                 <select id="request-type-filter" class="w-full appearance-none bg-surface-container-low text-on-surface font-label-sm text-label-sm py-space-sm pl-space-md pr-space-xl rounded-xl outline-none cursor-pointer">
                     <option value="">Tất cả loại đơn</option>
                     <option value="leave">Nghỉ phép</option>
+                    <option value="business_trip">Công tác</option>
+                    <option value="overtime">Tăng ca</option>
                     <option value="resignation">Nghỉ việc</option>
                     <option value="explanation">Giải trình</option>
                 </select>
@@ -329,16 +273,17 @@
                     <th class="py-space-md px-space-md font-semibold">Lý do / nội dung</th>
                     <th class="py-space-md px-space-md font-semibold">Trạng thái</th>
                     <th class="py-space-md px-space-lg font-semibold text-right">Ngày tạo</th>
+                    <th class="py-space-md px-space-lg font-semibold text-right">Xử lý</th>
                 </tr>
             </thead>
             <tbody id="request-table-body" class="divide-y divide-surface-container-low text-body-sm text-on-surface">
                 <% if (requests.length === 0) { %>
                     <tr>
-                        <td colspan="7" class="py-space-2xl px-space-lg text-center">
+                        <td colspan="8" class="py-space-2xl px-space-lg text-center">
                             <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
                                 <span class="material-symbols-outlined text-[40px] text-outline">inbox</span>
                                 <span class="font-label-md text-label-md">Chưa có đơn nào</span>
-                                <span class="font-body-sm text-body-sm">Tạo đơn nghỉ hoặc đơn giải trình để bắt đầu theo dõi.</span>
+                                <span class="font-body-sm text-body-sm">Tạo đơn công tác để theo dõi quy trình phê duyệt và ngày công.</span>
                             </div>
                         </td>
                     </tr>
@@ -347,13 +292,17 @@
                         <tr class="request-row hover:bg-surface-container-low/70 transition-colors align-top"
                             data-status="<%= item.status %>"
                             data-type="<%= item.type %>"
-                            data-search="<%= [item.code, item.typeLabel, item.employeeName, item.employeeId, item.reason, item.department].join(' ').toLowerCase() %>">
+                            data-search="<%= [item.code, item.typeLabel, item.employeeName, item.employeeId, item.reason, item.destination, item.department].join(' ').toLowerCase() %>">
                             <td class="py-space-md px-space-lg">
                                 <span class="inline-flex px-space-sm py-1 rounded-lg bg-primary-fixed text-primary font-data-mono text-data-mono font-semibold"><%= item.code %></span>
                             </td>
                             <td class="py-space-md px-space-md">
                                 <div class="flex items-center gap-space-xs">
-                                    <% if (item.type === 'explanation') { %>
+                                    <% if (item.type === 'overtime') { %>
+                                        <span class="material-symbols-outlined text-violet-700 text-[18px]">more_time</span>
+                                    <% } else if (item.type === 'business_trip') { %>
+                                        <span class="material-symbols-outlined text-teal-700 text-[18px]">luggage</span>
+                                    <% } else if (item.type === 'explanation') { %>
                                         <span class="material-symbols-outlined text-secondary text-[18px]">edit_document</span>
                                     <% } else if (item.type === 'resignation') { %>
                                         <span class="material-symbols-outlined text-error text-[18px]">person_remove</span>
@@ -375,10 +324,14 @@
                                     <% if (item.toDate && item.toDate !== item.fromDate) { %>
                                         <span class="font-body-sm text-body-sm text-on-surface-variant">đến <span class="font-data-mono"><%= item.toDate %></span></span>
                                     <% } %>
+                                    <% if (item.type === "overtime" && item.overtime_start_time && item.overtime_end_time) { %>
+                                        <span class="font-body-sm text-violet-700">Tăng ca <span class="font-data-mono"><%= item.overtime_start_time %>–<%= item.overtime_end_time %></span></span>
+                                    <% } %>
                                 </div>
                             </td>
                             <td class="py-space-md px-space-md max-w-[360px]">
-                                <p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2" title="<%= item.reason %>"><%= item.reason %></p>
+                                <p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2" title="<%= item.reason %>"><%= item.destination ? `${item.destination} · ` : "" %><%= item.reason %></p>
+                                <% if (item.status === "rejected") { const declineReason = item.employee_response === "rejected" ? item.employee_response_note : item.review_note; if (declineReason) { %><p class="mt-1 text-[11px] text-error"><strong>Lý do từ chối:</strong> <%= declineReason %></p><% } } %>
                             </td>
                             <td class="py-space-md px-space-md">
                                 <% if (item.status === 'approved') { %>
@@ -401,10 +354,27 @@
                             <td class="py-space-md px-space-lg text-right">
                                 <span class="font-data-mono text-[11px] text-on-surface-variant whitespace-nowrap"><%= item.createdAt %></span>
                             </td>
+                            <td class="py-space-md px-space-lg">
+                                <% if (item.canReview) { %>
+                                    <div class="flex justify-end gap-space-xs">
+                                        <form action="/admin/requests/<%= item.id %>/approve" method="POST" onsubmit="return confirm('<%= item.type === 'overtime' ? 'Duyệt đơn tăng ca và cập nhật trạng thái tăng ca vào bảng chấm công?' : item.type === 'business_trip' ? 'Duyệt đơn công tác và ghi nhận đủ công theo ca đã phân?' : 'Duyệt đơn này?' %>');">
+                                            <button class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 font-label-sm" type="submit" title="Duyệt đơn"><span class="material-symbols-outlined text-[16px]">check</span>Duyệt</button>
+                                        </form>
+                                        <details class="relative">
+                                            <summary class="list-none cursor-pointer inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-error-container hover:bg-red-100 text-error font-label-sm"><span class="material-symbols-outlined text-[16px]">close</span>Từ chối</summary>
+                                            <form action="/admin/requests/<%= item.id %>/reject" method="POST" class="absolute right-0 top-full z-20 mt-1 w-64 rounded-xl border border-surface-container-high bg-white p-3 shadow-lg">
+                                                <label class="mb-2 block text-left text-xs font-semibold text-on-surface" for="reject-reason-<%= item.id %>">Lý do từ chối (10–500 ký tự)</label>
+                                                <textarea id="reject-reason-<%= item.id %>" name="review_note" minlength="10" maxlength="500" required rows="3" class="w-full rounded-lg border border-surface-container-high p-2 text-xs" placeholder="Nhập lý do để nhân viên nắm rõ"></textarea>
+                                                <button class="mt-2 w-full rounded-lg bg-error px-3 py-2 text-xs font-semibold text-white" type="submit">Xác nhận từ chối</button>
+                                            </form>
+                                        </details>
+                                    </div>
+                                <% } else { %><span class="block text-right text-on-surface-variant">—</span><% } %>
+                            </td>
                         </tr>
                     <% }) %>
                     <tr id="request-empty-filter" class="hidden">
-                        <td colspan="7" class="py-space-2xl px-space-lg text-center">
+                        <td colspan="8" class="py-space-2xl px-space-lg text-center">
                             <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
                                 <span class="material-symbols-outlined text-[40px] text-outline">search_off</span>
                                 <span class="font-label-md text-label-md">Không tìm thấy đơn phù hợp</span>

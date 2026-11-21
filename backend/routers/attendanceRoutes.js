@@ -3,6 +3,7 @@ import express from "express";
 import {
     renderAttendancePage,
     getAttendanceData,
+    saveDayStatus,
     faceAttendance,
     manualAttendance,
     gpsAttendance,
@@ -24,6 +25,7 @@ router.get("/", requireAdmin, renderAttendancePage);
 
 // API bảng chấm công theo ngày
 router.get("/data", requireAdminApi, getAttendanceData);
+router.post("/day-status", requireAdminApi, saveDayStatus);
 
 // API chấm công bằng khuôn mặt
 router.post("/face", requireAdminApi, faceAttendance);

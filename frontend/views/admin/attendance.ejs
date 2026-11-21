@@ -228,6 +228,21 @@
     </button>
 </section>
 
+<section class="grid grid-cols-1 sm:grid-cols-3 gap-space-md" aria-label="Trạng thái đặc biệt theo ngày">
+    <button data-attendance-status-filter="overtime" class="flex items-center justify-between gap-space-md text-left bg-violet-50 border border-violet-200 hover:border-violet-400 rounded-xl p-space-md transition-colors" type="button">
+        <span class="flex items-center gap-space-sm"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-violet-700"><span class="material-symbols-outlined">more_time</span></span><span class="font-label-md text-label-md text-violet-900">Tăng ca</span></span>
+        <strong id="att-stat-overtime" class="font-headline-md text-headline-md text-violet-800">—</strong>
+    </button>
+    <button data-attendance-status-filter="leave" class="flex items-center justify-between gap-space-md text-left bg-sky-50 border border-sky-200 hover:border-sky-400 rounded-xl p-space-md transition-colors" type="button">
+        <span class="flex items-center gap-space-sm"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-sky-700"><span class="material-symbols-outlined">event_busy</span></span><span class="font-label-md text-label-md text-sky-900">Nghỉ phép</span></span>
+        <strong id="att-stat-leave" class="font-headline-md text-headline-md text-sky-800">—</strong>
+    </button>
+    <button data-attendance-status-filter="business_trip" class="flex items-center justify-between gap-space-md text-left bg-teal-50 border border-teal-200 hover:border-teal-400 rounded-xl p-space-md transition-colors" type="button">
+        <span class="flex items-center gap-space-sm"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-teal-700"><span class="material-symbols-outlined">luggage</span></span><span class="font-label-md text-label-md text-teal-900">Công tác</span></span>
+        <strong id="att-stat-business-trip" class="font-headline-md text-headline-md text-teal-800">—</strong>
+    </button>
+</section>
+
 <!-- Cảnh báo chấm công -->
 <section class="bg-amber-50/50 rounded-xl border border-amber-200 shadow-sm p-space-lg" aria-labelledby="att-alert-title">
     <div class="flex items-start gap-space-sm">
@@ -329,6 +344,9 @@
                         <option value="missing_checkout">Thiếu check-out</option>
                         <option value="no_schedule">Chưa phân ca</option>
                         <option value="needs_review">Cần kiểm tra</option>
+                        <option value="overtime">Tăng ca</option>
+                        <option value="leave">Nghỉ phép</option>
+                        <option value="business_trip">Công tác</option>
                     </select>
                     <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
                 </div>
@@ -750,6 +768,36 @@
 </div>
 
 <!-- Modal lịch sử chấm công -->
+<div id="att-day-status-modal" class="fixed inset-0 z-[76] hidden" role="dialog" aria-modal="true" aria-labelledby="att-day-status-title" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-close-modal="day-status"></div>
+    <div class="relative min-h-full flex items-center justify-center p-space-md">
+        <section class="w-full max-w-lg bg-surface-container-lowest rounded-2xl shadow-xl overflow-hidden">
+            <div class="flex items-center justify-between px-space-xl py-space-lg border-b border-surface-container-high">
+                <div><h3 id="att-day-status-title" class="font-headline-sm text-headline-sm text-primary">Trạng thái ngày công</h3><p id="att-day-status-employee" class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs"></p></div>
+                <button class="p-space-sm rounded-xl hover:bg-surface-container-high" data-close-modal="day-status" type="button" aria-label="Đóng"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <form id="att-day-status-form" class="p-space-xl flex flex-col gap-space-lg">
+                <label class="flex flex-col gap-space-xs" for="att-day-status-select"><span class="font-label-sm text-label-sm text-on-surface">Trạng thái</span>
+                    <select id="att-day-status-select" class="w-full bg-surface-container-low px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary/20">
+                        <option value="">Tự động theo dữ liệu chấm công</option>
+                        <option value="leave">Nghỉ phép</option>
+                        <option value="business_trip">Công tác</option>
+                    </select>
+                </label>
+                <label class="flex flex-col gap-space-xs" for="att-day-status-note"><span class="font-label-sm text-label-sm text-on-surface">Ghi chú <span class="text-on-surface-variant">(không bắt buộc)</span></span>
+                    <textarea id="att-day-status-note" maxlength="500" rows="3" placeholder="Ví dụ: số quyết định, địa điểm công tác..." class="w-full bg-surface-container-low px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary/20 resize-y"></textarea>
+                </label>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">Tăng ca chỉ được cập nhật từ đơn tăng ca đã gửi. Tại đây có thể ghi chú nghỉ phép/công tác cho ngày đã chọn.</p>
+                <div id="att-day-status-error" class="hidden p-space-md rounded-xl bg-error-container text-on-error-container font-body-sm" role="alert"></div>
+                <div class="flex justify-end gap-space-sm border-t border-surface-container-high pt-space-md">
+                    <button class="px-space-lg py-space-sm bg-surface-container-high text-on-surface rounded-xl font-label-md" data-close-modal="day-status" type="button">Hủy</button>
+                    <button id="att-day-status-submit" class="flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md disabled:opacity-60" type="submit"><span class="material-symbols-outlined text-[18px]">save</span>Lưu trạng thái</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>
+
 <div
     id="att-history-modal"
     class="fixed inset-0 z-[75] hidden"
@@ -821,7 +869,10 @@
                 earlyLeave: 0,
                 deviceRecords: 0,
                 notCheckedIn: 0,
-                needsReview: 0
+                needsReview: 0,
+                overtime: 0,
+                leave: 0,
+                businessTrip: 0
             },
             requestId: 0,
             historyRequestId: 0,
@@ -859,6 +910,9 @@
             statDevice: document.getElementById("att-stat-device"),
             statNotCheckedIn: document.getElementById("att-stat-notcheckedin"),
             statNeedsReview: document.getElementById("att-stat-needs-review"),
+            statOvertime: document.getElementById("att-stat-overtime"),
+            statLeave: document.getElementById("att-stat-leave"),
+            statBusinessTrip: document.getElementById("att-stat-business-trip"),
             tableBody: document.getElementById("att-table-body"),
             tableSummary: document.getElementById("att-table-summary"),
             tableDate: document.getElementById("att-table-date"),
@@ -909,6 +963,13 @@
             historyTitle: document.getElementById("att-history-title"),
             historyDescription: document.getElementById("att-history-description"),
             historyBody: document.getElementById("att-history-body"),
+            dayStatusModal: document.getElementById("att-day-status-modal"),
+            dayStatusForm: document.getElementById("att-day-status-form"),
+            dayStatusEmployee: document.getElementById("att-day-status-employee"),
+            dayStatusSelect: document.getElementById("att-day-status-select"),
+            dayStatusNote: document.getElementById("att-day-status-note"),
+            dayStatusError: document.getElementById("att-day-status-error"),
+            dayStatusSubmit: document.getElementById("att-day-status-submit"),
             toastContainer: document.getElementById("att-toast-container")
         };
 
@@ -1031,6 +1092,15 @@
             if (checked?.code === "absent") {
                 return `<span title="${escapeHtml(checked.detail)}" class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Vắng mặt</span>`;
             }
+            if (checked?.code === "leave") {
+                return `<span title="${escapeHtml(checked.detail)}" class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200 text-[11px] font-semibold whitespace-nowrap"><span class="material-symbols-outlined text-[14px]">event_busy</span>Nghỉ phép</span>`;
+            }
+            if (checked?.code === "business_trip") {
+                return `<span title="${escapeHtml(checked.detail)}" class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 text-[11px] font-semibold whitespace-nowrap"><span class="material-symbols-outlined text-[14px]">luggage</span>Công tác</span>`;
+            }
+            if (checked?.code === "overtime") {
+                return `<span title="${escapeHtml(checked.detail)}" class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200 text-[11px] font-semibold whitespace-nowrap"><span class="material-symbols-outlined text-[14px]">more_time</span>${escapeHtml(checked.label)}</span>`;
+            }
             if (checked?.code === "missing_checkout") {
                 return `<span title="${escapeHtml(checked.detail)}" class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-[11px] font-semibold whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>Thiếu check-out</span>`;
             }
@@ -1121,7 +1191,8 @@
                 || !elements.manualModal.classList.contains("hidden")
                 || !elements.gpsModal.classList.contains("hidden")
                 || !elements.gpsSettingsModal.classList.contains("hidden")
-                || !elements.historyModal.classList.contains("hidden");
+                || !elements.historyModal.classList.contains("hidden")
+                || !elements.dayStatusModal.classList.contains("hidden");
 
             document.body.classList.toggle("att-modal-open", hasOpenModal);
         };
@@ -1188,6 +1259,9 @@
             setText(elements.statDevice, deviceRecords);
             setText(elements.statNotCheckedIn, notCheckedIn);
             setText(elements.statNeedsReview, needsReview);
+            setText(elements.statOvertime, state.stats.overtime);
+            setText(elements.statLeave, state.stats.leave);
+            setText(elements.statBusinessTrip, state.stats.businessTrip);
         };
 
         const updateSummary = () => {
@@ -1219,15 +1293,20 @@
         };
 
         const workedHours = (employee) => {
-            if (!employee.check_in) {
+            const regularHours = Math.max(0, Number(employee.regular_hours) || 0);
+            const overtimeHours = Math.max(0, Number(employee.overtime_hours) || 0);
+            const hours = Math.max(0, Number(employee.total_hours) || 0);
+            if (!employee.check_in && overtimeHours <= 0) {
                 return '<span class="text-on-surface-variant">—</span>';
             }
-            if (!employee.check_out) {
+            if (!employee.check_out && overtimeHours <= 0) {
                 return '<span class="text-blue-700 whitespace-nowrap">Đang làm</span>';
             }
 
-            const hours = Math.max(0, Number(employee.total_hours) || 0);
-            return `<span class="font-data-mono whitespace-nowrap">${hours} giờ</span>`;
+            const breakdown = overtimeHours > 0
+                ? `<span class="block text-[10px] text-on-surface-variant whitespace-nowrap">Ca thường ${regularHours} + tăng ca ${overtimeHours}</span>`
+                : "";
+            return `<span class="font-data-mono whitespace-nowrap">${hours} giờ</span>${breakdown}`;
         };
 
         const renderAttendanceAlerts = () => {
@@ -1293,6 +1372,20 @@
             const canGpsAttend = state.date === getTodayString() && (canCheckIn || canCheckOut);
 
             let actions = `
+                <button
+                    class="flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-container text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
+                    data-day-status-id="${escapeHtml(employee.employee_id)}"
+                    data-day-status-name="${safeName}"
+                    data-day-status-code="${safeCode}"
+                    data-day-status-value="${escapeHtml(employee.day_status || "") }"
+                    data-day-status-note="${escapeHtml(employee.day_status_note || "") }"
+                    ${employee.day_status_request_id ? "disabled" : ""}
+                    type="button"
+                    title="${employee.day_status_request_id ? "Trạng thái được quản lý từ đơn đã gửi/duyệt" : "Ghi nhận nghỉ phép hoặc công tác"}"
+                >
+                    <span class="material-symbols-outlined text-[16px]">edit_calendar</span>
+                    <span>${employee.day_status_request_id ? "Theo đơn" : "Trạng thái"}</span>
+                </button>
                 <button
                     class="flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-container text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
                     data-history-id="${escapeHtml(employee.employee_id)}"
@@ -1608,7 +1701,10 @@
                     earlyLeave: Number(payload.stats?.earlyLeave || 0),
                     deviceRecords: Number(payload.stats?.deviceRecords || 0),
                     notCheckedIn: Number(payload.stats?.notCheckedIn || 0),
-                    needsReview: Number(payload.stats?.needsReview || 0)
+                    needsReview: Number(payload.stats?.needsReview || 0),
+                    overtime: Number(payload.stats?.overtime || 0),
+                    leave: Number(payload.stats?.leave || 0),
+                    businessTrip: Number(payload.stats?.businessTrip || 0)
                 };
 
                 if (Array.isArray(payload.departments)) {
@@ -2633,6 +2729,45 @@
             }
         };
 
+        const openDayStatusModal = (button) => {
+            elements.dayStatusEmployee.textContent = `${button.dataset.dayStatusName} (${button.dataset.dayStatusCode}) · ${formatDate(state.date + "T00:00:00")}`;
+            elements.dayStatusSelect.value = button.dataset.dayStatusValue || "";
+            elements.dayStatusNote.value = button.dataset.dayStatusNote || "";
+            elements.dayStatusError.textContent = "";
+            elements.dayStatusError.classList.add("hidden");
+            elements.dayStatusModal.dataset.employeeId = button.dataset.dayStatusId;
+            openModal(elements.dayStatusModal);
+        };
+
+        const saveDayStatus = async (event) => {
+            event.preventDefault();
+            elements.dayStatusSubmit.disabled = true;
+            elements.dayStatusError.classList.add("hidden");
+            try {
+                const response = await fetch(`${API_BASE}/day-status`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Accept: "application/json" },
+                    body: JSON.stringify({
+                        employeeId: elements.dayStatusModal.dataset.employeeId,
+                        date: state.date,
+                        status: elements.dayStatusSelect.value || "clear",
+                        note: elements.dayStatusNote.value
+                    })
+                });
+                const payload = await response.json();
+                if (!response.ok || !payload.success) throw new Error(payload.message || "Không thể lưu trạng thái ngày công.");
+
+                closeModal(elements.dayStatusModal);
+                showToast("success", payload.message);
+                await loadData();
+            } catch (error) {
+                elements.dayStatusError.textContent = error.message;
+                elements.dayStatusError.classList.remove("hidden");
+            } finally {
+                elements.dayStatusSubmit.disabled = false;
+            }
+        };
+
         // ---- Sự kiện ----
 
         let searchTimer = null;
@@ -2714,6 +2849,12 @@
         });
 
         elements.tableBody.addEventListener("click", (event) => {
+            const dayStatusButton = event.target.closest("[data-day-status-id]");
+            if (dayStatusButton) {
+                openDayStatusModal(dayStatusButton);
+                return;
+            }
+
             const historyButton = event.target.closest("[data-history-id]");
             if (historyButton) {
                 openAttendanceHistory({
@@ -2802,6 +2943,11 @@
             element.addEventListener("click", closeAttendanceHistory);
         });
 
+        document.querySelectorAll('[data-close-modal="day-status"]').forEach((element) => {
+            element.addEventListener("click", () => closeModal(elements.dayStatusModal));
+        });
+        elements.dayStatusForm.addEventListener("submit", saveDayStatus);
+
         // ESC
         document.addEventListener("keydown", (event) => {
             if (event.key !== "Escape") return;
@@ -2828,6 +2974,11 @@
 
             if (!elements.gpsSettingsModal.classList.contains("hidden")) {
                 closeModal(elements.gpsSettingsModal);
+                return;
+            }
+
+            if (!elements.dayStatusModal.classList.contains("hidden")) {
+                closeModal(elements.dayStatusModal);
             }
         });
 

@@ -10,7 +10,10 @@ const ATTENDANCE_STATUS_FILTERS = [
     "absent",
     "missing_checkout",
     "no_schedule",
-    "needs_review"
+    "needs_review",
+    "overtime",
+    "leave",
+    "business_trip"
 ];
 
 export const normalizeAttendanceStatus = (status) => {
@@ -26,7 +29,7 @@ const buildStatusCondition = (status) => {
         case "checked_out":
             return "a.check_out IS NOT NULL";
         case "not_checked_in":
-            return "a.check_in IS NULL";
+            return "a.check_in IS NULL AND ds.status IS NULL";
         case "late":
             return "a.status LIKE '%late%'";
         case "early_leave":
@@ -35,6 +38,9 @@ const buildStatusCondition = (status) => {
         case "missing_checkout":
         case "no_schedule":
         case "needs_review":
+        case "overtime":
+        case "leave":
+        case "business_trip":
             return null;
         default:
             return null;
@@ -93,7 +99,7 @@ export const getRosterForDate = async ({
     shiftId = null
 } = {}) => {
     const conditions = [];
-    const params = [date];
+    const params = [date, date];
 
     const keyword = String(search || "").trim();
 
@@ -163,6 +169,11 @@ export const getRosterForDate = async ({
                a.check_out_accuracy_m,
                a.check_out_distance_m,
                a.record_source,
+               ds.status AS day_status,
+               ds.note AS day_status_note,
+               ds.request_id AS day_status_request_id,
+               TIME_FORMAT(ar.overtime_start_time, '%H:%i') AS overtime_start_time,
+               TIME_FORMAT(ar.overtime_end_time, '%H:%i') AS overtime_end_time,
                COALESCE(
                    ROUND(GREATEST(0, TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out)) / 60, 2),
                    0
@@ -174,6 +185,11 @@ export const getRosterForDate = async ({
            AND a.work_date = ?
           LEFT JOIN face_profiles fp
             ON fp.employee_id = e.id
+          LEFT JOIN attendance_day_statuses ds
+            ON ds.employee_id = e.id
+           AND ds.work_date = ?
+          LEFT JOIN attendance_requests ar
+            ON ar.id = ds.request_id
           ${whereClause}
          ORDER BY e.employee_code ASC, e.id ASC
     `;
