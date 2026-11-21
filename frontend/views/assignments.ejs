@@ -143,6 +143,27 @@
                 </a>
             </div>
 
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm max-w-2xl">
+                <label class="flex flex-col gap-space-xs font-label-sm text-label-sm text-on-surface-variant">
+                    Lịch áp dụng từ ngày
+                    <input
+                        class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                        name="start_date"
+                        value="<%= filters.startDate || '' %>"
+                        type="date"
+                    >
+                </label>
+                <label class="flex flex-col gap-space-xs font-label-sm text-label-sm text-on-surface-variant">
+                    Đến ngày
+                    <input
+                        class="bg-surface-container-low text-on-surface font-data-mono text-data-mono px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                        name="end_date"
+                        value="<%= filters.endDate || '' %>"
+                        type="date"
+                    >
+                </label>
+            </div>
+
             <div class="flex items-center justify-between gap-space-sm">
                 <span class="font-body-sm text-body-sm text-on-surface-variant">
                     Hiển thị <strong class="text-on-surface"><%= assignments.length %></strong> phân ca
