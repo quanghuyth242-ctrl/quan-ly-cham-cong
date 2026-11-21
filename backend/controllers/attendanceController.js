@@ -26,7 +26,7 @@ import {
     evaluateAttendance,
     getShiftSchedulesForEmployeesOnDate
 } from "../services/shiftScheduleService.js";
-import { writeAttendanceAuditLog } from "../services/attendanceAuditService.js";
+import { getRecentAttendanceEvents, writeAttendanceAuditLog } from "../services/attendanceAuditService.js";
 import * as AttendanceDayStatusModel from "../models/AttendanceDayStatusModel.js";
 import {
     AttendanceGpsError,
@@ -44,6 +44,28 @@ export const renderAttendancePage = async (req, res) => {
         activePage: "attendance",
         gpsSettings
     });
+};
+
+export const getAttendanceEvents = async (req, res) => {
+    const date = String(req.query.date || "").trim();
+    if (date && !isValidDateString(date)) {
+        return res.status(400).json({ success: false, message: "Ngày chấm công không hợp lệ." });
+    }
+    try {
+        const eventDate = date || getTodayDateString();
+        const [auditEvents, deviceEvents] = await Promise.all([
+            getRecentAttendanceEvents({ date: eventDate, limit: req.query.limit }),
+            AttendanceModel.findRecentDeviceAttendanceEvents(eventDate, req.query.limit)
+        ]);
+        const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 30));
+        const events = [...auditEvents, ...deviceEvents]
+            .sort((left, right) => new Date(right.at) - new Date(left.at))
+            .slice(0, limit);
+        return res.json({ success: true, events, refreshedAt: new Date().toISOString() });
+    } catch (error) {
+        console.error("Không tải được nhật ký chấm công:", error);
+        return res.status(500).json({ success: false, message: "Không thể tải nhật ký chấm công." });
+    }
 };
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -369,10 +391,11 @@ export const getAttendanceData = async (req, res) => {
         }
 
         const auditStatuses = ["absent", "missing_checkout", "no_schedule", "needs_review", "overtime", "leave", "business_trip", "late", "early_leave"];
+        const includeMetadata = req.query.includeMetadata === "1";
         const [rows, departments, shifts] = await Promise.all([
-            getRosterForDate({ date, search, department, status: auditStatuses.includes(status) ? "all" : status, shiftId }),
-            getDepartments(),
-            getAllShifts()
+            getRosterForDate({ date, search, department, status: "all", shiftId }),
+            includeMetadata ? getDepartments() : Promise.resolve([]),
+            includeMetadata ? getAllShifts() : Promise.resolve([])
         ]);
 
         const shiftSchedules = await getShiftSchedulesForEmployeesOnDate(
@@ -420,16 +443,21 @@ export const getAttendanceData = async (req, res) => {
             })
         );
 
-        const filteredEmployees = auditStatuses.includes(status)
-            ? employees.filter((employee) => {
+        const filteredEmployees = employees.filter((employee) => {
+            if (status === "checked_in") return Boolean(employee.check_in);
+            if (status === "checked_out") return Boolean(employee.check_out);
+            if (status === "not_checked_in") return !employee.check_in && !employee.day_status;
+            if (status === "late") return Boolean(employee.evaluation?.isLate);
+            if (status === "early_leave") return Boolean(employee.evaluation?.isEarlyLeave);
+            if (auditStatuses.includes(status)) {
                 if (status === "needs_review") return employee.attendance_check.needsReview;
-                if (status === "late") return Boolean(employee.evaluation?.isLate);
-                if (status === "early_leave") return Boolean(employee.evaluation?.isEarlyLeave);
                 return employee.attendance_check.code === status;
-            })
-            : employees;
+            }
+            return true;
+        });
 
-        const stats = filteredEmployees.reduce((totals, row) => {
+        // Thẻ tổng quan phản ánh phạm vi ngày/tìm kiếm/phòng ban/ca, không bị thu hẹp bởi bộ lọc trạng thái.
+        const stats = employees.reduce((totals, row) => {
             totals.total += 1;
             if (row.check_in) totals.checkedIn += 1;
             if (row.check_out) totals.checkedOut += 1;

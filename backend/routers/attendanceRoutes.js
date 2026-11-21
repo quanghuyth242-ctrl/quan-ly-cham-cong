@@ -25,6 +25,7 @@ router.get("/", requireAdmin, renderAttendancePage);
 
 // API bảng chấm công theo ngày
 router.get("/data", requireAdminApi, getAttendanceData);
+router.get("/events", requireAdminApi, AdminAttendanceController.getAttendanceEvents);
 router.post("/day-status", requireAdminApi, saveDayStatus);
 
 // API chấm công bằng khuôn mặt

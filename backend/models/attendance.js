@@ -1077,3 +1077,30 @@ export const syncDeviceEvents = async (deviceId, events) => {
         connection.release();
     }
 };
+
+export const findRecentDeviceAttendanceEvents = async (workDate, limit = 30) => {
+    const safeLimit = Math.min(100, Math.max(1, Number(limit) || 30));
+    const [rows] = await db.execute(
+        `SELECT DATE_FORMAT(ev.punched_at, '%Y-%m-%dT%H:%i:%s') AS at,
+                ev.direction,
+                e.id AS employee_id,
+                e.employee_code,
+                e.full_name,
+                d.device_code
+           FROM attendance_device_events ev
+           INNER JOIN employees e ON e.id = ev.employee_id
+           INNER JOIN attendance_devices d ON d.id = ev.device_id
+          WHERE ev.work_date = ?
+          ORDER BY ev.punched_at DESC, ev.id DESC
+          LIMIT ${safeLimit}`,
+        [workDate]
+    );
+    return rows.map((row) => ({
+        at: row.at,
+        action: row.direction === "in" ? "check_in" : "check_out",
+        method: "device",
+        workDate,
+        employee: { id: Number(row.employee_id), employee_code: row.employee_code, full_name: row.full_name },
+        detail: { deviceCode: row.device_code }
+    }));
+};
