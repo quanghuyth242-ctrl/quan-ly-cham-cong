@@ -112,6 +112,13 @@ export const index = async (req, res) => {
         const search = String(req.query.search || "").trim();
         const department = String(req.query.department || "").trim();
         const shiftId = parseId(req.query.shift_id);
+        const requestedStartDate = String(req.query.start_date || "").trim();
+        const requestedEndDate = String(req.query.end_date || "").trim();
+        const startDate = isValidDate(requestedStartDate) ? requestedStartDate : "";
+        const endDate = isValidDate(requestedEndDate) ? requestedEndDate : "";
+        const filterError = startDate && endDate && startDate > endDate
+            ? "Ngày bắt đầu lọc phải trước hoặc bằng ngày kết thúc."
+            : null;
         const allowedStatuses = ["", "active", "cancelled"];
         const status = allowedStatuses.includes(String(req.query.status))
             ? String(req.query.status)
@@ -122,6 +129,8 @@ export const index = async (req, res) => {
                 search,
                 department,
                 shiftId: shiftId || "",
+                startDate: filterError ? "" : startDate,
+                endDate: filterError ? "" : endDate,
                 status
             }),
             ShiftAssignmentModel.getEmployeeOptions(),
@@ -141,11 +150,13 @@ export const index = async (req, res) => {
                 search,
                 department,
                 shiftId: shiftId ? String(shiftId) : "",
+                startDate: requestedStartDate,
+                endDate: requestedEndDate,
                 status
             },
             weekdayLabels: WEEKDAY_LABELS,
             success: req.query.success || null,
-            error: req.query.error || null
+            error: req.query.error || filterError
         });
     } catch (error) {
         console.log("Lỗi tải danh sách phân ca:", error);
@@ -161,7 +172,7 @@ export const index = async (req, res) => {
                 cancelledAssignments: 0,
                 assignedEmployees: 0
             },
-            filters: { search: "", department: "", shiftId: "", status: "active" },
+            filters: { search: "", department: "", shiftId: "", startDate: "", endDate: "", status: "active" },
             weekdayLabels: WEEKDAY_LABELS,
             success: null,
             error: "Không thể tải danh sách phân ca. Vui lòng thử lại."

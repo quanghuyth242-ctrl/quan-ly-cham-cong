@@ -37,6 +37,8 @@ export const findAll = async ({
     search = "",
     department = "",
     shiftId = "",
+    startDate = "",
+    endDate = "",
     status = "active"
 } = {}) => {
     const conditions = [];
@@ -55,6 +57,16 @@ export const findAll = async ({
     if (shiftId) {
         conditions.push("a.shift_id = ?");
         params.push(Number(shiftId));
+    }
+
+    if (endDate) {
+        conditions.push("a.start_date <= ?");
+        params.push(endDate);
+    }
+
+    if (startDate) {
+        conditions.push("a.end_date >= ?");
+        params.push(startDate);
     }
 
     if (status === "active" || status === "cancelled") {
