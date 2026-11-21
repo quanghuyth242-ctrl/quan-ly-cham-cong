@@ -2,6 +2,14 @@
 
 <%- include("partials/alerts", { success: success, error: error }) %>
 
+<div id="schedule-sync" data-revision="<%= syncRevision || '' %>" class="flex flex-wrap items-center justify-between gap-space-sm px-space-md py-space-sm rounded-xl bg-surface-container-low text-on-surface-variant font-body-sm text-body-sm" role="status">
+    <span id="schedule-sync-status">Đồng bộ tự động đang bật · kiểm tra thay đổi mỗi 20 giây.</span>
+    <button id="schedule-sync-refresh" class="hidden items-center gap-space-xs px-space-md py-space-sm rounded-lg bg-primary text-on-primary font-label-sm text-label-sm" type="button">
+        <span class="material-symbols-outlined text-[18px]">sync</span>
+        <span>Cập nhật dữ liệu mới</span>
+    </button>
+</div>
+
 <section class="relative overflow-hidden flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-lg md:p-space-xl rounded-xl border border-surface-container-high/60 shadow-sm">
     <div class="absolute inset-y-0 left-0 w-1 bg-primary"></div>
     <div class="flex flex-col gap-space-xs">
@@ -175,7 +183,73 @@
         </form>
     </div>
 
-    <div class="overflow-x-auto">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-space-md p-space-md lg:hidden">
+        <% if (assignments.length === 0) { %>
+            <div class="md:col-span-2 flex flex-col items-center gap-space-sm p-space-2xl rounded-xl border border-dashed border-outline-variant text-center text-on-surface-variant">
+                <span class="material-symbols-outlined text-[36px]">event_busy</span>
+                <span class="font-label-md text-label-md">Chưa có lịch trực phù hợp</span>
+                <span class="font-body-sm text-body-sm">Thử đổi bộ lọc hoặc tạo lịch trực mới.</span>
+            </div>
+        <% } else { %>
+            <% assignments.forEach((assignment) => { %>
+                <article class="flex flex-col gap-space-md p-space-lg rounded-xl border border-surface-container-high bg-surface-container-lowest shadow-sm">
+                    <div class="flex items-start justify-between gap-space-sm">
+                        <div class="flex items-center gap-space-sm min-w-0">
+                            <div class="w-10 h-10 rounded-full bg-primary-fixed text-primary font-semibold flex items-center justify-center shrink-0"><%= assignment.full_name.slice(0, 2).toUpperCase() %></div>
+                            <div class="flex flex-col min-w-0">
+                                <h3 class="font-label-md text-label-md text-on-surface font-semibold truncate"><%= assignment.full_name %></h3>
+                                <span class="font-data-mono text-[11px] text-on-surface-variant"><%= assignment.employee_code %><%= assignment.department ? ` · ${assignment.department}` : '' %></span>
+                            </div>
+                        </div>
+                        <span class="shrink-0 inline-flex items-center gap-1 px-space-sm py-1 rounded-full <%= assignment.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-surface-container-high text-on-surface-variant' %> text-[11px] font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full <%= assignment.status === 'active' ? 'bg-green-500' : 'bg-outline' %>"></span>
+                            <%= assignment.status === 'active' ? 'Đang áp dụng' : 'Đã hủy' %>
+                        </span>
+                    </div>
+
+                    <div class="p-space-md rounded-lg bg-primary-fixed/40">
+                        <div class="flex items-center gap-space-xs text-primary font-label-md text-label-md font-semibold">
+                            <span class="material-symbols-outlined text-[18px]">schedule</span>
+                            <%= assignment.shift_code %> · <%= assignment.shift_name %>
+                        </div>
+                        <div class="mt-1 font-data-mono text-data-mono text-on-surface-variant"><%= assignment.morning_start %> – <%= assignment.morning_end %> <span class="px-1">|</span> <%= assignment.afternoon_start %> – <%= assignment.afternoon_end %></div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-space-sm">
+                        <div class="flex flex-col gap-1 p-space-sm rounded-lg bg-surface-container-low">
+                            <span class="font-label-sm text-label-sm text-on-surface-variant">Từ ngày</span>
+                            <span class="font-data-mono text-data-mono"><%= assignment.start_date %></span>
+                        </div>
+                        <div class="flex flex-col gap-1 p-space-sm rounded-lg bg-surface-container-low">
+                            <span class="font-label-sm text-label-sm text-on-surface-variant">Đến ngày</span>
+                            <span class="font-data-mono text-data-mono"><%= assignment.end_date %></span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-1">
+                        <% assignment.workdays.forEach((day) => { %>
+                            <span class="px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-semibold"><%= weekdayLabels[day] %></span>
+                        <% }) %>
+                    </div>
+
+                    <div class="flex items-center gap-space-sm pt-space-sm border-t border-surface-container-high">
+                        <button class="flex-1 inline-flex justify-center items-center gap-1 px-space-sm py-space-sm rounded-lg bg-primary-fixed text-primary font-label-sm text-label-sm" data-edit-assignment data-id="<%= assignment.id %>" data-employee="<%= assignment.employee_id %>" data-shift="<%= assignment.shift_id %>" data-start="<%= assignment.start_date %>" data-end="<%= assignment.end_date %>" data-note="<%= assignment.note || '' %>" type="button">
+                            <span class="material-symbols-outlined text-[18px]">edit</span> Chỉnh sửa lịch
+                        </button>
+                        <% if (assignment.status === 'active') { %>
+                            <form action="/admin/shift-assignments/<%= assignment.id %>/cancel" method="POST" onsubmit="return confirm('Bạn có chắc muốn hủy phân ca này?');">
+                                <button class="inline-flex items-center justify-center px-space-sm py-space-sm rounded-lg bg-error-container/60 text-error" type="submit" aria-label="Hủy lịch trực">
+                                    <span class="material-symbols-outlined text-[18px]">event_busy</span>
+                                </button>
+                            </form>
+                        <% } %>
+                    </div>
+                </article>
+            <% }) %>
+        <% } %>
+    </div>
+
+    <div class="hidden lg:block overflow-x-auto">
         <table class="w-full text-left border-collapse min-w-[1050px]">
             <thead>
                 <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
@@ -540,5 +614,7 @@
         endInput.addEventListener('input', () => endInput.setCustomValidity(''));
     });
 </script>
+
+<script src="/js/shift-schedule-sync.js" defer></script>
 
 <%- include("partials/adminFoot") %>

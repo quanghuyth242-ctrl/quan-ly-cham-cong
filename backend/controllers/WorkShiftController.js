@@ -148,11 +148,13 @@ export const index = async (req, res) => {
             WorkShiftModel.findAll({ search, status }),
             WorkShiftModel.getStats()
         ]);
+        const syncRevision = await WorkShiftModel.getScheduleSyncRevision().catch(() => "");
 
         res.render("shifts", {
             user: req.session.user,
             shifts,
             stats,
+            syncRevision,
             filters: { search, status },
             weekdayLabels: WEEKDAY_LABELS,
             formFeedback,
@@ -166,12 +168,23 @@ export const index = async (req, res) => {
             user: req.session.user,
             shifts: [],
             stats: { total: 0, active: 0, inactive: 0 },
+            syncRevision: "",
             filters: { search: "", status: "" },
             weekdayLabels: WEEKDAY_LABELS,
             formFeedback,
             success: null,
             error: "Không thể tải danh sách ca làm việc. Vui lòng thử lại."
         });
+    }
+};
+
+export const scheduleSyncState = async (req, res) => {
+    try {
+        const revision = await WorkShiftModel.getScheduleSyncRevision();
+        res.set("Cache-Control", "no-store").json({ revision });
+    } catch (error) {
+        console.error("Lỗi đọc trạng thái đồng bộ lịch ca:", error);
+        res.status(503).set("Cache-Control", "no-store").json({ error: "Không thể đọc trạng thái lịch." });
     }
 };
 

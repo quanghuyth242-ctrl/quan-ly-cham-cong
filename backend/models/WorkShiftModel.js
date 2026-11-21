@@ -247,3 +247,19 @@ export const getStats = async () => {
         inactive: Number(rows[0].inactive)
     };
 };
+
+export const getScheduleSyncRevision = async () => {
+    const [rows] = await db.execute(`
+        SELECT CONCAT(
+            (SELECT COUNT(*) FROM work_shifts), ':',
+            COALESCE((SELECT SUM(CRC32(CONCAT_WS('|', id, shift_code, shift_name,
+                morning_start, morning_end, afternoon_start, afternoon_end, status)))
+                FROM work_shifts), 0), ':',
+            (SELECT COUNT(*) FROM employee_shift_assignments), ':',
+            COALESCE((SELECT SUM(CRC32(CONCAT_WS('|', id, employee_id, shift_id,
+                start_date, end_date, status, note)))
+                FROM employee_shift_assignments), 0)
+        ) AS revision
+    `);
+    return String(rows[0]?.revision || "");
+};

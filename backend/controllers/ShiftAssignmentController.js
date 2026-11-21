@@ -35,6 +35,20 @@ const parseId = (value) => {
     return Number.isInteger(id) && id > 0 ? id : null;
 };
 
+const getSaveErrorMessage = (error, fallback) => {
+    if (error.code === "SHIFT_ASSIGNMENT_CONFLICT") {
+        const conflict = error.conflict;
+        return `Lịch vừa được thay đổi và trùng với ca "${conflict.shift_name}" (${conflict.start_date} - ${conflict.end_date}). Hãy tải lại danh sách rồi chọn khoảng thời gian khác.`;
+    }
+    if (error.code === "SHIFT_ASSIGNMENT_EMPLOYEE_INACTIVE") {
+        return "Nhân viên vừa ngừng hoạt động nên không thể phân ca.";
+    }
+    if (error.code === "SHIFT_ASSIGNMENT_SHIFT_INACTIVE") {
+        return "Ca làm việc vừa ngừng hoạt động nên không thể phân ca.";
+    }
+    return fallback;
+};
+
 const validateAssignment = async (body, excludeId = null) => {
     const data = {
         employee_id: parseId(body.employee_id),
@@ -71,17 +85,16 @@ const validateAssignment = async (body, excludeId = null) => {
         errors.push("Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.");
     }
 
-    if (data.employee_id) {
-        const employee = await ShiftAssignmentModel.findEmployeeById(data.employee_id);
+    const [employee, shift] = await Promise.all([
+        data.employee_id ? ShiftAssignmentModel.findEmployeeById(data.employee_id) : null,
+        data.shift_id ? WorkShiftModel.findById(data.shift_id) : null
+    ]);
 
-        if (!employee) {
-            errors.push("Nhân viên được chọn không tồn tại.");
-        }
+    if (data.employee_id && !employee) {
+        errors.push("Nhân viên được chọn không tồn tại.");
     }
 
     if (data.shift_id) {
-        const shift = await WorkShiftModel.findById(data.shift_id);
-
         if (!shift) {
             errors.push("Ca làm việc được chọn không tồn tại.");
         } else if (shift.status !== 1) {
@@ -138,6 +151,7 @@ export const index = async (req, res) => {
             ShiftAssignmentModel.getDepartments(),
             ShiftAssignmentModel.getStats()
         ]);
+        const syncRevision = await WorkShiftModel.getScheduleSyncRevision().catch(() => "");
 
         res.render("assignments", {
             user: req.session.user,
@@ -146,6 +160,7 @@ export const index = async (req, res) => {
             activeShifts,
             departments,
             stats,
+            syncRevision,
             filters: {
                 search,
                 department,
@@ -172,6 +187,7 @@ export const index = async (req, res) => {
                 cancelledAssignments: 0,
                 assignedEmployees: 0
             },
+            syncRevision: "",
             filters: { search: "", department: "", shiftId: "", startDate: "", endDate: "", status: "active" },
             weekdayLabels: WEEKDAY_LABELS,
             success: null,
@@ -199,7 +215,7 @@ export const create = async (req, res) => {
         console.log("Lỗi phân ca:", error);
 
         redirectWith(res, "/admin/shift-assignments", {
-            error: "Không thể lưu phân ca. Vui lòng thử lại."
+            error: getSaveErrorMessage(error, "Không thể lưu phân ca. Vui lòng thử lại.")
         });
     }
 };
@@ -231,7 +247,7 @@ export const update = async (req, res) => {
         console.log("Lỗi cập nhật phân ca:", error);
 
         redirectWith(res, "/admin/shift-assignments", {
-            error: "Không thể cập nhật phân ca. Vui lòng thử lại."
+            error: getSaveErrorMessage(error, "Không thể cập nhật phân ca. Vui lòng thử lại.")
         });
     }
 };
