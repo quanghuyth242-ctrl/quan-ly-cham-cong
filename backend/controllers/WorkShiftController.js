@@ -257,8 +257,9 @@ export const create = async (req, res) => {
 };
 
 export const update = async (req, res) => {
+    let shift = null;
     try {
-        const shift = await WorkShiftModel.findById(req.params.id);
+        shift = await WorkShiftModel.findById(req.params.id);
 
         if (!shift) {
             return redirectWith(res, "/admin/shifts", {
@@ -272,11 +273,18 @@ export const update = async (req, res) => {
         }, shift.id);
 
         if (errors.length > 0) {
-            return redirectWith(res, "/admin/shifts", { error: errors.join(" ") });
+            req.session.shiftCreateFeedback = {
+                mode: "update",
+                shiftId: shift.id,
+                values: getShiftFormValues({ ...req.body, shift_code: shift.shift_code }),
+                error: errors.join(" ")
+            };
+            return redirectWith(res, "/admin/shifts");
         }
 
         await WorkShiftModel.update(shift.id, data);
 
+        delete req.session.shiftCreateFeedback;
         redirectWith(res, "/admin/shifts", {
             success: `Đã cập nhật ca làm việc "${data.shift_name}".`
         });
@@ -287,6 +295,15 @@ export const update = async (req, res) => {
             ? "Mã ca đã tồn tại, vui lòng chọn mã khác."
             : "Không thể cập nhật ca làm việc. Vui lòng thử lại.";
 
+        if (shift) {
+            req.session.shiftCreateFeedback = {
+                mode: "update",
+                shiftId: shift.id,
+                values: getShiftFormValues({ ...req.body, shift_code: shift.shift_code }),
+                error: message
+            };
+            return redirectWith(res, "/admin/shifts");
+        }
         redirectWith(res, "/admin/shifts", { error: message });
     }
 };
