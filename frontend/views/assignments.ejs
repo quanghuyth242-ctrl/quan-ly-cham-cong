@@ -402,24 +402,35 @@
 
                     <div class="flex flex-col gap-space-xs">
                         <label class="font-label-sm text-label-sm text-on-surface" for="assignment_employee">Nhân viên <span class="text-error">*</span></label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                            <input class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-8 pr-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="assignment_employee_search" type="search" autocomplete="off" placeholder="Tìm theo mã, tên hoặc phòng ban..." aria-controls="assignment_employee">
+                        </div>
                         <select class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="assignment_employee" name="employee_id" required>
                             <option value="">-- Chọn nhân viên --</option>
                             <% employees.forEach((employee) => { %>
-                                <option value="<%= employee.id %>" data-department="<%= employee.department || '' %>">
+                                <option value="<%= employee.id %>" data-code="<%= employee.employee_code %>" data-name="<%= employee.full_name %>" data-department="<%= employee.department || '' %>">
                                     <%= employee.employee_code %> - <%= employee.full_name %><%= employee.department ? ` (${employee.department})` : "" %>
                                 </option>
                             <% }) %>
                         </select>
+                        <span id="assignment-employee-hint" class="font-body-sm text-body-sm text-on-surface-variant" aria-live="polite"><%= employees.length %> nhân viên đang hoạt động</span>
                     </div>
                 </div>
 
                 <div class="flex flex-col gap-space-xs">
                     <label class="font-label-sm text-label-sm text-on-surface" for="assignment_shift">Ca làm việc <span class="text-error">*</span></label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                        <input class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-8 pr-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="assignment_shift_search" type="search" autocomplete="off" placeholder="Tìm theo mã hoặc tên ca..." aria-controls="assignment_shift">
+                    </div>
                     <select class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="assignment_shift" name="shift_id" required>
                         <option value="">-- Chọn ca làm việc --</option>
                         <% activeShifts.forEach((shift) => { %>
                             <option
                                 value="<%= shift.id %>"
+                                data-code="<%= shift.shift_code %>"
+                                data-name="<%= shift.shift_name %>"
                                 data-time="<%= shift.morning_start %> - <%= shift.morning_end %> | <%= shift.afternoon_start %> - <%= shift.afternoon_end %>"
                                 data-workdays="<%= shift.workdays.map((day) => weekdayLabels[day]).join(', ') %>"
                             >
@@ -469,8 +480,11 @@
         const errorBox = document.getElementById('assignment-form-error');
         const errorText = document.getElementById('assignment-form-error-text');
         const departmentFilter = document.getElementById('assignment_department_filter');
+        const employeeSearch = document.getElementById('assignment_employee_search');
         const employeeSelect = document.getElementById('assignment_employee');
+        const employeeHint = document.getElementById('assignment-employee-hint');
         const shiftSelect = document.getElementById('assignment_shift');
+        const shiftSearch = document.getElementById('assignment_shift_search');
         const shiftHint = document.getElementById('assignment-shift-hint');
         const startInput = document.getElementById('assignment_start');
         const endInput = document.getElementById('assignment_end');
@@ -491,29 +505,69 @@
             const option = shiftSelect.selectedOptions[0];
 
             if (!option || !option.value) {
-                shiftHint.textContent = '';
+                const availableCount = Array.from(shiftSelect.options).filter((item) => item.value && !item.disabled).length;
+                shiftHint.textContent = `${availableCount} ca đang hoạt động${shiftSearch.value.trim() ? ' phù hợp' : ''}`;
                 return;
             }
 
             const time = option.dataset.time || '';
             const workdays = option.dataset.workdays || '';
-            shiftHint.textContent = `${time}${workdays ? ` • ${workdays}` : ''}`;
+            shiftHint.textContent = `${option.dataset.code} · ${option.dataset.name} | ${time}${workdays ? ` · ${workdays}` : ''}`;
+        };
+
+        const filterShifts = () => {
+            const query = shiftSearch.value.trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('vi');
+
+            Array.from(shiftSelect.options).forEach((option) => {
+                if (!option.value) return;
+                const searchableText = `${option.dataset.code || ''} ${option.dataset.name || ''} ${option.dataset.time || ''} ${option.dataset.workdays || ''}`
+                    .normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('vi');
+                const match = !query || searchableText.includes(query);
+                option.hidden = !match;
+                option.disabled = !match;
+            });
+
+            if (shiftSelect.selectedOptions[0] && shiftSelect.selectedOptions[0].disabled) {
+                shiftSelect.value = '';
+            }
+            updateShiftHint();
         };
 
         const filterEmployees = () => {
             const department = departmentFilter.value;
+            const query = employeeSearch.value.trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('vi');
+            let visibleCount = 0;
 
             Array.from(employeeSelect.options).forEach((option) => {
                 if (!option.value) return;
 
-                const match = !department || option.dataset.department === department;
+                const searchableText = `${option.dataset.code || ''} ${option.dataset.name || ''} ${option.dataset.department || ''}`
+                    .normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('vi');
+                const matchesDepartment = !department || option.dataset.department === department;
+                const matchesQuery = !query || searchableText.includes(query);
+                const match = matchesDepartment && matchesQuery;
                 option.hidden = !match;
                 option.disabled = !match;
+                if (match) visibleCount += 1;
             });
 
             if (employeeSelect.selectedOptions[0] && employeeSelect.selectedOptions[0].disabled) {
                 employeeSelect.value = '';
             }
+
+            employeeHint.textContent = query || department
+                ? `${visibleCount} nhân viên phù hợp`
+                : `${visibleCount} nhân viên đang hoạt động`;
+            updateEmployeeHint();
+        };
+
+        const updateEmployeeHint = () => {
+            const option = employeeSelect.selectedOptions[0];
+            if (!option || !option.value) return;
+            const department = option.dataset.department;
+            employeeHint.textContent = department
+                ? `Đã chọn ${option.dataset.name} · ${option.dataset.code} · ${department}`
+                : `Đã chọn ${option.dataset.name} · ${option.dataset.code}`;
         };
 
         const openModal = () => {
@@ -532,8 +586,10 @@
             form.action = '/admin/shift-assignments/create';
             modalTitle.textContent = 'Phân ca nhân viên';
             departmentFilter.value = '';
+            employeeSearch.value = '';
+            shiftSearch.value = '';
             filterEmployees();
-            updateShiftHint();
+            filterShifts();
             clearError();
         };
 
@@ -574,9 +630,13 @@
                 modalTitle.textContent = 'Chỉnh sửa phân ca';
 
                 departmentFilter.value = '';
+                employeeSearch.value = '';
+                shiftSearch.value = '';
                 filterEmployees();
+                filterShifts();
 
                 employeeSelect.value = data.employee;
+                filterEmployees();
                 shiftSelect.value = data.shift;
                 startInput.value = data.start;
                 endInput.value = data.end;
@@ -589,6 +649,9 @@
         });
 
         departmentFilter.addEventListener('change', filterEmployees);
+        employeeSearch.addEventListener('input', filterEmployees);
+        employeeSelect.addEventListener('change', updateEmployeeHint);
+        shiftSearch.addEventListener('input', filterShifts);
         shiftSelect.addEventListener('change', updateShiftHint);
 
         document.addEventListener('keydown', (event) => {
