@@ -272,7 +272,7 @@ export const update = async (req, res) => {
         await ShiftAssignmentModel.update(assignment.id, data);
 
         redirectWith(res, "/admin/shift-assignments", {
-            success: "Đã cập nhật phân ca."
+            success: "Đã điều chỉnh ca làm việc và khoảng thời gian áp dụng."
         });
     } catch (error) {
         console.log("Lỗi cập nhật phân ca:", error);
@@ -280,6 +280,50 @@ export const update = async (req, res) => {
         redirectWith(res, "/admin/shift-assignments", {
             error: getSaveErrorMessage(error, "Không thể cập nhật phân ca. Vui lòng thử lại.")
         });
+    }
+};
+
+export const adjust = async (req, res) => {
+    try {
+        const assignmentId = parseId(req.params.id);
+        const shiftId = parseId(req.body.shift_id);
+        const effectiveDate = String(req.body.effective_date || "").trim();
+        const errors = [];
+
+        if (!assignmentId) errors.push("Lịch phân ca không hợp lệ.");
+        if (!shiftId) errors.push("Vui lòng chọn ca làm việc mới.");
+        if (!effectiveDate || !isValidDate(effectiveDate)) errors.push("Ngày hiệu lực không hợp lệ.");
+
+        if (errors.length) {
+            return redirectWith(res, "/admin/shift-assignments", { error: errors.join(" ") });
+        }
+
+        const result = await ShiftAssignmentModel.adjustShift(assignmentId, {
+            shift_id: shiftId,
+            effective_date: effectiveDate,
+            note: String(req.body.note || "").trim().slice(0, 255)
+        });
+
+        redirectWith(res, "/admin/shift-assignments", {
+            success: result.split
+                ? `Đã điều chỉnh ca từ ngày ${effectiveDate}; lịch cũ được giữ nguyên đến ngày liền trước.`
+                : `Đã cập nhật ca làm việc từ ngày ${effectiveDate}.`
+        });
+    } catch (error) {
+        console.log("Lỗi điều chỉnh ca làm:", error);
+        const messages = {
+            SHIFT_ASSIGNMENT_NOT_FOUND: "Lịch phân ca không tồn tại.",
+            SHIFT_ASSIGNMENT_NOT_ACTIVE: "Chỉ có thể điều chỉnh lịch đang áp dụng.",
+            SHIFT_ASSIGNMENT_INVALID_EFFECTIVE_DATE: "Ngày hiệu lực phải nằm trong khoảng lịch đang áp dụng.",
+            SHIFT_ASSIGNMENT_NO_CHANGE: "Ca mới phải khác ca đang áp dụng.",
+            SHIFT_ASSIGNMENT_EMPLOYEE_INACTIVE: "Nhân viên đã ngừng hoạt động nên không thể điều chỉnh ca.",
+            SHIFT_ASSIGNMENT_SHIFT_INACTIVE: "Ca mới không tồn tại hoặc đã ngừng hoạt động.",
+            SHIFT_ASSIGNMENT_CHANGED: "Lịch vừa được thay đổi. Vui lòng tải lại trang rồi thử lại."
+        };
+        const message = error.code === "SHIFT_ASSIGNMENT_CONFLICT"
+            ? `Không thể điều chỉnh vì trùng với ca "${error.conflict.shift_name}" (${error.conflict.start_date} - ${error.conflict.end_date}).`
+            : messages[error.code] || "Không thể điều chỉnh ca làm. Vui lòng thử lại.";
+        redirectWith(res, "/admin/shift-assignments", { error: message });
     }
 };
 

@@ -233,8 +233,8 @@
                     </div>
 
                     <div class="flex items-center gap-space-sm pt-space-sm border-t border-surface-container-high">
-                        <button class="flex-1 inline-flex justify-center items-center gap-1 px-space-sm py-space-sm rounded-lg bg-primary-fixed text-primary font-label-sm text-label-sm" data-edit-assignment data-id="<%= assignment.id %>" data-employee="<%= assignment.employee_id %>" data-shift="<%= assignment.shift_id %>" data-start="<%= assignment.start_date %>" data-end="<%= assignment.end_date %>" data-note="<%= assignment.note || '' %>" type="button">
-                            <span class="material-symbols-outlined text-[18px]">edit</span> Chỉnh sửa lịch
+                        <button class="flex-1 inline-flex justify-center items-center gap-1 px-space-sm py-space-sm rounded-lg bg-primary-fixed text-primary font-label-sm text-label-sm" data-edit-assignment data-id="<%= assignment.id %>" data-employee="<%= assignment.employee_id %>" data-shift="<%= assignment.shift_id %>" data-start="<%= assignment.start_date %>" data-end="<%= assignment.end_date %>" data-note="<%= assignment.note || '' %>" data-status="<%= assignment.status %>" data-current-summary="<%= `${assignment.shift_code} · ${assignment.shift_name} | ${assignment.morning_start}-${assignment.morning_end}, ${assignment.afternoon_start}-${assignment.afternoon_end} | ${assignment.start_date} – ${assignment.end_date}` %>" type="button">
+                            <span class="material-symbols-outlined text-[18px]">edit_calendar</span> <%= assignment.status === 'active' ? 'Điều chỉnh ca' : 'Sửa lịch đã hủy' %>
                         </button>
                         <% if (assignment.status === 'active') { %>
                             <form action="/admin/shift-assignments/<%= assignment.id %>/cancel" method="POST" onsubmit="return confirm('Bạn có chắc muốn hủy phân ca này?');">
@@ -342,11 +342,13 @@
                                         data-start="<%= assignment.start_date %>"
                                         data-end="<%= assignment.end_date %>"
                                         data-note="<%= assignment.note || '' %>"
-                                        title="Chỉnh sửa phân ca"
+                                        data-status="<%= assignment.status %>"
+                                        data-current-summary="<%= `${assignment.shift_code} · ${assignment.shift_name} | ${assignment.morning_start}-${assignment.morning_end}, ${assignment.afternoon_start}-${assignment.afternoon_end} | ${assignment.start_date} – ${assignment.end_date}` %>"
+                                        title="<%= assignment.status === 'active' ? 'Điều chỉnh ca' : 'Sửa lịch đã hủy' %>"
                                         type="button"
                                     >
-                                        <span class="material-symbols-outlined text-[16px]">edit</span>
-                                        <span>Sửa</span>
+                                        <span class="material-symbols-outlined text-[16px]">edit_calendar</span>
+                                        <span><%= assignment.status === 'active' ? 'Điều chỉnh ca' : 'Sửa lịch' %></span>
                                     </button>
 
                                     <% if (assignment.status === "active") { %>
@@ -376,7 +378,7 @@
             <div class="flex items-center justify-between px-space-xl py-space-lg border-b border-surface-container-high">
                 <div class="flex flex-col">
                     <h3 id="assignment-modal-title" class="font-headline-md text-headline-md text-primary font-semibold">Phân ca nhân viên</h3>
-                    <p class="font-body-sm text-body-sm text-on-surface-variant">Chọn nhân viên, ca làm việc và khoảng thời gian áp dụng.</p>
+                    <p id="assignment-modal-description" class="font-body-sm text-body-sm text-on-surface-variant">Chọn nhân viên, ca làm việc và khoảng thời gian áp dụng.</p>
                 </div>
                 <button class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-assignment-modal type="button" aria-label="Đóng">
                     <span class="material-symbols-outlined">close</span>
@@ -388,6 +390,13 @@
                 <div id="assignment-form-error" class="hidden items-start gap-space-sm p-space-md rounded-xl bg-error-container/60 border border-error/30 text-on-error-container text-body-md">
                     <span class="material-symbols-outlined text-[20px]">error</span>
                     <span id="assignment-form-error-text"></span>
+                </div>
+                <div id="assignment-adjustment-current" class="hidden items-start gap-space-sm p-space-md rounded-xl bg-primary-fixed/50 border border-primary/10 text-primary" aria-live="polite">
+                    <span class="material-symbols-outlined text-[20px]">schedule</span>
+                    <div class="flex flex-col gap-1">
+                        <span class="font-label-sm text-label-sm">Lịch đang áp dụng</span>
+                        <span id="assignment-adjustment-current-summary" class="font-body-sm text-body-sm"></span>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
@@ -481,7 +490,7 @@
                     </button>
                     <button class="flex items-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl shadow-md transition-colors" type="submit">
                         <span class="material-symbols-outlined text-[18px]">save</span>
-                        <span>Lưu phân ca</span>
+                        <span id="assignment-submit-label">Lưu phân ca</span>
                     </button>
                 </div>
             </form>
@@ -494,6 +503,10 @@
         const modal = document.getElementById('assignment-modal');
         const form = document.getElementById('assignment-form');
         const modalTitle = document.getElementById('assignment-modal-title');
+        const modalDescription = document.getElementById('assignment-modal-description');
+        const adjustmentCurrent = document.getElementById('assignment-adjustment-current');
+        const adjustmentCurrentSummary = document.getElementById('assignment-adjustment-current-summary');
+        const submitLabel = document.getElementById('assignment-submit-label');
         const errorBox = document.getElementById('assignment-form-error');
         const errorText = document.getElementById('assignment-form-error-text');
         const departmentFilter = document.getElementById('assignment_department_filter');
@@ -646,6 +659,11 @@
             form.reset();
             form.action = '/admin/shift-assignments/create';
             modalTitle.textContent = 'Phân ca nhân viên';
+            modalDescription.textContent = 'Chọn nhân viên, ca làm việc và khoảng thời gian áp dụng.';
+            adjustmentCurrent.classList.add('hidden');
+            adjustmentCurrent.classList.remove('flex');
+            adjustmentCurrentSummary.textContent = '';
+            submitLabel.textContent = 'Lưu phân ca';
             departmentFilter.value = '';
             employeeSearch.value = '';
             shiftSearch.value = '';
@@ -688,9 +706,17 @@
         document.querySelectorAll('[data-edit-assignment]').forEach((button) => {
             button.addEventListener('click', () => {
                 const data = button.dataset;
+                const isActiveAssignment = data.status === 'active';
 
                 form.action = `/admin/shift-assignments/${data.id}/update`;
-                modalTitle.textContent = 'Chỉnh sửa phân ca';
+                modalTitle.textContent = isActiveAssignment ? 'Điều chỉnh ca làm việc' : 'Cập nhật lịch đã hủy';
+                modalDescription.textContent = isActiveAssignment
+                    ? 'Chọn ca hoặc thời gian mới. Hệ thống sẽ kiểm tra trùng lịch trước khi lưu.'
+                    : 'Lưu thay đổi sẽ kích hoạt lại lịch phân ca này.';
+                adjustmentCurrentSummary.textContent = data.currentSummary || '';
+                adjustmentCurrent.classList.toggle('hidden', !isActiveAssignment);
+                adjustmentCurrent.classList.toggle('flex', isActiveAssignment);
+                submitLabel.textContent = isActiveAssignment ? 'Lưu điều chỉnh' : 'Cập nhật & kích hoạt';
                 employeeMultiModeControl.classList.add('hidden');
                 setMultiEmployeeMode(false);
 
