@@ -384,6 +384,7 @@
             </div>
 
             <form id="assignment-form" action="/admin/shift-assignments/create" method="POST" class="p-space-xl flex flex-col gap-space-lg">
+                <input id="assignment_multi_employee_mode_value" type="hidden" name="multi_employee_mode" value="0">
                 <div id="assignment-form-error" class="hidden items-start gap-space-sm p-space-md rounded-xl bg-error-container/60 border border-error/30 text-on-error-container text-body-md">
                     <span class="material-symbols-outlined text-[20px]">error</span>
                     <span id="assignment-form-error-text"></span>
@@ -402,6 +403,10 @@
 
                     <div class="flex flex-col gap-space-xs">
                         <label class="font-label-sm text-label-sm text-on-surface" for="assignment_employee">Nhân viên <span class="text-error">*</span></label>
+                        <label id="assignment-multi-mode-control" class="inline-flex items-center gap-space-sm font-body-sm text-body-sm text-on-surface-variant cursor-pointer">
+                            <input id="assignment_multi_employee_mode" class="w-4 h-4 accent-primary" type="checkbox">
+                            Phân cùng ca cho nhiều nhân viên
+                        </label>
                         <div class="relative">
                             <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
                             <input class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-8 pr-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container" id="assignment_employee_search" type="search" autocomplete="off" placeholder="Tìm theo mã, tên hoặc phòng ban..." aria-controls="assignment_employee">
@@ -414,6 +419,18 @@
                                 </option>
                             <% }) %>
                         </select>
+                        <div id="assignment_employee_multi_list" class="hidden max-h-52 overflow-y-auto rounded-xl border border-surface-container-high bg-surface-container-lowest divide-y divide-surface-container-low" role="group" aria-label="Chọn nhiều nhân viên">
+                            <% employees.forEach((employee) => { %>
+                                <label class="flex items-center gap-space-sm px-space-md py-space-sm hover:bg-surface-container-low cursor-pointer" data-employee-option data-code="<%= employee.employee_code %>" data-name="<%= employee.full_name %>" data-department="<%= employee.department || '' %>">
+                                    <input class="w-4 h-4 accent-primary shrink-0" type="checkbox" name="employee_ids" value="<%= employee.id %>">
+                                    <span class="flex flex-col min-w-0">
+                                        <span class="font-label-md text-label-md text-on-surface truncate"><%= employee.full_name %></span>
+                                        <span class="font-body-sm text-body-sm text-on-surface-variant"><%= employee.employee_code %><%= employee.department ? ` · ${employee.department}` : '' %></span>
+                                    </span>
+                                </label>
+                            <% }) %>
+                        </div>
+                        <span id="assignment-multi-mode-help" class="hidden font-body-sm text-body-sm text-primary">Ca và khoảng ngày sẽ áp dụng cho tất cả người đã chọn; nhân viên bị trùng lịch sẽ được bỏ qua và báo sau khi lưu.</span>
                         <span id="assignment-employee-hint" class="font-body-sm text-body-sm text-on-surface-variant" aria-live="polite"><%= employees.length %> nhân viên đang hoạt động</span>
                     </div>
                 </div>
@@ -482,6 +499,11 @@
         const departmentFilter = document.getElementById('assignment_department_filter');
         const employeeSearch = document.getElementById('assignment_employee_search');
         const employeeSelect = document.getElementById('assignment_employee');
+        const employeeMultiMode = document.getElementById('assignment_multi_employee_mode');
+        const employeeMultiModeValue = document.getElementById('assignment_multi_employee_mode_value');
+        const employeeMultiModeControl = document.getElementById('assignment-multi-mode-control');
+        const employeeMultiList = document.getElementById('assignment_employee_multi_list');
+        const employeeMultiHelp = document.getElementById('assignment-multi-mode-help');
         const employeeHint = document.getElementById('assignment-employee-hint');
         const shiftSelect = document.getElementById('assignment_shift');
         const shiftSearch = document.getElementById('assignment_shift_search');
@@ -551,6 +573,14 @@
                 if (match) visibleCount += 1;
             });
 
+            employeeMultiList.querySelectorAll('[data-employee-option]').forEach((employeeOption) => {
+                const searchableText = `${employeeOption.dataset.code || ''} ${employeeOption.dataset.name || ''} ${employeeOption.dataset.department || ''}`
+                    .normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('vi');
+                const matchesDepartment = !department || employeeOption.dataset.department === department;
+                const matchesQuery = !query || searchableText.includes(query);
+                employeeOption.hidden = !(matchesDepartment && matchesQuery);
+            });
+
             if (employeeSelect.selectedOptions[0] && employeeSelect.selectedOptions[0].disabled) {
                 employeeSelect.value = '';
             }
@@ -561,7 +591,38 @@
             updateEmployeeHint();
         };
 
+        const setMultiEmployeeMode = (enabled) => {
+            const wasEnabled = employeeMultiMode.checked;
+            if (enabled && !wasEnabled && employeeSelect.value) {
+                const matchingCheckbox = employeeMultiList.querySelector(`input[value="${employeeSelect.value}"]`);
+                if (matchingCheckbox) matchingCheckbox.checked = true;
+            } else if (!enabled && wasEnabled) {
+                const firstSelected = employeeMultiList.querySelector('input[name="employee_ids"]:checked');
+                if (firstSelected) employeeSelect.value = firstSelected.value;
+            }
+
+            employeeMultiMode.checked = enabled;
+            employeeMultiModeValue.value = enabled ? '1' : '0';
+            employeeSelect.disabled = enabled;
+            employeeSelect.required = !enabled;
+            employeeSelect.classList.toggle('hidden', enabled);
+            employeeMultiList.classList.toggle('hidden', !enabled);
+            employeeMultiHelp.classList.toggle('hidden', !enabled);
+            employeeMultiList.querySelectorAll('input[name="employee_ids"]').forEach((checkbox) => {
+                checkbox.disabled = !enabled;
+            });
+            updateEmployeeHint();
+        };
+
         const updateEmployeeHint = () => {
+            if (employeeMultiMode.checked) {
+                const selected = Array.from(employeeMultiList.querySelectorAll('input[name="employee_ids"]:checked'));
+                employeeHint.textContent = selected.length
+                    ? `Đã chọn ${selected.length} nhân viên${selected.length <= 3 ? `: ${selected.map((checkbox) => checkbox.closest('[data-employee-option]').dataset.name).join(', ')}` : ''}`
+                    : 'Chọn một hoặc nhiều nhân viên trong danh sách.';
+                return;
+            }
+
             const option = employeeSelect.selectedOptions[0];
             if (!option || !option.value) return;
             const department = option.dataset.department;
@@ -588,6 +649,8 @@
             departmentFilter.value = '';
             employeeSearch.value = '';
             shiftSearch.value = '';
+            employeeMultiModeControl.classList.remove('hidden');
+            setMultiEmployeeMode(false);
             filterEmployees();
             filterShifts();
             clearError();
@@ -628,6 +691,8 @@
 
                 form.action = `/admin/shift-assignments/${data.id}/update`;
                 modalTitle.textContent = 'Chỉnh sửa phân ca';
+                employeeMultiModeControl.classList.add('hidden');
+                setMultiEmployeeMode(false);
 
                 departmentFilter.value = '';
                 employeeSearch.value = '';
@@ -651,6 +716,8 @@
         departmentFilter.addEventListener('change', filterEmployees);
         employeeSearch.addEventListener('input', filterEmployees);
         employeeSelect.addEventListener('change', updateEmployeeHint);
+        employeeMultiMode.addEventListener('change', () => setMultiEmployeeMode(employeeMultiMode.checked));
+        employeeMultiList.addEventListener('change', updateEmployeeHint);
         shiftSearch.addEventListener('input', filterShifts);
         shiftSelect.addEventListener('change', updateShiftHint);
 
@@ -662,6 +729,13 @@
 
         form.addEventListener('submit', (event) => {
             clearError();
+
+            if (employeeMultiMode.checked
+                && employeeMultiList.querySelectorAll('input[name="employee_ids"]:checked').length === 0) {
+                event.preventDefault();
+                showError('Vui lòng chọn ít nhất một nhân viên để phân ca.');
+                return;
+            }
 
             if (startInput.value && endInput.value && endInput.value < startInput.value) {
                 event.preventDefault();

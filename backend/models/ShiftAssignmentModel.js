@@ -142,12 +142,13 @@ export const findConflict = async (employeeId, startDate, endDate, excludeId = n
 
 const assertCanSaveAssignment = async (connection, data, excludeId = null) => {
     const [employees] = await connection.execute(
-        "SELECT id FROM employees WHERE id = ? AND is_active = 1 FOR UPDATE",
+        "SELECT id, full_name, is_active FROM employees WHERE id = ? FOR UPDATE",
         [data.employee_id]
     );
-    if (employees.length === 0) {
+    if (employees.length === 0 || Number(employees[0].is_active) !== 1) {
         const error = new Error("Nhân viên không tồn tại hoặc đã ngừng hoạt động.");
         error.code = "SHIFT_ASSIGNMENT_EMPLOYEE_INACTIVE";
+        error.employeeName = employees[0]?.full_name || String(data.employee_id);
         throw error;
     }
 
@@ -181,6 +182,7 @@ const assertCanSaveAssignment = async (connection, data, excludeId = null) => {
         const error = new Error("Khoảng thời gian phân ca bị trùng.");
         error.code = "SHIFT_ASSIGNMENT_CONFLICT";
         error.conflict = conflicts[0];
+        error.employeeName = employees[0].full_name;
         throw error;
     }
 };
@@ -200,6 +202,49 @@ export const create = async (data) => {
 
         await connection.commit();
         return result.insertId;
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
+};
+
+export const createMany = async (data, employeeIds) => {
+    const connection = await db.getConnection();
+    const created = [];
+    const skipped = [];
+
+    try {
+        await connection.beginTransaction();
+
+        for (const employeeId of [...new Set(employeeIds)].sort((a, b) => a - b)) {
+            try {
+                const employeeData = { ...data, employee_id: employeeId };
+                await assertCanSaveAssignment(connection, employeeData);
+                await connection.execute(
+                    `INSERT INTO employee_shift_assignments
+                        (employee_id, shift_id, start_date, end_date, status, note)
+                     VALUES (?, ?, ?, ?, 'active', ?)`,
+                    [employeeId, data.shift_id, data.start_date, data.end_date, data.note]
+                );
+                created.push(employeeId);
+            } catch (error) {
+                if (!["SHIFT_ASSIGNMENT_CONFLICT", "SHIFT_ASSIGNMENT_EMPLOYEE_INACTIVE", "SHIFT_ASSIGNMENT_SHIFT_INACTIVE"].includes(error.code)) {
+                    throw error;
+                }
+
+                skipped.push({
+                    employeeName: error.employeeName || String(employeeId),
+                    reason: error.code === "SHIFT_ASSIGNMENT_CONFLICT"
+                        ? `trùng ca ${error.conflict.shift_name} (${error.conflict.start_date} - ${error.conflict.end_date})`
+                        : "nhân viên hoặc ca đã ngừng hoạt động"
+                });
+            }
+        }
+
+        await connection.commit();
+        return { created, skipped };
     } catch (error) {
         await connection.rollback();
         throw error;
