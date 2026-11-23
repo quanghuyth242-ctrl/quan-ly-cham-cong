@@ -49,7 +49,7 @@ const getSaveErrorMessage = (error, fallback) => {
     return fallback;
 };
 
-const validateAssignment = async (body, excludeId = null) => {
+const validateAssignment = async (body, excludeId = null, { skipEmployeeCheck = false } = {}) => {
     const data = {
         employee_id: parseId(body.employee_id),
         shift_id: parseId(body.shift_id),
@@ -60,7 +60,7 @@ const validateAssignment = async (body, excludeId = null) => {
 
     const errors = [];
 
-    if (!data.employee_id) {
+    if (!data.employee_id && !skipEmployeeCheck) {
         errors.push("Vui lòng chọn nhân viên cần phân ca.");
     }
 
@@ -86,11 +86,11 @@ const validateAssignment = async (body, excludeId = null) => {
     }
 
     const [employee, shift] = await Promise.all([
-        data.employee_id ? ShiftAssignmentModel.findEmployeeById(data.employee_id) : null,
+        data.employee_id && !skipEmployeeCheck ? ShiftAssignmentModel.findEmployeeById(data.employee_id) : null,
         data.shift_id ? WorkShiftModel.findById(data.shift_id) : null
     ]);
 
-    if (data.employee_id && !employee) {
+    if (data.employee_id && !skipEmployeeCheck && !employee) {
         errors.push("Nhân viên được chọn không tồn tại.");
     }
 
@@ -102,7 +102,7 @@ const validateAssignment = async (body, excludeId = null) => {
         }
     }
 
-    if (errors.length === 0) {
+    if (errors.length === 0 && !skipEmployeeCheck) {
         const conflict = await ShiftAssignmentModel.findConflict(
             data.employee_id,
             data.start_date,
@@ -198,11 +198,42 @@ export const index = async (req, res) => {
 
 export const create = async (req, res) => {
     try {
-        const { data, errors } = await validateAssignment(req.body);
+        const bulkMode = String(req.body.multi_employee_mode) === "1";
+        const rawEmployeeIds = req.body.employee_ids === undefined
+            ? []
+            : Array.isArray(req.body.employee_ids) ? req.body.employee_ids : [req.body.employee_ids];
+        const employeeIds = rawEmployeeIds.map(parseId);
+        const invalidEmployeeIds = employeeIds.some((id) => !id);
+        const { data, errors } = await validateAssignment(req.body, null, {
+            skipEmployeeCheck: bulkMode
+        });
+
+        if (bulkMode && employeeIds.length === 0) {
+            errors.push("Vui lòng chọn ít nhất một nhân viên để phân ca.");
+        } else if (bulkMode && invalidEmployeeIds) {
+            errors.push("Danh sách nhân viên được chọn không hợp lệ. Vui lòng chọn lại.");
+        }
 
         if (errors.length > 0) {
             return redirectWith(res, "/admin/shift-assignments", {
                 error: errors.join(" ")
+            });
+        }
+
+        if (bulkMode) {
+            const result = await ShiftAssignmentModel.createMany(data, employeeIds);
+            if (result.created.length === 0) {
+                const skippedNames = result.skipped.slice(0, 5).map((item) => item.employeeName).join(", ");
+                return redirectWith(res, "/admin/shift-assignments", {
+                    error: `Không phân ca được cho nhân viên nào. Các trường hợp bị bỏ qua: ${skippedNames || "nhân viên không đủ điều kiện"}.`
+                });
+            }
+
+            const skippedSummary = result.skipped.length
+                ? ` Bỏ qua ${result.skipped.length} nhân viên do trùng lịch hoặc không còn hoạt động: ${result.skipped.slice(0, 5).map((item) => item.employeeName).join(", ")}${result.skipped.length > 5 ? "…" : ""}.`
+                : "";
+            return redirectWith(res, "/admin/shift-assignments", {
+                success: `Đã phân ca thành công cho ${result.created.length} nhân viên.${skippedSummary}`
             });
         }
 
