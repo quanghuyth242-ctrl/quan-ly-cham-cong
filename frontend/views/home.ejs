@@ -53,6 +53,39 @@
 </form>
 </div>
 </div></div></header><main class="w-full pt-16 px-gutter-lg pb-space-2xl bg-surface flex-1"><div class="flex flex-col w-full gap-space-xl">
+<%
+    const overviewData = locals.overviewData || {
+        todayDate: "",
+        activeEmployees: 0,
+        presentEmployees: 0,
+        onTimeEmployees: 0,
+        lateOrEarlyEmployees: 0,
+        leaveEmployees: 0,
+        absentEmployees: 0,
+        attendanceRate: 0,
+        yesterdayAttendanceRate: 0,
+        onTimeRate: 0,
+        averageLateMinutes: 0,
+        reportedLeaveEmployees: 0,
+        unreportedAbsentEmployees: 0,
+        departments: 0,
+        liveRows: [],
+        pendingRequests: [],
+        weeklyRates: []
+    };
+    const formatOverviewDate = (value) => {
+        if (!value) return "";
+        const date = new Date(`${value}T00:00:00`);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
+    };
+    const formatTimeValue = (value) => {
+        if (!value) return "--:--";
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) return "--:--";
+        return date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    };
+%>
 <!-- Page Header & Global Action Bar -->
 <section class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
 <div class="flex flex-col gap-space-xs">
@@ -63,7 +96,7 @@
 <span class="font-data-mono text-data-mono font-medium text-primary">Cập nhật 30 giây trước</span>
 </div>
 <h1 class="font-headline-lg text-headline-lg text-primary tracking-tight">
-        Tổng Quan Chấm Công Hôm Nay - Thứ Năm, 24/10/2024
+        Tổng Quan Chấm Công Hôm Nay - <%= formatOverviewDate(overviewData.todayDate) %>
       </h1>
 <p class="font-body-md text-body-md text-on-surface-variant">
         Theo dõi lưu lượng điểm danh theo ca, thiết bị đầu cuối và phê duyệt đơn giải trình khẩn cấp.
@@ -73,7 +106,7 @@
 <!-- Department Filter -->
 <div class="relative min-w-[170px]">
 <select class="w-full appearance-none bg-surface-container-low text-on-surface font-label-md text-label-md py-space-sm pl-space-md pr-space-xl rounded-xl outline-none focus:bg-surface-container hover:bg-surface-container transition-colors cursor-pointer">
-<option value="all">Tất cả phòng ban (6)</option>
+<option value="all">Tất cả phòng ban (<%= overviewData.departments %>)</option>
 <option value="tech">Khối Kỹ thuật &amp; CNTT</option>
 <option value="sales">Khối Kinh doanh (Sales)</option>
 <option value="hr">Nhân sự &amp; Vận hành</option>
@@ -115,8 +148,8 @@
 <div>
 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Có mặt thực tế</span>
 <div class="flex items-baseline gap-space-xs mt-space-xs">
-<span class="font-headline-xl text-headline-xl text-primary font-bold">128</span>
-<span class="font-headline-sm text-headline-sm text-on-surface-variant">/ 132 NV</span>
+<span class="font-headline-xl text-headline-xl text-primary font-bold"><%= overviewData.presentEmployees %></span>
+<span class="font-headline-sm text-headline-sm text-on-surface-variant">/ <%= overviewData.activeEmployees %> NV</span>
 </div>
 </div>
 <div class="w-12 h-12 rounded-xl bg-surface-container-low text-primary flex items-center justify-center shrink-0">
@@ -126,9 +159,9 @@
 <div class="mt-space-lg flex items-center justify-between pt-space-md bg-surface-container-low/50 -mx-space-xl -mb-space-xl px-space-xl py-space-sm">
 <div class="flex items-center gap-space-xs text-secondary font-label-sm text-label-sm font-semibold">
 <span class="material-symbols-outlined text-[16px]">trending_up</span>
-<span>97.0% Tỷ lệ hiện diện</span>
+<span><%= overviewData.attendanceRate %>% Tỷ lệ hiện diện</span>
 </div>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Hôm qua: 95.4%</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Hôm qua: <%= overviewData.yesterdayAttendanceRate %>%</span>
 </div>
 </div>
 <!-- Card 2: On Time -->
@@ -137,7 +170,7 @@
 <div>
 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đi đúng giờ</span>
 <div class="flex items-baseline gap-space-xs mt-space-xs">
-<span class="font-headline-xl text-headline-xl text-on-surface font-bold">115</span>
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold"><%= overviewData.onTimeEmployees %></span>
 <span class="font-headline-sm text-headline-sm text-on-surface-variant">nhân viên</span>
 </div>
 </div>
@@ -148,7 +181,7 @@
 <div class="mt-space-lg flex items-center justify-between pt-space-md bg-surface-container-low/50 -mx-space-xl -mb-space-xl px-space-xl py-space-sm">
 <div class="flex items-center gap-space-xs text-on-surface-variant font-label-sm text-label-sm">
 <span class="inline-block w-2 h-2 rounded-full bg-secondary-container"></span>
-<span>89.8% nhân sự có mặt</span>
+<span><%= overviewData.onTimeRate %>% nhân sự có mặt</span>
 </div>
 <span class="font-body-sm text-body-sm text-on-surface-variant">Trước 08:30 AM</span>
 </div>
@@ -159,7 +192,7 @@
 <div>
 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đi muộn / Về sớm</span>
 <div class="flex items-baseline gap-space-xs mt-space-xs">
-<span class="font-headline-xl text-headline-xl text-on-surface font-bold">8</span>
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold"><%= overviewData.lateOrEarlyEmployees %></span>
 <span class="font-headline-sm text-headline-sm text-on-surface-variant">nhân viên</span>
 </div>
 </div>
@@ -170,7 +203,7 @@
 <div class="mt-space-lg flex items-center justify-between pt-space-md bg-surface-container-low/50 -mx-space-xl -mb-space-xl px-space-xl py-space-sm">
 <div class="flex items-center gap-space-xs text-on-error-container font-label-sm text-label-sm font-semibold">
 <span class="material-symbols-outlined text-[16px]">timelapse</span>
-<span>TB muộn: 14 phút</span>
+<span>TB muộn: <%= overviewData.averageLateMinutes %> phút</span>
 </div>
 <span class="font-body-sm text-body-sm text-on-surface-variant">6 đã gửi đơn giải trình</span>
 </div>
@@ -181,7 +214,7 @@
 <div>
 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Vắng mặt / Nghỉ phép</span>
 <div class="flex items-baseline gap-space-xs mt-space-xs">
-<span class="font-headline-xl text-headline-xl text-on-surface font-bold">5</span>
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold"><%= overviewData.leaveEmployees + overviewData.absentEmployees %></span>
 <span class="font-headline-sm text-headline-sm text-on-surface-variant">người</span>
 </div>
 </div>
@@ -192,9 +225,9 @@
 <div class="mt-space-lg flex items-center justify-between pt-space-md bg-surface-container-low/50 -mx-space-xl -mb-space-xl px-space-xl py-space-sm">
 <div class="flex items-center gap-space-xs text-secondary font-label-sm text-label-sm">
 <span class="material-symbols-outlined text-[16px]">check_circle</span>
-<span>3 nghỉ có phép</span>
+<span><%= overviewData.reportedLeaveEmployees %> nghỉ có phép</span>
 </div>
-<span class="font-body-sm text-body-sm text-error font-medium">2 chưa báo cáo</span>
+<span class="font-body-sm text-body-sm text-error font-medium"><%= overviewData.unreportedAbsentEmployees %> chưa báo cáo</span>
 </div>
 </div>
 </section>
@@ -493,7 +526,7 @@
 </div>
 <!-- Table Footer with Clean Pagination -->
 <div class="p-space-lg bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-md text-body-sm text-on-surface-variant">
-<span>Hiển thị <strong>1 - 6</strong> trong số <strong>132</strong> nhân viên hôm nay</span>
+<span>Hiển thị <strong>1 - <%= overviewData.liveRows.length %></strong> trong số <strong><%= overviewData.activeEmployees %></strong> nhân viên hôm nay</span>
 <div class="flex items-center gap-space-xs">
 <button class="p-space-xs text-outline cursor-not-allowed rounded-lg hover:bg-surface-container" disabled="" type="button">
 <span class="material-symbols-outlined text-[18px]">chevron_left</span>
@@ -634,6 +667,108 @@
 </div>
 </aside>
 </div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const liveRows = <%- JSON.stringify(overviewData.liveRows) %>;
+        const liveBody = document.querySelector('section.lg\\:col-span-8 table tbody');
+
+        if (!liveBody) return;
+
+        if (liveRows.length === 0) {
+            liveBody.innerHTML = '<tr><td class="py-space-lg px-space-lg text-on-surface-variant" colspan="7">Chưa có dữ liệu chấm công hôm nay.</td></tr>';
+            return;
+        }
+
+        const escapeHtml = (value) => String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+        const timeOnly = (value) => {
+            if (!value) return '--:--';
+            const date = new Date(value);
+            return Number.isNaN(date.getTime())
+                ? '--:--'
+                : date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        };
+
+        liveBody.innerHTML = liveRows.map((row) => {
+            const source = row.record_source === 'gps'
+                ? 'GPS Mobile'
+                : row.record_source === 'face'
+                    ? 'Nhận diện khuôn mặt'
+                    : row.record_source === 'device'
+                        ? 'Thiết bị chấm công'
+                        : row.record_source === 'manual'
+                            ? 'Chấm công thủ công'
+                            : 'Chưa xác định';
+            const statusClass = row.day_status
+                ? 'bg-surface-container-high text-on-surface-variant'
+                : row.late
+                    ? 'bg-error-container text-on-error-container'
+                    : 'bg-secondary-fixed text-on-secondary-fixed';
+            const statusDot = row.late && !row.day_status
+                ? 'bg-error'
+                : 'bg-secondary';
+
+            return `
+                <tr class="hover:bg-surface-container-low/70 transition-colors">
+                    <td class="py-space-md px-space-lg">
+                        <div class="flex items-center gap-space-md">
+                            <div class="w-9 h-9 rounded-full bg-primary-fixed text-on-primary-fixed font-semibold flex items-center justify-center text-sm shrink-0">${escapeHtml(row.initials)}</div>
+                            <div class="flex flex-col min-w-0">
+                                <span class="font-label-md text-label-md text-on-surface font-semibold truncate">${escapeHtml(row.full_name)}</span>
+                                <span class="font-data-mono text-[11px] text-on-surface-variant">${escapeHtml(row.employee_code)}${row.department ? ' • ' + escapeHtml(row.department) : ''}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-space-md px-space-md font-data-mono text-data-mono font-semibold ${row.late ? 'text-error' : 'text-primary'}">${timeOnly(row.check_in)}</td>
+                    <td class="py-space-md px-space-md font-data-mono text-data-mono text-on-surface-variant">${timeOnly(row.check_out)}</td>
+                    <td class="py-space-md px-space-md"><span class="font-body-sm text-body-sm">${escapeHtml(source)}</span></td>
+                    <td class="py-space-md px-space-md"><span class="font-data-mono text-[11px] text-on-surface-variant">${row.check_in_latitude != null ? escapeHtml(row.check_in_latitude) + ', ' + escapeHtml(row.check_in_longitude) : 'Không có vị trí'}</span></td>
+                    <td class="py-space-md px-space-md"><span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full ${statusClass} text-[11px] font-semibold"><span class="w-1.5 h-1.5 rounded-full ${statusDot}"></span>${escapeHtml(row.displayStatus)}</span></td>
+                    <td class="py-space-md px-space-lg text-right"><a class="p-space-xs text-on-surface-variant hover:text-primary" href="/admin/attendance" title="Mở bảng chấm công"><span class="material-symbols-outlined text-[18px]">visibility</span></a></td>
+                </tr>`;
+        }).join('');
+
+        const pendingRequests = <%- JSON.stringify(overviewData.pendingRequests) %>;
+        const pendingCount = pendingRequests.length;
+        const pendingHeading = Array.from(document.querySelectorAll('h3')).find((node) =>
+            node.textContent.includes('Cần Xử Lý Gấp')
+        );
+        if (pendingHeading) {
+            const pendingWidget = pendingHeading.closest('.bg-surface-container-lowest');
+            const countBadge = pendingWidget.querySelector('.bg-error-container');
+            if (countBadge) countBadge.textContent = `${pendingCount} Đơn`;
+            const list = pendingWidget.querySelector('.flex.flex-col.gap-space-md');
+            if (list) {
+                list.innerHTML = pendingCount
+                    ? pendingRequests.map((request) => {
+                        const names = {
+                            leave: 'Đơn xin nghỉ phép',
+                            explanation: 'Đơn giải trình',
+                            overtime: 'Đơn xin tăng ca',
+                            business_trip: 'Đơn xin công tác',
+                            resignation: 'Đơn nghỉ việc'
+                        };
+                        const title = names[request.request_type] || 'Đơn chờ xử lý';
+                        return `<div class="p-space-md bg-surface-container-low rounded-xl flex flex-col gap-space-xs">
+                            <div class="flex items-center justify-between">
+                                <span class="font-label-md text-label-md text-on-surface font-semibold">${escapeHtml(title)}</span>
+                                <span class="font-data-mono text-[11px] text-on-surface-variant">${escapeHtml(request.created_time || '')}</span>
+                            </div>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant"><strong>${escapeHtml(request.full_name)}</strong>${request.department ? ' (' + escapeHtml(request.department) + ')' : ''}${request.reason ? ' - ' + escapeHtml(request.reason) : ''}</p>
+                            <div class="flex items-center justify-end mt-space-xs pt-space-xs">
+                                <a class="px-space-md py-1 bg-primary hover:bg-primary-container text-on-primary text-label-sm font-label-sm rounded-lg" href="/admin/requests">Xử lý</a>
+                            </div>
+                        </div>`;
+                    }).join('')
+                    : '<p class="p-space-md font-body-sm text-body-sm text-on-surface-variant">Không có đơn chờ xử lý.</p>';
+            }
+        }
+    });
+</script>
 <!-- Interactive script for demo interactions without styling pollution -->
 <script>
     document.addEventListener('DOMContentLoaded', () => {

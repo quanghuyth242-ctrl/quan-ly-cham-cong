@@ -12,7 +12,7 @@ import AttendanceRouter from "./routers/attendanceRoutes.js";
 import LeaveRequestRouter from "./routers/LeaveRequestRouter.js";
 import * as LeaveRequestController from "./controllers/LeaveRequestController.js";
 import { requireAdmin, requireAuth } from "./middlewares/authMiddleware.js";
-import { getOverviewNotifications } from "./services/notificationService.js";
+import { getOverviewData, getOverviewNotifications } from "./services/notificationService.js";
 import adminDeviceRoutes from "./routers/adminDeviceRoutes.js";
 import adminEmployeeRoutes from "./routers/adminEmployeeRoutes.js";
 import adminDepartmentRoutes from "./routers/adminDepartmentRoutes.js";
@@ -87,14 +87,18 @@ app.get("/", async (req, res) => {
     }
 
     try {
-        const overview = await getOverviewNotifications();
+        const [overview, overviewData] = await Promise.all([
+            getOverviewNotifications(),
+            getOverviewData()
+        ]);
 
         res.render("home", {
             user: req.session.user,
             notifications: overview.notifications,
             leaveNotifications: overview.leaveNotifications,
             attendanceNotifications: overview.attendanceNotifications,
-            unreadNotificationCount: overview.unreadCount
+            unreadNotificationCount: overview.unreadCount,
+            overviewData
         });
     } catch (error) {
         console.error("Lỗi tải thông báo:", error);
@@ -104,7 +108,8 @@ app.get("/", async (req, res) => {
             notifications: [],
             leaveNotifications: [],
             attendanceNotifications: [],
-            unreadNotificationCount: 0
+            unreadNotificationCount: 0,
+            overviewData: await getOverviewData()
         });
     }
 });
