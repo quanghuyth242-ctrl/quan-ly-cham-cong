@@ -35,6 +35,26 @@ const parseId = (value) => {
     return Number.isInteger(id) && id > 0 ? id : null;
 };
 
+const getWeekRange = (dateStr) => {
+    const target = dateStr && isValidDate(dateStr) ? dateStr : new Date().toISOString().slice(0, 10);
+    const [y, m, d] = target.split("-").map(Number);
+    const date = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    const jsDay = date.getUTCDay();
+    const dbDay = jsDay === 0 ? 7 : jsDay;
+    const mon = new Date(date.getTime() - (dbDay - 1) * 86400000);
+    const sun = new Date(date.getTime() + (7 - dbDay) * 86400000);
+    const prevMon = new Date(mon.getTime() - 7 * 86400000);
+    const nextMon = new Date(mon.getTime() + 7 * 86400000);
+
+    return {
+        selectedDate: target,
+        weekStart: mon.toISOString().slice(0, 10),
+        weekEnd: sun.toISOString().slice(0, 10),
+        prevWeekDate: prevMon.toISOString().slice(0, 10),
+        nextWeekDate: nextMon.toISOString().slice(0, 10)
+    };
+};
+
 const getSaveErrorMessage = (error, fallback) => {
     if (error.code === "SHIFT_ASSIGNMENT_CONFLICT") {
         const conflict = error.conflict;
@@ -137,7 +157,13 @@ export const index = async (req, res) => {
             ? String(req.query.status)
             : "active";
 
-        const [assignments, employees, activeShifts, departments, stats] = await Promise.all([
+        const viewMode = ["calendar", "list"].includes(req.query.view)
+            ? req.query.view
+            : "calendar";
+
+        const weekInfo = getWeekRange(req.query.date || requestedStartDate);
+
+        const [assignments, employees, activeShifts, departments, stats, scheduleMatrix] = await Promise.all([
             ShiftAssignmentModel.findAll({
                 search,
                 department,
@@ -149,25 +175,73 @@ export const index = async (req, res) => {
             ShiftAssignmentModel.getEmployeeOptions(),
             WorkShiftModel.findActive(),
             ShiftAssignmentModel.getDepartments(),
-            ShiftAssignmentModel.getStats()
+            ShiftAssignmentModel.getStats(),
+            ShiftAssignmentModel.getScheduleMatrix({
+                startDate: weekInfo.weekStart,
+                endDate: weekInfo.weekEnd,
+                department,
+                shiftId: shiftId || "",
+                search
+            })
         ]);
         const syncRevision = await WorkShiftModel.getScheduleSyncRevision().catch(() => "");
+
+        // Nhóm assignments theo từng nhân viên (employee_id)
+        // Mỗi phần tử là: { employee: { id, employee_code, full_name, department, position },
+        //                   primaryAssignment: assignment (active, start_date mới nhất),
+        //                   otherAssignments: [assignment...] (các ca còn lại theo thứ tự) }
+        const empMap = new Map();
+        for (const a of assignments) {
+            const empKey = a.employee_id;
+            if (!empMap.has(empKey)) {
+                empMap.set(empKey, {
+                    employee_id: a.employee_id,
+                    employee_code: a.employee_code,
+                    full_name: a.full_name,
+                    department: a.department,
+                    assignments: []
+                });
+            }
+            empMap.get(empKey).assignments.push(a);
+        }
+        // Chuyển thành mảng; mỗi nhóm sắp xếp: active trước, start_date mới nhất trước
+        const groupedAssignments = Array.from(empMap.values()).map(group => {
+            const sorted = group.assignments.slice().sort((a, b) => {
+                if (a.status !== b.status) return a.status === "active" ? -1 : 1;
+                return b.start_date > a.start_date ? 1 : -1;
+            });
+            return {
+                employee_id: group.employee_id,
+                employee_code: group.employee_code,
+                full_name: group.full_name,
+                department: group.department,
+                primaryAssignment: sorted[0],
+                otherAssignments: sorted.slice(1),
+                totalAssignments: sorted.length
+            };
+        });
 
         res.render("assignments", {
             user: req.session.user,
             assignments,
+            groupedAssignments,
             employees,
             activeShifts,
             departments,
             stats,
             syncRevision,
+            viewMode,
+            weekInfo,
+            scheduleMatrix,
             filters: {
                 search,
                 department,
                 shiftId: shiftId ? String(shiftId) : "",
                 startDate: requestedStartDate,
                 endDate: requestedEndDate,
-                status
+                status,
+                view: viewMode,
+                date: weekInfo.selectedDate
             },
             weekdayLabels: WEEKDAY_LABELS,
             success: req.query.success || null,
@@ -179,6 +253,7 @@ export const index = async (req, res) => {
         res.render("assignments", {
             user: req.session.user,
             assignments: [],
+            groupedAssignments: [],
             employees: [],
             activeShifts: [],
             departments: [],
@@ -188,11 +263,86 @@ export const index = async (req, res) => {
                 assignedEmployees: 0
             },
             syncRevision: "",
-            filters: { search: "", department: "", shiftId: "", startDate: "", endDate: "", status: "active" },
+            viewMode: "calendar",
+            weekInfo: getWeekRange(""),
+            scheduleMatrix: { days: [], employees: [], matrix: {}, summary: {} },
+            filters: { search: "", department: "", shiftId: "", startDate: "", endDate: "", status: "active", view: "calendar", date: "" },
             weekdayLabels: WEEKDAY_LABELS,
             success: null,
             error: "Không thể tải danh sách phân ca. Vui lòng thử lại."
         });
+    }
+};
+
+export const calendarData = async (req, res) => {
+    try {
+        const search = String(req.query.search || "").trim();
+        const department = String(req.query.department || "").trim();
+        const shiftId = parseId(req.query.shift_id);
+        const mode = req.query.mode === "month" ? "month" : "week";
+
+        let startDate = "";
+        let endDate = "";
+        let weekInfo = null;
+
+        if (mode === "month") {
+            const ymMatch = String(req.query.month || "").match(/^(\d{4})-(\d{2})$/);
+            const now = new Date();
+            const year = ymMatch ? Number(ymMatch[1]) : now.getFullYear();
+            const month = ymMatch ? Number(ymMatch[2]) : (now.getMonth() + 1);
+            const formattedYm = `${year}-${String(month).padStart(2, "0")}`;
+            startDate = `${formattedYm}-01`;
+            const lastDay = new Date(Date.UTC(year, month, 0, 12, 0, 0)).getUTCDate();
+            endDate = `${formattedYm}-${String(lastDay).padStart(2, "0")}`;
+        } else {
+            weekInfo = getWeekRange(req.query.date);
+            startDate = weekInfo.weekStart;
+            endDate = weekInfo.weekEnd;
+        }
+
+        const [scheduleMatrix, activeShifts] = await Promise.all([
+            ShiftAssignmentModel.getScheduleMatrix({
+                startDate,
+                endDate,
+                department,
+                shiftId: shiftId || "",
+                search
+            }),
+            WorkShiftModel.findActive()
+        ]);
+
+        res.json({
+            success: true,
+            mode,
+            startDate,
+            endDate,
+            weekInfo,
+            activeShifts,
+            ...scheduleMatrix
+        });
+    } catch (error) {
+        console.error("Lỗi lấy dữ liệu lịch phân ca:", error);
+        res.status(500).json({ success: false, error: "Không thể lấy dữ liệu lịch phân ca." });
+    }
+};
+
+export const employeeCalendar = async (req, res) => {
+    try {
+        const employeeId = parseId(req.query.employee_id || req.params.employeeId);
+        if (!employeeId) {
+            return res.status(400).json({ success: false, error: "Thiếu mã nhân viên hợp lệ." });
+        }
+
+        const month = String(req.query.month || "").trim();
+        const result = await ShiftAssignmentModel.getEmployeeMonthlySchedule(employeeId, month);
+        if (!result) {
+            return res.status(404).json({ success: false, error: "Không tìm thấy nhân viên." });
+        }
+
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error("Lỗi tải lịch nhân viên:", error);
+        res.status(500).json({ success: false, error: "Không thể tải lịch phân ca của nhân viên." });
     }
 };
 
@@ -284,10 +434,13 @@ export const update = async (req, res) => {
 };
 
 export const adjust = async (req, res) => {
+    const isJson = Boolean(req.xhr || req.headers.accept?.includes("application/json") || req.body._format === "json");
     try {
         const assignmentId = parseId(req.params.id);
         const shiftId = parseId(req.body.shift_id);
         const effectiveDate = String(req.body.effective_date || "").trim();
+        const returnView = String(req.body.return_view || "").trim();
+        const returnDate = String(req.body.return_date || "").trim();
         const errors = [];
 
         if (!assignmentId) errors.push("Lịch phân ca không hợp lệ.");
@@ -295,6 +448,9 @@ export const adjust = async (req, res) => {
         if (!effectiveDate || !isValidDate(effectiveDate)) errors.push("Ngày hiệu lực không hợp lệ.");
 
         if (errors.length) {
+            if (isJson) {
+                return res.status(400).json({ success: false, error: errors.join(" ") });
+            }
             return redirectWith(res, "/admin/shift-assignments", { error: errors.join(" ") });
         }
 
@@ -304,10 +460,24 @@ export const adjust = async (req, res) => {
             note: String(req.body.note || "").trim().slice(0, 255)
         });
 
-        redirectWith(res, "/admin/shift-assignments", {
-            success: result.split
-                ? `Đã điều chỉnh ca từ ngày ${effectiveDate}; lịch cũ được giữ nguyên đến ngày liền trước.`
-                : `Đã cập nhật ca làm việc từ ngày ${effectiveDate}.`
+        const successMsg = result.split
+            ? `Đã điều chỉnh ca từ ngày ${effectiveDate}; lịch cũ được giữ nguyên đến ngày liền trước.`
+            : `Đã cập nhật ca làm việc từ ngày ${effectiveDate}.`;
+
+        if (isJson) {
+            return res.json({ success: true, message: successMsg, result });
+        }
+
+        let redirectUrl = "/admin/shift-assignments";
+        if (returnView || returnDate) {
+            const params = new URLSearchParams();
+            if (returnView) params.set("view", returnView);
+            if (returnDate) params.set("date", returnDate);
+            redirectUrl = `/admin/shift-assignments?${params.toString()}`;
+        }
+
+        redirectWith(res, redirectUrl, {
+            success: successMsg
         });
     } catch (error) {
         console.log("Lỗi điều chỉnh ca làm:", error);
@@ -323,6 +493,11 @@ export const adjust = async (req, res) => {
         const message = error.code === "SHIFT_ASSIGNMENT_CONFLICT"
             ? `Không thể điều chỉnh vì trùng với ca "${error.conflict.shift_name}" (${error.conflict.start_date} - ${error.conflict.end_date}).`
             : messages[error.code] || "Không thể điều chỉnh ca làm. Vui lòng thử lại.";
+
+        if (isJson) {
+            return res.status(400).json({ success: false, error: message });
+        }
+
         redirectWith(res, "/admin/shift-assignments", { error: message });
     }
 };

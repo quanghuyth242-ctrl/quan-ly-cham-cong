@@ -36,6 +36,31 @@
                 Lịch trực
             </a>
         </nav>
+
+        <!-- Toggle Chế độ xem: Lịch phân ca / Danh sách -->
+        <div class="flex items-center p-1 rounded-xl bg-surface-container-high" role="tablist" aria-label="Chế độ xem phân ca">
+            <button
+                id="toggle-view-calendar"
+                type="button"
+                role="tab"
+                aria-selected="<%= viewMode === 'calendar' ? 'true' : 'false' %>"
+                class="flex items-center gap-space-xs px-space-md py-space-sm rounded-lg font-label-md text-label-md transition-all <%= viewMode === 'calendar' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-primary' %>"
+            >
+                <span class="material-symbols-outlined text-[18px]">calendar_view_week</span>
+                <span>Lịch phân ca</span>
+            </button>
+            <button
+                id="toggle-view-list"
+                type="button"
+                role="tab"
+                aria-selected="<%= viewMode === 'list' ? 'true' : 'false' %>"
+                class="flex items-center gap-space-xs px-space-md py-space-sm rounded-lg font-label-md text-label-md transition-all <%= viewMode === 'list' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-primary' %>"
+            >
+                <span class="material-symbols-outlined text-[18px]">table_rows</span>
+                <span>Danh sách</span>
+            </button>
+        </div>
+
         <button
         id="open-create-assignment"
         class="flex items-center justify-center gap-space-xs px-space-lg py-space-sm rounded-xl font-label-md text-label-md shadow-md transition-all self-start lg:self-auto <%= canAssign ? 'bg-primary hover:bg-primary-container text-on-primary' : 'bg-surface-container-high text-outline cursor-not-allowed' %>"
@@ -96,6 +121,308 @@
     </a>
 </section>
 
+<%
+    const getShiftColorEjs = (code) => {
+        switch (String(code || '').toUpperCase()) {
+            case 'CA001':
+                return { bg: 'bg-blue-50/90 hover:bg-blue-100', border: 'border-blue-200', text: 'text-blue-900', dot: 'bg-blue-600' };
+            case 'CA002':
+                return { bg: 'bg-emerald-50/90 hover:bg-emerald-100', border: 'border-emerald-200', text: 'text-emerald-900', dot: 'bg-emerald-600' };
+            case 'CA003':
+                return { bg: 'bg-amber-50/90 hover:bg-amber-100', border: 'border-amber-200', text: 'text-amber-900', dot: 'bg-amber-600' };
+            case 'CA005':
+                return { bg: 'bg-purple-50/90 hover:bg-purple-100', border: 'border-purple-200', text: 'text-purple-900', dot: 'bg-purple-600' };
+            case 'CA006':
+                return { bg: 'bg-indigo-50/90 hover:bg-indigo-100', border: 'border-indigo-200', text: 'text-indigo-900', dot: 'bg-indigo-600' };
+            case 'CA007':
+                return { bg: 'bg-teal-50/90 hover:bg-teal-100', border: 'border-teal-200', text: 'text-teal-900', dot: 'bg-teal-600' };
+            default:
+                return { bg: 'bg-primary-fixed/50 hover:bg-primary-fixed/80', border: 'border-primary/20', text: 'text-primary', dot: 'bg-primary' };
+        }
+    };
+%>
+
+<!-- CHẾ ĐỘ XEM: LỊCH PHÂN CA (CALENDAR / SCHEDULE MATRIX) -->
+<div id="calendar-view-container" class="<%= viewMode === 'calendar' ? '' : 'hidden' %> flex flex-col gap-space-lg">
+    <section class="bg-surface-container-lowest rounded-xl shadow-sm border border-surface-container-high/60 overflow-hidden flex flex-col">
+        <!-- Toolbar điều khiển lịch -->
+        <div class="p-space-lg border-b border-surface-container-high bg-surface-container-lowest flex flex-col xl:flex-row xl:items-center justify-between gap-space-md">
+            <!-- Điều hướng tuần -->
+            <div class="flex flex-wrap items-center gap-space-sm">
+                <div class="flex items-center bg-surface-container-low rounded-xl p-1 border border-surface-container-high shadow-xs">
+                    <button
+                        id="cal-prev-btn"
+                        type="button"
+                        class="p-1 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors"
+                        title="Tuần trước"
+                        data-date="<%= weekInfo.prevWeekDate %>"
+                    >
+                        <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+                    </button>
+                    <button
+                        id="cal-today-btn"
+                        type="button"
+                        class="px-space-md py-1 rounded-lg text-label-sm font-semibold text-primary hover:bg-surface-container-high transition-colors flex items-center gap-1"
+                        title="Trở về tuần hiện tại"
+                    >
+                        <span class="material-symbols-outlined text-[16px]">today</span>
+                        <span>Hôm nay</span>
+                    </button>
+                    <button
+                        id="cal-next-btn"
+                        type="button"
+                        class="p-1 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors"
+                        title="Tuần sau"
+                        data-date="<%= weekInfo.nextWeekDate %>"
+                    >
+                        <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+                    </button>
+                </div>
+
+                <div class="relative flex items-center">
+                    <input
+                        id="cal-date-picker"
+                        type="date"
+                        value="<%= weekInfo.selectedDate %>"
+                        class="bg-surface-container-low border border-surface-container-high text-on-surface font-data-mono text-body-sm px-space-md py-1.5 rounded-xl outline-none focus:ring-2 focus:ring-primary-container cursor-pointer"
+                        title="Chọn ngày để xem lịch tuần"
+                    >
+                </div>
+
+                <div class="flex items-center gap-space-xs pl-space-xs">
+                    <span id="cal-period-title" class="font-headline-sm text-headline-sm text-primary font-bold">
+                        Tuần <%= weekInfo.weekStart.slice(8, 10) %>/<%= weekInfo.weekStart.slice(5, 7) %> – <%= weekInfo.weekEnd.slice(8, 10) %>/<%= weekInfo.weekEnd.slice(5, 7) %>/<%= weekInfo.weekEnd.slice(0, 4) %>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Bộ lọc nhanh trên lịch & Tiện ích in ấn -->
+            <div class="flex flex-wrap items-center gap-space-sm">
+                <select
+                    id="cal-dept-filter"
+                    class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm px-space-md py-space-sm rounded-xl outline-none border border-surface-container-high cursor-pointer"
+                >
+                    <option value="">Tất cả phòng ban</option>
+                    <% departments.forEach((dept) => { %>
+                        <option value="<%= dept %>"><%= dept %></option>
+                    <% }) %>
+                </select>
+
+                <select
+                    id="cal-shift-filter"
+                    class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm px-space-md py-space-sm rounded-xl outline-none border border-surface-container-high cursor-pointer"
+                >
+                    <option value="">Tất cả ca làm</option>
+                    <% activeShifts.forEach((s) => { %>
+                        <option value="<%= s.id %>"><%= s.shift_code %> - <%= s.shift_name %></option>
+                    <% }) %>
+                </select>
+
+                <div class="relative w-48 sm:w-56">
+                    <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px]">search</span>
+                    <input
+                        id="cal-search-input"
+                        type="text"
+                        placeholder="Tìm tên hoặc mã..."
+                        class="w-full bg-surface-container-low border border-surface-container-high text-on-surface font-body-sm text-body-sm pl-8 pr-2.5 py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
+                    >
+                </div>
+
+                <button
+                    id="cal-print-btn"
+                    type="button"
+                    class="flex items-center gap-1 bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant px-space-md py-space-sm rounded-xl font-label-md text-label-md border border-surface-container-high transition-colors"
+                    title="In bảng lịch phân ca"
+                >
+                    <span class="material-symbols-outlined text-[18px]">print</span>
+                    <span class="hidden sm:inline">In lịch</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Bảng ma trận lịch -->
+        <div id="cal-matrix-wrapper" class="overflow-x-auto relative">
+            <table id="cal-schedule-table" class="w-full text-left border-collapse min-w-[1000px]">
+                <thead>
+                    <tr class="bg-surface-container-low/80 border-b border-surface-container-high text-on-surface font-label-sm text-label-sm">
+                        <th class="py-3 px-3 w-64 min-w-[240px] sticky left-0 z-20 bg-surface-container-low/95 backdrop-blur-sm border-r border-surface-container-high">
+                            <div class="flex items-center justify-between">
+                                <span class="uppercase tracking-wider font-semibold text-on-surface-variant flex items-center gap-1" title="Sắp xếp: Mã nhân viên mới nhất đến cũ nhất">
+                                    <span>Nhân viên</span>
+                                    <span class="material-symbols-outlined text-[14px] text-primary" title="Mã NV mới nhất → cũ nhất">arrow_downward</span>
+                                </span>
+                                <span id="cal-emp-count-badge" class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-semibold">
+                                    <%= scheduleMatrix.employees.length %> NV
+                                </span>
+                            </div>
+                        </th>
+                        <% scheduleMatrix.days.forEach((day) => { %>
+                            <th class="py-3 px-2 text-center min-w-[130px] border-r border-surface-container-high/60 <%= day.isToday ? 'bg-primary/5 ring-1 ring-inset ring-primary/20' : (day.isWeekend ? 'bg-surface-container-high/30' : '') %>">
+                                <div class="flex flex-col items-center gap-0.5">
+                                    <span class="text-[12px] font-semibold <%= day.isToday ? 'text-primary' : 'text-on-surface-variant' %>">
+                                        <%= day.weekdayLabel %>
+                                    </span>
+                                    <div class="flex items-center gap-1">
+                                        <span class="font-data-mono text-[13px] font-bold <%= day.isToday ? 'px-2 py-0.5 rounded-full bg-primary text-on-primary' : (day.isWeekend ? 'text-amber-700' : 'text-on-surface') %>">
+                                            <%= String(day.dayNumber).padStart(2, '0') %>/<%= String(day.monthNumber).padStart(2, '0') %>
+                                        </span>
+                                    </div>
+                                    <% if (day.isToday) { %>
+                                        <span class="text-[10px] uppercase font-bold text-primary tracking-wider">Hôm nay</span>
+                                    <% } %>
+                                </div>
+                            </th>
+                        <% }) %>
+                    </tr>
+                </thead>
+                <tbody id="cal-matrix-tbody" class="divide-y divide-surface-container-high/50 text-body-sm">
+                    <% if (scheduleMatrix.employees.length === 0) { %>
+                        <tr>
+                            <td colspan="<%= scheduleMatrix.days.length + 1 %>" class="py-12 px-4 text-center text-on-surface-variant">
+                                <div class="flex flex-col items-center gap-2">
+                                    <span class="material-symbols-outlined text-[36px] text-outline">group_off</span>
+                                    <span class="font-label-md">Không tìm thấy nhân viên nào phù hợp bộ lọc.</span>
+                                </div>
+                            </td>
+                        </tr>
+                    <% } else { %>
+                        <% scheduleMatrix.employees.forEach((emp) => { %>
+                            <tr class="hover:bg-surface-container-low/60 transition-colors" data-emp-row="true" data-emp-name="<%= emp.full_name %>" data-emp-code="<%= emp.employee_code %>" data-emp-dept="<%= emp.department || '' %>">
+                                <td class="py-2.5 px-3 sticky left-0 z-10 bg-surface-container-lowest border-r border-surface-container-high shadow-xs">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <div class="flex items-center gap-2.5 min-w-0">
+                                            <div class="w-8 h-8 rounded-full bg-primary-fixed text-primary font-bold text-xs flex items-center justify-center shrink-0">
+                                                <%= emp.full_name.trim().slice(0, 2).toUpperCase() %>
+                                            </div>
+                                            <div class="flex flex-col min-w-0">
+                                                <span class="font-label-md text-label-md text-on-surface font-semibold truncate" title="<%= emp.full_name %>">
+                                                    <%= emp.full_name %>
+                                                </span>
+                                                <span class="font-data-mono text-[11px] text-on-surface-variant truncate">
+                                                    <%= emp.employee_code %><%= emp.department ? ` · ${emp.department}` : '' %>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            class="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary-fixed/50 transition-colors shrink-0"
+                                            title="Xem lịch chi tiết của <%= emp.full_name %>"
+                                            data-view-employee-calendar
+                                            data-id="<%= emp.id %>"
+                                            data-name="<%= emp.full_name %>"
+                                            data-code="<%= emp.employee_code %>"
+                                            data-dept="<%= emp.department || '' %>"
+                                        >
+                                            <span class="material-symbols-outlined text-[18px]">calendar_month</span>
+                                        </button>
+                                    </div>
+                                </td>
+
+                                <% scheduleMatrix.days.forEach((day) => { %>
+                                    <% const cell = scheduleMatrix.matrix[emp.id] && scheduleMatrix.matrix[emp.id][day.dateStr]; %>
+                                    <td class="p-1.5 border-r border-surface-container-high/50 align-top <%= day.isToday ? 'bg-primary/5' : (day.isWeekend ? 'bg-surface-container-high/15' : '') %>">
+                                        <% if (cell && cell.type === 'work') { %>
+                                            <% const c = getShiftColorEjs(cell.shiftCode); %>
+                                            <div
+                                                class="flex flex-col p-2 rounded-xl border <%= c.bg %> <%= c.border %> <%= c.text %> cursor-pointer transition-all shadow-xs group"
+                                                data-cell-work
+                                                data-emp-id="<%= emp.id %>"
+                                                data-emp-name="<%= emp.full_name %>"
+                                                data-emp-code="<%= emp.employee_code %>"
+                                                data-emp-dept="<%= emp.department || '' %>"
+                                                data-date="<%= day.dateStr %>"
+                                                data-date-label="<%= day.weekdayLabel %>, <%= String(day.dayNumber).padStart(2, '0') %>/<%= String(day.monthNumber).padStart(2, '0') %>/<%= day.dateStr.slice(0, 4) %>"
+                                                data-shift-id="<%= cell.shiftId %>"
+                                                data-shift-code="<%= cell.shiftCode %>"
+                                                data-shift-name="<%= cell.shiftName %>"
+                                                data-morning="<%= cell.morningTime %>"
+                                                data-afternoon="<%= cell.afternoonTime %>"
+                                                data-start="<%= cell.startDate %>"
+                                                data-end="<%= cell.endDate %>"
+                                                data-note="<%= cell.note || '' %>"
+                                                data-assignment-id="<%= cell.assignmentId %>"
+                                                title="Bấm để xem chi tiết / điều chỉnh"
+                                            >
+                                                <div class="flex items-center gap-1 font-bold text-[12px] leading-tight truncate">
+                                                    <span class="w-1.5 h-1.5 rounded-full <%= c.dot %> shrink-0"></span>
+                                                    <span class="truncate"><%= cell.shiftName %></span>
+                                                </div>
+                                                <span class="font-data-mono text-[11px] opacity-80 mt-1 truncate">
+                                                    <%= cell.morningStart && cell.afternoonEnd ? `${cell.morningStart} - ${cell.afternoonEnd}` : cell.timeFormatted %>
+                                                </span>
+                                            </div>
+                                        <% } else if (cell && cell.type === 'rest') { %>
+                                            <div class="h-full min-h-[52px] flex flex-col items-center justify-center p-1.5 rounded-xl bg-surface-container-high/40 text-on-surface-variant/70 text-[11px] font-medium border border-dashed border-outline-variant/40" title="Nghỉ theo quy định ca <%= cell.shiftName || '' %>">
+                                                <span class="material-symbols-outlined text-[16px] opacity-60">bedtime</span>
+                                                <span>Nghỉ ca</span>
+                                            </div>
+                                        <% } else { %>
+                                            <div
+                                                class="h-full min-h-[52px] flex items-center justify-center rounded-xl hover:bg-surface-container-high/50 border border-transparent hover:border-dashed hover:border-outline-variant/60 cursor-pointer group transition-all"
+                                                data-cell-add
+                                                data-emp-id="<%= emp.id %>"
+                                                data-date="<%= day.dateStr %>"
+                                                title="Phân ca cho <%= emp.full_name %> từ <%= day.dateStr %>"
+                                            >
+                                                <span class="material-symbols-outlined text-[18px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">add</span>
+                                            </div>
+                                        <% } %>
+                                    </td>
+                                <% }) %>
+                            </tr>
+                        <% }) %>
+                    <% } %>
+                </tbody>
+                <tfoot class="border-t-2 border-surface-container-high bg-surface-container-low font-label-sm text-label-sm">
+                    <tr id="cal-matrix-tfoot-row">
+                        <td class="py-3 px-3 sticky left-0 z-10 bg-surface-container-low border-r border-surface-container-high font-bold text-on-surface text-[12px] flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[18px] text-primary">groups</span>
+                            <span>Tổng nhân sự đi làm</span>
+                        </td>
+                        <% scheduleMatrix.days.forEach((day) => { %>
+                            <% const count = (scheduleMatrix.summary[day.dateStr] && scheduleMatrix.summary[day.dateStr].totalWorking) || 0; %>
+                            <td class="py-3 px-2 text-center border-r border-surface-container-high/50 <%= day.isToday ? 'bg-primary/5' : '' %>">
+                                <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[12px] font-bold <%= count > 0 ? 'bg-green-100 text-green-800' : 'bg-surface-container-high text-on-surface-variant' %>">
+                                    <%= count %> NV
+                                </span>
+                            </td>
+                        <% }) %>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Chú thích ca làm việc (Legend) -->
+        <div class="p-space-md border-t border-surface-container-high bg-surface-container-lowest flex flex-wrap items-center justify-between gap-space-md text-[12px]">
+            <div class="flex flex-wrap items-center gap-space-md">
+                <span class="font-semibold text-on-surface-variant flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[16px] text-primary">palette</span>
+                    Chú thích ca:
+                </span>
+                <% activeShifts.forEach((s) => { %>
+                    <% const col = getShiftColorEjs(s.shift_code); %>
+                    <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium bg-surface-container-low border-surface-container-high">
+                        <span class="w-2.5 h-2.5 rounded-full <%= col.dot %>"></span>
+                        <strong class="text-on-surface"><%= s.shift_code %>:</strong>
+                        <span class="text-on-surface-variant"><%= s.shift_name %> (<%= s.morning_start %>-<%= s.afternoon_end %>)</span>
+                    </div>
+                <% }) %>
+                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium bg-surface-container-low border-surface-container-high text-on-surface-variant">
+                    <span class="w-2.5 h-2.5 rounded-full bg-outline/40"></span>
+                    <span>Nghỉ theo ca</span>
+                </div>
+                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium bg-surface-container-low border-surface-container-high text-outline">
+                    <span class="w-2.5 h-2.5 rounded-full border border-dashed border-outline"></span>
+                    <span>Chưa phân ca</span>
+                </div>
+            </div>
+            <span class="text-on-surface-variant text-[11px]">Bấm vào ô ca để xem chi tiết / điều chỉnh · Bấm (+) để phân ca nhanh</span>
+        </div>
+    </section>
+</div>
+
+<!-- CHẾ ĐỘ XEM: DANH SÁCH (TABLE / LIST VIEW) -->
+<div id="list-view-container" class="<%= viewMode === 'list' ? '' : 'hidden' %>">
 <section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
     <div class="p-space-lg border-b border-surface-container-high">
         <form method="GET" action="/admin/shift-assignments" class="flex flex-col gap-space-md">
@@ -183,67 +510,146 @@
         </form>
     </div>
 
+    <%# Helper EJS: render action buttons cho 1 assignment (dùng lại cả 2 nơi) %>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-space-md p-space-md lg:hidden">
-        <% if (assignments.length === 0) { %>
+        <% if (groupedAssignments.length === 0) { %>
             <div class="md:col-span-2 flex flex-col items-center gap-space-sm p-space-2xl rounded-xl border border-dashed border-outline-variant text-center text-on-surface-variant">
                 <span class="material-symbols-outlined text-[36px]">event_busy</span>
                 <span class="font-label-md text-label-md">Chưa có lịch trực phù hợp</span>
                 <span class="font-body-sm text-body-sm">Thử đổi bộ lọc hoặc tạo lịch trực mới.</span>
             </div>
         <% } else { %>
-            <% assignments.forEach((assignment) => { %>
+            <% groupedAssignments.forEach((group) => {
+                const pA = group.primaryAssignment;
+                const others = group.otherAssignments;
+                const cardId = `card-others-${group.employee_id}`;
+            %>
                 <article class="flex flex-col gap-space-md p-space-lg rounded-xl border border-surface-container-high bg-surface-container-lowest shadow-sm">
+                    <!-- Header nhân viên -->
                     <div class="flex items-start justify-between gap-space-sm">
                         <div class="flex items-center gap-space-sm min-w-0">
-                            <div class="w-10 h-10 rounded-full bg-primary-fixed text-primary font-semibold flex items-center justify-center shrink-0"><%= assignment.full_name.slice(0, 2).toUpperCase() %></div>
+                            <div class="w-10 h-10 rounded-full bg-primary-fixed text-primary font-semibold flex items-center justify-center shrink-0"><%= pA.full_name.slice(0, 2).toUpperCase() %></div>
                             <div class="flex flex-col min-w-0">
-                                <h3 class="font-label-md text-label-md text-on-surface font-semibold truncate"><%= assignment.full_name %></h3>
-                                <span class="font-data-mono text-[11px] text-on-surface-variant"><%= assignment.employee_code %><%= assignment.department ? ` · ${assignment.department}` : '' %></span>
+                                <h3 class="font-label-md text-label-md text-on-surface font-semibold truncate"><%= pA.full_name %></h3>
+                                <span class="font-data-mono text-[11px] text-on-surface-variant"><%= pA.employee_code %><%= pA.department ? ` · ${pA.department}` : '' %></span>
                             </div>
                         </div>
-                        <span class="shrink-0 inline-flex items-center gap-1 px-space-sm py-1 rounded-full <%= assignment.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-surface-container-high text-on-surface-variant' %> text-[11px] font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full <%= assignment.status === 'active' ? 'bg-green-500' : 'bg-outline' %>"></span>
-                            <%= assignment.status === 'active' ? 'Đang áp dụng' : 'Đã hủy' %>
-                        </span>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <% if (others.length > 0) { %>
+                                <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200">
+                                    <span class="material-symbols-outlined text-[12px]">layers</span>
+                                    <%= group.totalAssignments %> ca
+                                </span>
+                            <% } %>
+                            <span class="inline-flex items-center gap-1 px-space-sm py-1 rounded-full <%= pA.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-surface-container-high text-on-surface-variant' %> text-[11px] font-semibold">
+                                <span class="w-1.5 h-1.5 rounded-full <%= pA.status === 'active' ? 'bg-green-500' : 'bg-outline' %>"></span>
+                                <%= pA.status === 'active' ? 'Đang áp dụng' : 'Đã hủy' %>
+                            </span>
+                        </div>
                     </div>
 
+                    <!-- Ca làm việc chính -->
                     <div class="p-space-md rounded-lg bg-primary-fixed/40">
                         <div class="flex items-center gap-space-xs text-primary font-label-md text-label-md font-semibold">
                             <span class="material-symbols-outlined text-[18px]">schedule</span>
-                            <%= assignment.shift_code %> · <%= assignment.shift_name %>
+                            <%= pA.shift_code %> · <%= pA.shift_name %>
                         </div>
-                        <div class="mt-1 font-data-mono text-data-mono text-on-surface-variant"><%= assignment.morning_start %> – <%= assignment.morning_end %> <span class="px-1">|</span> <%= assignment.afternoon_start %> – <%= assignment.afternoon_end %></div>
+                        <div class="mt-1 font-data-mono text-data-mono text-on-surface-variant"><%= pA.morning_start %> – <%= pA.morning_end %> <span class="px-1">|</span> <%= pA.afternoon_start %> – <%= pA.afternoon_end %></div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-space-sm">
                         <div class="flex flex-col gap-1 p-space-sm rounded-lg bg-surface-container-low">
                             <span class="font-label-sm text-label-sm text-on-surface-variant">Từ ngày</span>
-                            <span class="font-data-mono text-data-mono"><%= assignment.start_date %></span>
+                            <span class="font-data-mono text-data-mono"><%= pA.start_date %></span>
                         </div>
                         <div class="flex flex-col gap-1 p-space-sm rounded-lg bg-surface-container-low">
                             <span class="font-label-sm text-label-sm text-on-surface-variant">Đến ngày</span>
-                            <span class="font-data-mono text-data-mono"><%= assignment.end_date %></span>
+                            <span class="font-data-mono text-data-mono"><%= pA.end_date %></span>
                         </div>
                     </div>
 
                     <div class="flex flex-wrap gap-1">
-                        <% assignment.workdays.forEach((day) => { %>
+                        <% pA.workdays.forEach((day) => { %>
                             <span class="px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-semibold"><%= weekdayLabels[day] %></span>
                         <% }) %>
                     </div>
 
-                    <div class="flex items-center gap-space-sm pt-space-sm border-t border-surface-container-high">
-                        <button class="flex-1 inline-flex justify-center items-center gap-1 px-space-sm py-space-sm rounded-lg bg-primary-fixed text-primary font-label-sm text-label-sm" data-edit-assignment data-id="<%= assignment.id %>" data-employee="<%= assignment.employee_id %>" data-shift="<%= assignment.shift_id %>" data-start="<%= assignment.start_date %>" data-end="<%= assignment.end_date %>" data-note="<%= assignment.note || '' %>" data-status="<%= assignment.status %>" data-current-summary="<%= `${assignment.shift_code} · ${assignment.shift_name} | ${assignment.morning_start}-${assignment.morning_end}, ${assignment.afternoon_start}-${assignment.afternoon_end} | ${assignment.start_date} – ${assignment.end_date}` %>" type="button">
-                            <span class="material-symbols-outlined text-[18px]">edit_calendar</span> <%= assignment.status === 'active' ? 'Điều chỉnh ca' : 'Sửa lịch đã hủy' %>
+                    <!-- Action buttons ca chính -->
+                    <div class="flex items-center gap-space-xs pt-space-sm border-t border-surface-container-high">
+                        <button class="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm transition-colors" type="button" data-view-employee-calendar data-id="<%= pA.employee_id %>" data-name="<%= pA.full_name %>" data-code="<%= pA.employee_code %>" data-dept="<%= pA.department || '' %>" title="Xem lịch tháng">
+                            <span class="material-symbols-outlined text-[16px]">calendar_month</span>
+                            <span>Lịch</span>
                         </button>
-                        <% if (assignment.status === 'active') { %>
-                            <form action="/admin/shift-assignments/<%= assignment.id %>/cancel" method="POST" onsubmit="return confirm('Bạn có chắc muốn hủy phân ca này?');">
-                                <button class="inline-flex items-center justify-center px-space-sm py-space-sm rounded-lg bg-error-container/60 text-error" type="submit" aria-label="Hủy lịch trực">
+                        <% if (pA.status === 'active') { %>
+                            <button class="flex-1 inline-flex justify-center items-center gap-1 px-space-sm py-1.5 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-sm text-label-sm shadow-xs transition-colors" data-adjust-shift data-id="<%= pA.id %>" data-employee-name="<%= pA.full_name %>" data-employee-code="<%= pA.employee_code %>" data-department="<%= pA.department || '' %>" data-current-shift-id="<%= pA.shift_id %>" data-current-shift-name="<%= pA.shift_name %>" data-current-shift-time="<%= pA.morning_start %> - <%= pA.morning_end %> | <%= pA.afternoon_start %> - <%= pA.afternoon_end %>" data-start="<%= pA.start_date %>" data-end="<%= pA.end_date %>" data-note="<%= pA.note || '' %>" type="button">
+                                <span class="material-symbols-outlined text-[16px]">edit_calendar</span>
+                                <span>Điều chỉnh ca</span>
+                            </button>
+                        <% } %>
+                        <button class="inline-flex items-center justify-center p-1.5 rounded-lg bg-surface-container-high hover:bg-surface-variant text-on-surface" data-edit-assignment data-id="<%= pA.id %>" data-employee="<%= pA.employee_id %>" data-shift="<%= pA.shift_id %>" data-start="<%= pA.start_date %>" data-end="<%= pA.end_date %>" data-note="<%= pA.note || '' %>" data-status="<%= pA.status %>" data-current-summary="<%= `${pA.shift_code} · ${pA.shift_name} | ${pA.morning_start}-${pA.morning_end}, ${pA.afternoon_start}-${pA.afternoon_end} | ${pA.start_date} – ${pA.end_date}` %>" type="button">
+                            <span class="material-symbols-outlined text-[18px]">tune</span>
+                        </button>
+                        <% if (pA.status === 'active') { %>
+                            <form action="/admin/shift-assignments/<%= pA.id %>/cancel" method="POST" onsubmit="return confirm('Bạn có chắc muốn hủy phân ca này?');">
+                                <button class="inline-flex items-center justify-center p-1.5 rounded-lg bg-error-container/60 text-error" type="submit" title="Hủy phân ca">
                                     <span class="material-symbols-outlined text-[18px]">event_busy</span>
                                 </button>
                             </form>
                         <% } %>
+
+                        <!-- Nút mở rộng danh sách các ca khác -->
+                        <% if (others.length > 0) { %>
+                            <button
+                                type="button"
+                                class="ml-auto inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 font-label-sm text-label-sm border border-amber-200 transition-colors"
+                                data-toggle-others="<%= cardId %>"
+                                aria-expanded="false"
+                            >
+                                <span class="material-symbols-outlined text-[15px]">expand_more</span>
+                                <span><%= others.length %> ca khác</span>
+                            </button>
+                        <% } %>
                     </div>
+
+                    <!-- Danh sách ca bổ sung (ẩn mặc định) -->
+                    <% if (others.length > 0) { %>
+                        <div id="<%= cardId %>" class="hidden flex flex-col gap-2 border-t border-surface-container-high pt-space-sm">
+                            <p class="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Các ca khác</p>
+                            <% others.forEach((o) => { %>
+                                <div class="flex flex-col gap-2 p-space-sm rounded-lg border border-surface-container-high bg-surface-container-low">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <div class="flex items-center gap-1.5 text-primary font-label-sm text-label-sm font-semibold">
+                                            <span class="material-symbols-outlined text-[15px]">schedule</span>
+                                            <%= o.shift_code %> · <%= o.shift_name %>
+                                        </div>
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full <%= o.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-surface-container-high text-on-surface-variant' %> text-[10px] font-semibold">
+                                            <span class="w-1.5 h-1.5 rounded-full <%= o.status === 'active' ? 'bg-green-500' : 'bg-outline' %>"></span>
+                                            <%= o.status === 'active' ? 'Đang áp dụng' : 'Đã hủy' %>
+                                        </span>
+                                    </div>
+                                    <div class="font-data-mono text-[11px] text-on-surface-variant"><%= o.morning_start %> – <%= o.morning_end %> | <%= o.afternoon_start %> – <%= o.afternoon_end %></div>
+                                    <div class="font-data-mono text-[11px] text-on-surface-variant"><%= o.start_date %> → <%= o.end_date %></div>
+                                    <div class="flex gap-1 pt-1 border-t border-surface-container-high">
+                                        <% if (o.status === 'active') { %>
+                                            <button class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary hover:bg-primary-container text-on-primary text-[11px] font-semibold transition-colors" data-adjust-shift data-id="<%= o.id %>" data-employee-name="<%= o.full_name %>" data-employee-code="<%= o.employee_code %>" data-department="<%= o.department || '' %>" data-current-shift-id="<%= o.shift_id %>" data-current-shift-name="<%= o.shift_name %>" data-current-shift-time="<%= o.morning_start %> - <%= o.morning_end %> | <%= o.afternoon_start %> - <%= o.afternoon_end %>" data-start="<%= o.start_date %>" data-end="<%= o.end_date %>" data-note="<%= o.note || '' %>" type="button">
+                                                <span class="material-symbols-outlined text-[13px]">edit_calendar</span> Điều chỉnh
+                                            </button>
+                                        <% } %>
+                                        <button class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-surface-container-high hover:bg-surface-variant text-on-surface text-[11px] font-semibold transition-colors" data-edit-assignment data-id="<%= o.id %>" data-employee="<%= o.employee_id %>" data-shift="<%= o.shift_id %>" data-start="<%= o.start_date %>" data-end="<%= o.end_date %>" data-note="<%= o.note || '' %>" data-status="<%= o.status %>" data-current-summary="<%= `${o.shift_code} · ${o.shift_name} | ${o.morning_start}-${o.morning_end}, ${o.afternoon_start}-${o.afternoon_end} | ${o.start_date} – ${o.end_date}` %>" type="button">
+                                            <span class="material-symbols-outlined text-[13px]">tune</span> Sửa
+                                        </button>
+                                        <% if (o.status === 'active') { %>
+                                            <form action="/admin/shift-assignments/<%= o.id %>/cancel" method="POST" onsubmit="return confirm('Hủy phân ca này?');">
+                                                <button class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-error-container/60 text-error text-[11px] font-semibold transition-colors" type="submit">
+                                                    <span class="material-symbols-outlined text-[13px]">cancel</span> Hủy
+                                                </button>
+                                            </form>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        </div>
+                    <% } %>
                 </article>
             <% }) %>
         <% } %>
@@ -262,8 +668,8 @@
                     <th class="py-space-md px-space-lg font-semibold text-right">Thao tác</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-surface-container-low text-body-sm text-on-surface">
-                <% if (assignments.length === 0) { %>
+            <tbody class="text-body-sm text-on-surface">
+                <% if (groupedAssignments.length === 0) { %>
                     <tr>
                         <td colspan="7" class="py-space-2xl px-space-lg text-center">
                             <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
@@ -274,43 +680,52 @@
                         </td>
                     </tr>
                 <% } else { %>
-                    <% assignments.forEach((assignment) => { %>
-                        <tr class="hover:bg-surface-container-low/70 transition-colors align-top">
+                    <% groupedAssignments.forEach((group) => {
+                        const pA = group.primaryAssignment;
+                        const others = group.otherAssignments;
+                        const rowId = `tbl-others-${group.employee_id}`;
+                    %>
+                        <!-- Hàng chính -->
+                        <tr class="border-b border-surface-container-low hover:bg-surface-container-low/70 transition-colors align-top">
                             <td class="py-space-md px-space-lg sticky left-0 z-[1] bg-surface-container-lowest">
                                 <div class="flex items-center gap-space-md">
                                     <div class="w-9 h-9 rounded-full bg-primary-fixed text-primary font-semibold flex items-center justify-center text-sm shrink-0">
-                                        <%= assignment.full_name.slice(0, 2).toUpperCase() %>
+                                        <%= pA.full_name.slice(0, 2).toUpperCase() %>
                                     </div>
                                     <div class="flex flex-col min-w-0">
-                                        <span class="font-label-md text-label-md text-on-surface font-semibold truncate"><%= assignment.full_name %></span>
-                                        <span class="font-data-mono text-[11px] text-on-surface-variant"><%= assignment.employee_code %></span>
+                                        <span class="font-label-md text-label-md text-on-surface font-semibold truncate"><%= pA.full_name %></span>
+                                        <span class="font-data-mono text-[11px] text-on-surface-variant"><%= pA.employee_code %></span>
+                                        <% if (others.length > 0) { %>
+                                            <span class="mt-0.5 inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-700">
+                                                <span class="material-symbols-outlined text-[11px]">layers</span>
+                                                <%= group.totalAssignments %> ca được giao
+                                            </span>
+                                        <% } %>
                                     </div>
                                 </div>
                             </td>
-                            <td class="py-space-md px-space-md text-on-surface-variant">
-                                <%= assignment.department || "—" %>
-                            </td>
+                            <td class="py-space-md px-space-md text-on-surface-variant"><%= pA.department || "—" %></td>
                             <td class="py-space-md px-space-md">
                                 <div class="flex flex-col">
-                                    <span class="font-label-md text-label-md text-on-surface font-semibold"><%= assignment.shift_name %></span>
+                                    <span class="font-label-md text-label-md text-on-surface font-semibold"><%= pA.shift_name %></span>
                                     <span class="font-data-mono text-[11px] text-on-surface-variant">
-                                        <%= assignment.morning_start %> - <%= assignment.morning_end %> |
-                                        <%= assignment.afternoon_start %> - <%= assignment.afternoon_end %>
+                                        <%= pA.morning_start %> - <%= pA.morning_end %> |
+                                        <%= pA.afternoon_start %> - <%= pA.afternoon_end %>
                                     </span>
                                 </div>
                             </td>
                             <td class="py-space-md px-space-md">
                                 <div class="flex flex-col font-data-mono text-data-mono">
-                                    <span><%= assignment.start_date %></span>
-                                    <span class="text-on-surface-variant">đến <%= assignment.end_date %></span>
+                                    <span><%= pA.start_date %></span>
+                                    <span class="text-on-surface-variant">đến <%= pA.end_date %></span>
                                 </div>
                             </td>
                             <td class="py-space-md px-space-md">
                                 <div class="flex flex-wrap gap-1 max-w-[190px]">
-                                    <% if (assignment.workdays.length === 0) { %>
+                                    <% if (pA.workdays.length === 0) { %>
                                         <span class="text-on-surface-variant">—</span>
                                     <% } else { %>
-                                        <% assignment.workdays.forEach((day) => { %>
+                                        <% pA.workdays.forEach((day) => { %>
                                             <span class="px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-semibold">
                                                 <%= weekdayLabels[day] %>
                                             </span>
@@ -319,7 +734,7 @@
                                 </div>
                             </td>
                             <td class="py-space-md px-space-md">
-                                <% if (assignment.status === "active") { %>
+                                <% if (pA.status === "active") { %>
                                     <span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-green-50 text-green-700 text-[11px] font-semibold">
                                         <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
                                         Đang áp dụng
@@ -333,41 +748,113 @@
                             </td>
                             <td class="py-space-md px-space-lg sticky right-0 z-[1] bg-surface-container-lowest">
                                 <div class="flex items-center justify-end gap-space-xs">
-                                    <button
-                                        class="flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm rounded-lg transition-colors"
-                                        data-edit-assignment
-                                        data-id="<%= assignment.id %>"
-                                        data-employee="<%= assignment.employee_id %>"
-                                        data-shift="<%= assignment.shift_id %>"
-                                        data-start="<%= assignment.start_date %>"
-                                        data-end="<%= assignment.end_date %>"
-                                        data-note="<%= assignment.note || '' %>"
-                                        data-status="<%= assignment.status %>"
-                                        data-current-summary="<%= `${assignment.shift_code} · ${assignment.shift_name} | ${assignment.morning_start}-${assignment.morning_end}, ${assignment.afternoon_start}-${assignment.afternoon_end} | ${assignment.start_date} – ${assignment.end_date}` %>"
-                                        title="<%= assignment.status === 'active' ? 'Điều chỉnh ca' : 'Sửa lịch đã hủy' %>"
-                                        type="button"
-                                    >
-                                        <span class="material-symbols-outlined text-[16px]">edit_calendar</span>
-                                        <span><%= assignment.status === 'active' ? 'Điều chỉnh ca' : 'Sửa lịch' %></span>
+                                    <button class="flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm rounded-lg transition-colors" data-view-employee-calendar data-id="<%= pA.employee_id %>" data-name="<%= pA.full_name %>" data-code="<%= pA.employee_code %>" data-dept="<%= pA.department || '' %>" title="Xem toàn bộ lịch tháng" type="button">
+                                        <span class="material-symbols-outlined text-[16px]">calendar_month</span>
+                                        <span>Lịch</span>
                                     </button>
 
-                                    <% if (assignment.status === "active") { %>
-                                        <form action="/admin/shift-assignments/<%= assignment.id %>/cancel" method="POST" onsubmit="return confirm('Bạn có chắc muốn hủy phân ca này?');">
+                                    <% if (pA.status === "active") { %>
+                                        <button class="flex items-center gap-1 px-space-sm py-1 bg-primary hover:bg-primary-container text-on-primary font-label-sm text-label-sm rounded-lg shadow-xs transition-colors" data-adjust-shift data-id="<%= pA.id %>" data-employee-name="<%= pA.full_name %>" data-employee-code="<%= pA.employee_code %>" data-department="<%= pA.department || '' %>" data-current-shift-id="<%= pA.shift_id %>" data-current-shift-name="<%= pA.shift_name %>" data-current-shift-time="<%= pA.morning_start %> - <%= pA.morning_end %> | <%= pA.afternoon_start %> - <%= pA.afternoon_end %>" data-start="<%= pA.start_date %>" data-end="<%= pA.end_date %>" data-note="<%= pA.note || '' %>" title="Điều chỉnh ca làm việc mới từ một ngày cụ thể" type="button">
+                                            <span class="material-symbols-outlined text-[16px]">edit_calendar</span>
+                                            <span>Điều chỉnh ca</span>
+                                        </button>
+                                    <% } %>
+
+                                    <button class="flex items-center gap-1 px-space-sm py-1 bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm rounded-lg transition-colors" data-edit-assignment data-id="<%= pA.id %>" data-employee="<%= pA.employee_id %>" data-shift="<%= pA.shift_id %>" data-start="<%= pA.start_date %>" data-end="<%= pA.end_date %>" data-note="<%= pA.note || '' %>" data-status="<%= pA.status %>" data-current-summary="<%= `${pA.shift_code} · ${pA.shift_name} | ${pA.morning_start}-${pA.morning_end}, ${pA.afternoon_start}-${pA.afternoon_end} | ${pA.start_date} – ${pA.end_date}` %>" title="<%= pA.status === 'active' ? 'Chỉnh sửa toàn bộ ngày hoặc ghi chú' : 'Sửa lịch đã hủy' %>" type="button">
+                                        <span class="material-symbols-outlined text-[16px]">tune</span>
+                                        <span><%= pA.status === 'active' ? 'Sửa' : 'Sửa lịch' %></span>
+                                    </button>
+
+                                    <% if (pA.status === "active") { %>
+                                        <form action="/admin/shift-assignments/<%= pA.id %>/cancel" method="POST" onsubmit="return confirm('Bạn có chắc muốn hủy phân ca này?');">
                                             <button class="flex items-center gap-1 px-space-sm py-1 bg-error-container/50 hover:bg-error-container text-error font-label-sm text-label-sm rounded-lg transition-colors" type="submit" title="Hủy phân ca">
                                                 <span class="material-symbols-outlined text-[16px]">cancel</span>
                                                 <span>Hủy</span>
                                             </button>
                                         </form>
                                     <% } %>
+
+                                    <!-- Nút mở rộng ca khác -->
+                                    <% if (others.length > 0) { %>
+                                        <button
+                                            type="button"
+                                            class="flex items-center gap-1 px-space-sm py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 font-label-sm text-label-sm rounded-lg border border-amber-200 transition-colors"
+                                            data-toggle-others="<%= rowId %>"
+                                            aria-expanded="false"
+                                            title="Xem thêm <%= others.length %> ca khác"
+                                        >
+                                            <span class="material-symbols-outlined text-[15px]">expand_more</span>
+                                            <span><%= others.length %> ca khác</span>
+                                        </button>
+                                    <% } %>
                                 </div>
                             </td>
                         </tr>
+
+                        <!-- Hàng mở rộng: danh sách các ca khác (ẩn mặc định) -->
+                        <% if (others.length > 0) { %>
+                            <tr id="<%= rowId %>" class="hidden bg-amber-50/40 border-b border-amber-100">
+                                <td colspan="7" class="px-space-lg py-3">
+                                    <div class="flex flex-col gap-2">
+                                        <p class="text-[11px] font-semibold text-amber-700 uppercase tracking-wider flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-[14px]">layers</span>
+                                            Các ca khác của <%= pA.full_name %>
+                                        </p>
+                                        <% others.forEach((o) => { %>
+                                            <div class="flex items-center gap-4 p-space-sm rounded-lg border border-amber-200 bg-white/70 text-body-sm">
+                                                <!-- Ca -->
+                                                <div class="flex flex-col min-w-[160px]">
+                                                    <span class="font-label-md text-label-md text-on-surface font-semibold"><%= o.shift_name %></span>
+                                                    <span class="font-data-mono text-[11px] text-on-surface-variant"><%= o.morning_start %> - <%= o.morning_end %> | <%= o.afternoon_start %> - <%= o.afternoon_end %></span>
+                                                </div>
+                                                <!-- Thời gian -->
+                                                <div class="flex flex-col font-data-mono text-[11px] min-w-[140px]">
+                                                    <span><%= o.start_date %></span>
+                                                    <span class="text-on-surface-variant">đến <%= o.end_date %></span>
+                                                </div>
+                                                <!-- Trạng thái -->
+                                                <div class="min-w-[90px]">
+                                                    <% if (o.status === "active") { %>
+                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-semibold border border-green-200">
+                                                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Đang áp dụng
+                                                        </span>
+                                                    <% } else { %>
+                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-semibold">
+                                                            <span class="w-1.5 h-1.5 rounded-full bg-outline"></span>Đã hủy
+                                                        </span>
+                                                    <% } %>
+                                                </div>
+                                                <!-- Thao tác -->
+                                                <div class="flex items-center gap-1 ml-auto">
+                                                    <% if (o.status === "active") { %>
+                                                        <button class="flex items-center gap-1 px-2 py-1 bg-primary hover:bg-primary-container text-on-primary text-[11px] font-semibold rounded-md transition-colors" data-adjust-shift data-id="<%= o.id %>" data-employee-name="<%= o.full_name %>" data-employee-code="<%= o.employee_code %>" data-department="<%= o.department || '' %>" data-current-shift-id="<%= o.shift_id %>" data-current-shift-name="<%= o.shift_name %>" data-current-shift-time="<%= o.morning_start %> - <%= o.morning_end %> | <%= o.afternoon_start %> - <%= o.afternoon_end %>" data-start="<%= o.start_date %>" data-end="<%= o.end_date %>" data-note="<%= o.note || '' %>" type="button">
+                                                            <span class="material-symbols-outlined text-[13px]">edit_calendar</span> Điều chỉnh
+                                                        </button>
+                                                    <% } %>
+                                                    <button class="flex items-center gap-1 px-2 py-1 bg-surface-container-high hover:bg-surface-variant text-on-surface text-[11px] font-semibold rounded-md transition-colors" data-edit-assignment data-id="<%= o.id %>" data-employee="<%= o.employee_id %>" data-shift="<%= o.shift_id %>" data-start="<%= o.start_date %>" data-end="<%= o.end_date %>" data-note="<%= o.note || '' %>" data-status="<%= o.status %>" data-current-summary="<%= `${o.shift_code} · ${o.shift_name} | ${o.morning_start}-${o.morning_end}, ${o.afternoon_start}-${o.afternoon_end} | ${o.start_date} – ${o.end_date}` %>" type="button">
+                                                        <span class="material-symbols-outlined text-[13px]">tune</span> Sửa
+                                                    </button>
+                                                    <% if (o.status === "active") { %>
+                                                        <form action="/admin/shift-assignments/<%= o.id %>/cancel" method="POST" onsubmit="return confirm('Hủy phân ca này?');">
+                                                            <button class="flex items-center gap-1 px-2 py-1 bg-error-container/50 hover:bg-error-container text-error text-[11px] font-semibold rounded-md transition-colors" type="submit">
+                                                                <span class="material-symbols-outlined text-[13px]">cancel</span> Hủy
+                                                            </button>
+                                                        </form>
+                                                    <% } %>
+                                                </div>
+                                            </div>
+                                        <% }) %>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% } %>
                     <% }) %>
                 <% } %>
             </tbody>
         </table>
     </div>
 </section>
+</div>
 
 <!-- Modal thêm / chỉnh sửa phân ca -->
 <div id="assignment-modal" class="fixed inset-0 z-50 hidden">
@@ -494,6 +981,339 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Điều chỉnh ca làm việc (Shift Adjustment Modal) -->
+<div id="adjust-shift-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-xs" data-close-adjust-modal></div>
+
+    <div class="relative min-h-full flex items-center justify-center p-space-md sm:p-space-lg">
+        <div class="w-full max-w-xl bg-surface-container-lowest rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.22)] overflow-hidden flex flex-col">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between px-space-xl py-space-lg border-b border-surface-container-high bg-primary-fixed/20">
+                <div class="flex items-center gap-space-sm">
+                    <div class="w-10 h-10 rounded-xl bg-primary text-on-primary flex items-center justify-center shadow-xs shrink-0">
+                        <span class="material-symbols-outlined text-[22px]">edit_calendar</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <h3 class="font-headline-sm text-headline-sm text-primary font-bold">
+                            Điều chỉnh ca làm việc
+                        </h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">
+                            Đổi ca từ ngày hiệu lực; lịch cũ được giữ nguyên đến ngày liền trước.
+                        </p>
+                    </div>
+                </div>
+                <button type="button" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-adjust-modal aria-label="Đóng">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+
+            <!-- Modal Form -->
+            <form id="adjust-shift-form" action="" method="POST" class="p-space-xl flex flex-col gap-space-lg">
+                <input type="hidden" name="return_view" id="adjust_return_view" value="">
+                <input type="hidden" name="return_date" id="adjust_return_date" value="">
+
+                <!-- Error Box -->
+                <div id="adjust-form-error" class="hidden items-start gap-space-sm p-space-md rounded-xl bg-error-container/60 border border-error/30 text-on-error-container text-body-md">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">error</span>
+                    <span id="adjust-form-error-text"></span>
+                </div>
+
+                <!-- Thẻ thông tin nhân viên & Ca hiện tại -->
+                <div class="flex flex-col gap-space-sm p-space-md rounded-xl bg-surface-container-low border border-surface-container-high">
+                    <div class="flex items-center gap-space-md">
+                        <div id="adjust-emp-avatar" class="w-10 h-10 rounded-full bg-primary text-on-primary font-bold flex items-center justify-center shrink-0">NV</div>
+                        <div class="flex flex-col min-w-0">
+                            <span id="adjust-emp-name" class="font-label-md font-bold text-on-surface truncate">Tên nhân viên</span>
+                            <span id="adjust-emp-meta" class="font-data-mono text-[12px] text-on-surface-variant truncate">NV001 · Kỹ thuật</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-space-xs border-t border-surface-container-high/60 flex flex-col gap-1 text-[13px]">
+                        <div class="flex items-center justify-between">
+                            <span class="text-on-surface-variant font-medium">Ca đang áp dụng:</span>
+                            <span id="adjust-current-shift-name" class="font-bold text-primary">Ca hành chính</span>
+                        </div>
+                        <div class="flex items-center justify-between text-[12px]">
+                            <span class="text-on-surface-variant">Khung giờ:</span>
+                            <span id="adjust-current-shift-time" class="font-data-mono text-on-surface">08:00 - 17:30</span>
+                        </div>
+                        <div class="flex items-center justify-between text-[12px]">
+                            <span class="text-on-surface-variant">Thời gian lịch hiện tại:</span>
+                            <span id="adjust-current-period" class="font-data-mono text-on-surface font-semibold">05/11/2026 – 30/11/2026</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chọn ca làm việc mới -->
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface font-semibold" for="adjust_shift_select">
+                        Ca làm việc mới <span class="text-error">*</span>
+                    </label>
+                    <select
+                        id="adjust_shift_select"
+                        name="shift_id"
+                        class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container border border-surface-container-high cursor-pointer"
+                        required
+                    >
+                        <option value="">-- Chọn ca làm việc mới --</option>
+                        <% activeShifts.forEach((shift) => { %>
+                            <option
+                                value="<%= shift.id %>"
+                                data-code="<%= shift.shift_code %>"
+                                data-name="<%= shift.shift_name %>"
+                                data-time="<%= shift.morning_start %> - <%= shift.morning_end %> | <%= shift.afternoon_start %> - <%= shift.afternoon_end %>"
+                                data-workdays="<%= shift.workdays.map((day) => weekdayLabels[day]).join(', ') %>"
+                            >
+                                <%= shift.shift_code %> - <%= shift.shift_name %> (<%= shift.morning_start %> - <%= shift.afternoon_end %>)
+                            </option>
+                        <% }) %>
+                    </select>
+                    <span id="adjust-shift-hint" class="font-body-sm text-body-sm text-primary"></span>
+                </div>
+
+                <!-- Chọn ngày hiệu lực -->
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface font-semibold" for="adjust_effective_date">
+                        Ngày bắt đầu áp dụng ca mới (Ngày hiệu lực) <span class="text-error">*</span>
+                    </label>
+                    <input
+                        id="adjust_effective_date"
+                        name="effective_date"
+                        type="date"
+                        class="bg-surface-container-low text-on-surface font-data-mono text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container border border-surface-container-high"
+                        required
+                    >
+                    <span id="adjust-date-limit-hint" class="font-body-sm text-body-sm text-on-surface-variant">
+                        Phải nằm trong khoảng lịch đang áp dụng.
+                    </span>
+                </div>
+
+                <!-- Khối xem trước điều chỉnh ca (Live Preview Box) -->
+                <div id="adjust-preview-box" class="p-space-md rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-body-sm flex items-start gap-space-sm">
+                    <span class="material-symbols-outlined text-[20px] text-blue-700 shrink-0 mt-0.5">info</span>
+                    <div class="flex flex-col gap-1 min-w-0">
+                        <span class="font-bold text-[13px] text-blue-950">Quy tắc điều chỉnh:</span>
+                        <p id="adjust-preview-text" class="text-[12px] leading-relaxed">
+                            Chọn ca mới và ngày hiệu lực để xem trước kế hoạch phân ca.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Ghi chú điều chỉnh -->
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface" for="adjust_note">
+                        Ghi chú điều chỉnh
+                    </label>
+                    <textarea
+                        id="adjust_note"
+                        name="note"
+                        maxlength="255"
+                        rows="2"
+                        class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container border border-surface-container-high resize-none"
+                        placeholder="Lý do điều chỉnh (ví dụ: đổi ca theo tiến độ dự án, yêu cầu cá nhân...)"
+                    ></textarea>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="flex items-center justify-end gap-space-sm pt-space-md border-t border-surface-container-high">
+                    <button
+                        type="button"
+                        class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md rounded-xl transition-colors"
+                        data-close-adjust-modal
+                    >
+                        Hủy
+                    </button>
+                    <button
+                        id="adjust-submit-btn"
+                        type="submit"
+                        class="flex items-center gap-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl shadow-md transition-colors"
+                    >
+                        <span class="material-symbols-outlined text-[18px]">save</span>
+                        <span>Lưu điều chỉnh ca</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Chi tiết ca làm việc trong ngày (Cell Detail) -->
+<div id="shift-cell-detail-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-xs" data-close-cell-detail></div>
+    <div class="relative min-h-full flex items-center justify-center p-space-md">
+        <div class="w-full max-w-md bg-surface-container-lowest rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.2)] overflow-hidden">
+            <div class="px-space-xl py-space-lg border-b border-surface-container-high flex items-center justify-between bg-primary-fixed/30">
+                <div class="flex items-center gap-space-sm">
+                    <span class="material-symbols-outlined text-primary text-[24px]">event_available</span>
+                    <h4 class="font-headline-sm text-headline-sm text-primary font-bold">Chi tiết ca làm việc</h4>
+                </div>
+                <button type="button" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-cell-detail aria-label="Đóng">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+            </div>
+            <div class="p-space-xl flex flex-col gap-space-md text-body-sm">
+                <div class="flex items-center gap-space-md p-space-md rounded-xl bg-surface-container-low">
+                    <div id="cell-detail-avatar" class="w-10 h-10 rounded-full bg-primary text-on-primary font-bold flex items-center justify-center shrink-0">NV</div>
+                    <div class="flex flex-col min-w-0">
+                        <span id="cell-detail-emp-name" class="font-label-md font-bold text-on-surface truncate">Tên nhân viên</span>
+                        <span id="cell-detail-emp-meta" class="text-on-surface-variant text-[12px] truncate">NV001 · Kỹ thuật</span>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-space-xs p-space-md rounded-xl bg-primary-fixed/40 border border-primary/20">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[12px] uppercase font-semibold text-primary">Ca làm việc</span>
+                        <span id="cell-detail-date-badge" class="px-2 py-0.5 rounded-full bg-primary text-on-primary text-[11px] font-bold">24/11/2026</span>
+                    </div>
+                    <span id="cell-detail-shift-name" class="font-headline-sm font-bold text-primary">Ca hành chính (CA001)</span>
+                    <div class="mt-1 flex flex-col gap-1 text-[13px] text-on-surface">
+                        <div class="flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[16px] text-primary shrink-0">wb_sunny</span>
+                            <span>Buổi sáng: <strong id="cell-detail-morning">08:00 - 12:00</strong></span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[16px] text-primary shrink-0">routine</span>
+                            <span>Buổi chiều: <strong id="cell-detail-afternoon">13:30 - 17:30</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-space-sm text-[12px]">
+                    <div class="flex flex-col p-space-sm rounded-lg bg-surface-container-low">
+                        <span class="text-on-surface-variant font-medium">Thời gian áp dụng</span>
+                        <span id="cell-detail-period" class="font-data-mono font-bold mt-0.5 text-on-surface">05/11 – 30/11</span>
+                    </div>
+                    <div class="flex flex-col p-space-sm rounded-lg bg-surface-container-low">
+                        <span class="text-on-surface-variant font-medium">Ghi chú</span>
+                        <span id="cell-detail-note" class="font-medium mt-0.5 text-on-surface truncate">Không có</span>
+                    </div>
+                </div>
+
+                <div class="pt-space-sm flex items-center justify-end gap-space-sm border-t border-surface-container-high">
+                    <button id="cell-detail-view-emp-cal-btn" type="button" class="flex items-center gap-1 px-space-md py-space-sm rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm font-semibold transition-colors">
+                        <span class="material-symbols-outlined text-[16px]">calendar_month</span>
+                        <span>Xem lịch tháng</span>
+                    </button>
+                    <button id="cell-detail-edit-assign-btn" type="button" class="flex items-center gap-1 px-space-md py-space-sm rounded-xl bg-primary hover:bg-primary-container text-on-primary font-label-sm font-semibold shadow-xs transition-colors">
+                        <span class="material-symbols-outlined text-[16px]">edit_calendar</span>
+                        <span>Điều chỉnh ca</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Lịch phân ca cá nhân của nhân viên (Employee Monthly Calendar Modal) -->
+<div id="employee-calendar-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-xs" data-close-emp-cal-modal></div>
+    <div class="relative min-h-full flex items-center justify-center p-space-md sm:p-space-lg">
+        <div class="w-full max-w-4xl bg-surface-container-lowest rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.22)] overflow-hidden flex flex-col max-h-[92vh]">
+            <!-- Header Modal -->
+            <div class="flex items-center justify-between px-space-xl py-space-lg border-b border-surface-container-high bg-surface-container-low/50">
+                <div class="flex items-center gap-space-md">
+                    <div id="emp-cal-avatar" class="w-12 h-12 rounded-2xl bg-primary text-on-primary font-bold flex items-center justify-center text-lg shadow-sm shrink-0">
+                        NV
+                    </div>
+                    <div class="flex flex-col min-w-0">
+                        <div class="flex items-center gap-2">
+                            <h3 id="emp-cal-name" class="font-headline-md text-headline-md text-primary font-bold truncate">
+                                Tên nhân viên
+                            </h3>
+                            <span id="emp-cal-code" class="px-2 py-0.5 rounded-lg bg-surface-container-high text-on-surface-variant font-data-mono text-[12px] font-semibold shrink-0">
+                                NV001
+                            </span>
+                        </div>
+                        <span id="emp-cal-dept" class="font-body-sm text-body-sm text-on-surface-variant truncate">
+                            Phòng ban
+                        </span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-space-sm shrink-0">
+                    <!-- Điều hướng tháng -->
+                    <div class="flex items-center bg-surface-container-lowest rounded-xl p-1 border border-surface-container-high shadow-xs">
+                        <button id="emp-cal-prev-month" type="button" class="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors" title="Tháng trước">
+                            <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+                        </button>
+                        <span id="emp-cal-month-title" class="px-space-md font-label-md text-label-md font-bold text-primary min-w-[120px] text-center">
+                            Tháng 11/2026
+                        </span>
+                        <button id="emp-cal-next-month" type="button" class="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors" title="Tháng sau">
+                            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+                        </button>
+                    </div>
+
+                    <button id="emp-cal-print-btn" type="button" class="p-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors" title="In lịch này">
+                        <span class="material-symbols-outlined text-[20px]">print</span>
+                    </button>
+
+                    <button type="button" class="p-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-emp-cal-modal aria-label="Đóng">
+                        <span class="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Thống kê nhanh tháng -->
+            <div class="px-space-xl py-space-md bg-surface-container-lowest border-b border-surface-container-high grid grid-cols-2 sm:grid-cols-4 gap-space-md">
+                <div class="flex items-center gap-space-sm p-space-sm rounded-xl bg-blue-50/70 border border-blue-100">
+                    <span class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[18px]">calendar_today</span>
+                    </span>
+                    <div class="flex flex-col min-w-0">
+                        <span class="text-[11px] text-blue-700 font-semibold uppercase">Ngày làm việc</span>
+                        <span id="emp-cal-work-count" class="font-bold text-blue-950 text-[16px]">--</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-space-sm p-space-sm rounded-xl bg-slate-50 border border-slate-200">
+                    <span class="w-8 h-8 rounded-lg bg-slate-500 text-white flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[18px]">bedtime</span>
+                    </span>
+                    <div class="flex flex-col min-w-0">
+                        <span class="text-[11px] text-slate-700 font-semibold uppercase">Ngày nghỉ ca</span>
+                        <span id="emp-cal-rest-count" class="font-bold text-slate-900 text-[16px]">--</span>
+                    </div>
+                </div>
+
+                <div class="col-span-2 flex items-center gap-space-sm p-space-sm rounded-xl bg-primary-fixed/40 border border-primary/10">
+                    <span class="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[18px]">schedule</span>
+                    </span>
+                    <div class="flex flex-col min-w-0">
+                        <span class="text-[11px] text-primary font-semibold uppercase">Ca đang áp dụng</span>
+                        <span id="emp-cal-current-shift" class="font-bold text-primary truncate text-[13px]">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lưới lịch tháng -->
+            <div class="p-space-xl overflow-y-auto flex-1">
+                <div class="grid grid-cols-7 gap-1.5 text-center font-label-sm text-label-sm mb-2 text-on-surface-variant uppercase font-semibold">
+                    <div class="py-1">Thứ 2</div>
+                    <div class="py-1">Thứ 3</div>
+                    <div class="py-1">Thứ 4</div>
+                    <div class="py-1">Thứ 5</div>
+                    <div class="py-1">Thứ 6</div>
+                    <div class="py-1 text-amber-700">Thứ 7</div>
+                    <div class="py-1 text-amber-700">Chủ nhật</div>
+                </div>
+                <div id="emp-cal-month-grid" class="grid grid-cols-7 gap-1.5">
+                    <!-- Dynamic Month Grid Cells -->
+                </div>
+            </div>
+
+            <!-- Footer modal -->
+            <div class="px-space-xl py-space-md border-t border-surface-container-high bg-surface-container-low flex items-center justify-between">
+                <span class="text-body-sm text-on-surface-variant">Lịch được cập nhật tự động theo các ca đã phân.</span>
+                <button type="button" class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md rounded-xl transition-colors" data-close-emp-cal-modal>
+                    Đóng
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -778,6 +1598,75 @@
     });
 </script>
 
+<style>
+    @media print {
+        aside, header, #sidebar-overlay, #schedule-sync, nav, #toggle-view-calendar, #toggle-view-list,
+        #open-create-assignment, .no-print, button, select, input {
+            display: none !important;
+        }
+        .md\:pl-64 {
+            padding-left: 0 !important;
+        }
+        body {
+            background: white !important;
+            color: black !important;
+        }
+        #calendar-view-container {
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+        #cal-schedule-table {
+            width: 100% !important;
+            min-width: 100% !important;
+            font-size: 11px !important;
+            border: 1px solid #cbd5e1 !important;
+        }
+        #cal-schedule-table th, #cal-schedule-table td {
+            border: 1px solid #cbd5e1 !important;
+        }
+    }
+</style>
+
 <script src="/js/shift-schedule-sync.js" defer></script>
+<script src="/js/shift-calendar.js" defer></script>
+
+<script>
+// Toggle expand/collapse danh sách ca khác của nhân viên
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-toggle-others]');
+    if (!btn) return;
+
+    const targetId = btn.dataset.toggleOthers;
+    const targetEl = document.getElementById(targetId);
+    if (!targetEl) return;
+
+    const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+
+    if (isExpanded) {
+        targetEl.classList.add('hidden');
+        btn.setAttribute('aria-expanded', 'false');
+        // Đổi icon và text
+        const icon = btn.querySelector('.material-symbols-outlined');
+        const text = btn.querySelector('span:not(.material-symbols-outlined)');
+        if (icon) icon.textContent = 'expand_more';
+        if (text) {
+            // Lấy lại số ca từ title
+            const titleMatch = btn.title.match(/(\d+)/);
+            const count = titleMatch ? titleMatch[1] : '?';
+            text.textContent = `${count} ca khác`;
+        }
+    } else {
+        targetEl.classList.remove('hidden');
+        btn.setAttribute('aria-expanded', 'true');
+        const icon = btn.querySelector('.material-symbols-outlined');
+        const text = btn.querySelector('span:not(.material-symbols-outlined)');
+        if (icon) icon.textContent = 'expand_less';
+        if (text) text.textContent = 'Thu gọn';
+    }
+});
+</script>
 
 <%- include("partials/adminFoot") %>

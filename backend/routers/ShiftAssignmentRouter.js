@@ -4,6 +4,8 @@ import * as ShiftAssignmentController from "../controllers/ShiftAssignmentContro
 const router = express.Router();
 
 router.get("/", ShiftAssignmentController.index);
+router.get("/calendar-data", ShiftAssignmentController.calendarData);
+router.get("/employee-calendar", ShiftAssignmentController.employeeCalendar);
 router.post("/create", ShiftAssignmentController.create);
 router.post("/:id/adjust", ShiftAssignmentController.adjust);
 router.post("/:id/update", ShiftAssignmentController.update);
