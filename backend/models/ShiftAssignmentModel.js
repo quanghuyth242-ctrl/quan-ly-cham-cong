@@ -78,7 +78,7 @@ export const findAll = async ({
     const sql = `
         ${BASE_SELECT}
         ${where}
-        ORDER BY a.status = 'active' DESC, a.start_date DESC, a.id DESC
+        ORDER BY LENGTH(e.employee_code) DESC, e.employee_code DESC, a.status = 'active' DESC, a.start_date DESC, a.id DESC
     `;
 
     const [rows] = await db.execute(sql, params);
@@ -104,7 +104,7 @@ export const getEmployeeOptions = async () => {
         SELECT id, employee_code, full_name, department
           FROM employees
          WHERE is_active = 1
-         ORDER BY full_name ASC
+         ORDER BY LENGTH(employee_code) DESC, employee_code DESC, id DESC
     `);
     return rows;
 };
@@ -431,5 +431,313 @@ export const getStats = async () => {
         activeAssignments: Number(rows[0].active_assignments),
         cancelledAssignments: Number(rows[0].cancelled_assignments),
         assignedEmployees: Number(rows[0].assigned_employees)
+    };
+};
+
+export const WEEKDAY_LABELS = {
+    1: "Thứ 2",
+    2: "Thứ 3",
+    3: "Thứ 4",
+    4: "Thứ 5",
+    5: "Thứ 6",
+    6: "Thứ 7",
+    7: "Chủ nhật"
+};
+
+export const getScheduleMatrix = async ({
+    startDate,
+    endDate,
+    department = "",
+    shiftId = "",
+    search = ""
+}) => {
+    const empConditions = ["is_active = 1"];
+    const empParams = [];
+
+    if (department) {
+        empConditions.push("department = ?");
+        empParams.push(department);
+    }
+
+    if (search) {
+        empConditions.push("(full_name LIKE ? OR employee_code LIKE ?)");
+        empParams.push(`%${search}%`, `%${search}%`);
+    }
+
+    const [employees] = await db.execute(
+        `SELECT id, employee_code, full_name, department
+           FROM employees
+          WHERE ${empConditions.join(" AND ")}
+          ORDER BY LENGTH(employee_code) DESC, employee_code DESC, id DESC`,
+        empParams
+    );
+
+    const assignConditions = [
+        "a.status = 'active'",
+        "a.start_date <= ?",
+        "a.end_date >= ?"
+    ];
+    const assignParams = [endDate, startDate];
+
+    if (shiftId) {
+        assignConditions.push("a.shift_id = ?");
+        assignParams.push(Number(shiftId));
+    }
+
+    const [assignmentRows] = await db.execute(
+        `SELECT a.id,
+                a.employee_id,
+                a.shift_id,
+                a.status,
+                a.note,
+                DATE_FORMAT(a.start_date, '%Y-%m-%d') AS start_date,
+                DATE_FORMAT(a.end_date, '%Y-%m-%d') AS end_date,
+                s.shift_code,
+                s.shift_name,
+                TIME_FORMAT(s.morning_start, '%H:%i') AS morning_start,
+                TIME_FORMAT(s.morning_end, '%H:%i') AS morning_end,
+                TIME_FORMAT(s.afternoon_start, '%H:%i') AS afternoon_start,
+                TIME_FORMAT(s.afternoon_end, '%H:%i') AS afternoon_end,
+                (SELECT GROUP_CONCAT(sw.weekday ORDER BY sw.weekday)
+                   FROM shift_workdays sw
+                  WHERE sw.shift_id = s.id) AS workdays
+           FROM employee_shift_assignments a
+          INNER JOIN work_shifts s ON s.id = a.shift_id
+          WHERE ${assignConditions.join(" AND ")}
+          ORDER BY a.start_date ASC, a.id ASC`,
+        assignParams
+    );
+
+    const assignments = assignmentRows.map((row) => ({
+        ...row,
+        workdays: row.workdays ? String(row.workdays).split(",").map(Number) : []
+    }));
+
+    const days = [];
+    const [sy, sm, sd] = startDate.split("-").map(Number);
+    const [ey, em, ed] = endDate.split("-").map(Number);
+    const currentIter = new Date(Date.UTC(sy, sm - 1, sd, 12, 0, 0));
+    const endIter = new Date(Date.UTC(ey, em - 1, ed, 12, 0, 0));
+    const today = new Date().toISOString().slice(0, 10);
+
+    while (currentIter <= endIter) {
+        const dateStr = currentIter.toISOString().slice(0, 10);
+        const jsDay = currentIter.getUTCDay();
+        const dbDay = jsDay === 0 ? 7 : jsDay;
+        const d = currentIter.getUTCDate();
+        const m = currentIter.getUTCMonth() + 1;
+        days.push({
+            dateStr,
+            dayNumber: d,
+            monthNumber: m,
+            dayOfWeek: dbDay,
+            weekdayLabel: WEEKDAY_LABELS[dbDay] || "",
+            isToday: dateStr === today,
+            isWeekend: dbDay === 6 || dbDay === 7
+        });
+        currentIter.setUTCDate(currentIter.getUTCDate() + 1);
+    }
+
+    const empAssignmentMap = new Map();
+    for (const a of assignments) {
+        if (!empAssignmentMap.has(a.employee_id)) {
+            empAssignmentMap.set(a.employee_id, []);
+        }
+        empAssignmentMap.get(a.employee_id).push(a);
+    }
+
+    const matrix = {};
+    const summary = {};
+    for (const day of days) {
+        summary[day.dateStr] = {
+            totalWorking: 0,
+            totalRest: 0,
+            totalUnassigned: 0
+        };
+    }
+
+    for (const emp of employees) {
+        matrix[emp.id] = {};
+        const empAssignments = empAssignmentMap.get(emp.id) || [];
+
+        for (const day of days) {
+            const activeAssign = empAssignments.find(
+                (a) => a.start_date <= day.dateStr && a.end_date >= day.dateStr
+            );
+
+            if (activeAssign) {
+                const isWorkday = activeAssign.workdays.includes(day.dayOfWeek);
+                if (isWorkday) {
+                    matrix[emp.id][day.dateStr] = {
+                        type: "work",
+                        assignmentId: activeAssign.id,
+                        shiftId: activeAssign.shift_id,
+                        shiftCode: activeAssign.shift_code,
+                        shiftName: activeAssign.shift_name,
+                        morningStart: activeAssign.morning_start,
+                        morningEnd: activeAssign.morning_end,
+                        afternoonStart: activeAssign.afternoon_start,
+                        afternoonEnd: activeAssign.afternoon_end,
+                        morningTime: `${activeAssign.morning_start} - ${activeAssign.morning_end}`,
+                        afternoonTime: `${activeAssign.afternoon_start} - ${activeAssign.afternoon_end}`,
+                        timeFormatted: `${activeAssign.morning_start}-${activeAssign.morning_end} | ${activeAssign.afternoon_start}-${activeAssign.afternoon_end}`,
+                        note: activeAssign.note || "",
+                        startDate: activeAssign.start_date,
+                        endDate: activeAssign.end_date,
+                        workdays: activeAssign.workdays
+                    };
+                    summary[day.dateStr].totalWorking += 1;
+                } else {
+                    matrix[emp.id][day.dateStr] = {
+                        type: "rest",
+                        assignmentId: activeAssign.id,
+                        shiftId: activeAssign.shift_id,
+                        shiftCode: activeAssign.shift_code,
+                        shiftName: activeAssign.shift_name,
+                        note: activeAssign.note || "",
+                        startDate: activeAssign.start_date,
+                        endDate: activeAssign.end_date,
+                        workdays: activeAssign.workdays
+                    };
+                    summary[day.dateStr].totalRest += 1;
+                }
+            } else {
+                matrix[emp.id][day.dateStr] = {
+                    type: "empty"
+                };
+                summary[day.dateStr].totalUnassigned += 1;
+            }
+        }
+    }
+
+    return {
+        days,
+        employees,
+        matrix,
+        summary
+    };
+};
+
+export const getEmployeeMonthlySchedule = async (employeeId, yearMonth) => {
+    const employee = await findEmployeeById(employeeId);
+    if (!employee) return null;
+
+    const ymMatch = String(yearMonth || "").match(/^(\d{4})-(\d{2})$/);
+    const now = new Date();
+    const year = ymMatch ? Number(ymMatch[1]) : now.getFullYear();
+    const month = ymMatch ? Number(ymMatch[2]) : (now.getMonth() + 1);
+    const formattedYm = `${year}-${String(month).padStart(2, "0")}`;
+
+    const startDate = `${formattedYm}-01`;
+    const lastDayNum = new Date(Date.UTC(year, month, 0, 12, 0, 0)).getUTCDate();
+    const endDate = `${formattedYm}-${String(lastDayNum).padStart(2, "0")}`;
+
+    const [assignmentRows] = await db.execute(
+        `SELECT a.id,
+                a.employee_id,
+                a.shift_id,
+                a.status,
+                a.note,
+                DATE_FORMAT(a.start_date, '%Y-%m-%d') AS start_date,
+                DATE_FORMAT(a.end_date, '%Y-%m-%d') AS end_date,
+                s.shift_code,
+                s.shift_name,
+                TIME_FORMAT(s.morning_start, '%H:%i') AS morning_start,
+                TIME_FORMAT(s.morning_end, '%H:%i') AS morning_end,
+                TIME_FORMAT(s.afternoon_start, '%H:%i') AS afternoon_start,
+                TIME_FORMAT(s.afternoon_end, '%H:%i') AS afternoon_end,
+                (SELECT GROUP_CONCAT(sw.weekday ORDER BY sw.weekday)
+                   FROM shift_workdays sw
+                  WHERE sw.shift_id = s.id) AS workdays
+           FROM employee_shift_assignments a
+          INNER JOIN work_shifts s ON s.id = a.shift_id
+          WHERE a.employee_id = ?
+            AND a.status = 'active'
+            AND a.start_date <= ?
+            AND a.end_date >= ?
+          ORDER BY a.start_date ASC`,
+        [employeeId, endDate, startDate]
+    );
+
+    const assignments = assignmentRows.map((row) => ({
+        ...row,
+        workdays: row.workdays ? String(row.workdays).split(",").map(Number) : []
+    }));
+
+    const today = new Date().toISOString().slice(0, 10);
+    const days = [];
+    let workingDaysCount = 0;
+    let restDaysCount = 0;
+    let unassignedDaysCount = 0;
+
+    for (let dayNum = 1; dayNum <= lastDayNum; dayNum++) {
+        const dateStr = `${formattedYm}-${String(dayNum).padStart(2, "0")}`;
+        const dateObj = new Date(Date.UTC(year, month - 1, dayNum, 12, 0, 0));
+        const jsDay = dateObj.getUTCDay();
+        const dbDay = jsDay === 0 ? 7 : jsDay;
+
+        const activeAssign = assignments.find(
+            (a) => a.start_date <= dateStr && a.end_date >= dateStr
+        );
+
+        let cellData;
+        if (activeAssign) {
+            const isWorkday = activeAssign.workdays.includes(dbDay);
+            if (isWorkday) {
+                workingDaysCount += 1;
+                cellData = {
+                    type: "work",
+                    assignmentId: activeAssign.id,
+                    shiftId: activeAssign.shift_id,
+                    shiftName: activeAssign.shift_name,
+                    shiftCode: activeAssign.shift_code,
+                    timeFormatted: `${activeAssign.morning_start}-${activeAssign.morning_end} | ${activeAssign.afternoon_start}-${activeAssign.afternoon_end}`,
+                    morningTime: `${activeAssign.morning_start} - ${activeAssign.morning_end}`,
+                    afternoonTime: `${activeAssign.afternoon_start} - ${activeAssign.afternoon_end}`,
+                    note: activeAssign.note || ""
+                };
+            } else {
+                restDaysCount += 1;
+                cellData = {
+                    type: "rest",
+                    assignmentId: activeAssign.id,
+                    shiftId: activeAssign.shift_id,
+                    shiftName: activeAssign.shift_name,
+                    shiftCode: activeAssign.shift_code,
+                    note: activeAssign.note || ""
+                };
+            }
+        } else {
+            unassignedDaysCount += 1;
+            cellData = {
+                type: "empty"
+            };
+        }
+
+        days.push({
+            dateStr,
+            dayNumber: dayNum,
+            dayOfWeek: dbDay,
+            weekdayLabel: WEEKDAY_LABELS[dbDay] || "",
+            isToday: dateStr === today,
+            isWeekend: dbDay === 6 || dbDay === 7,
+            schedule: cellData
+        });
+    }
+
+    return {
+        employee,
+        yearMonth: formattedYm,
+        year,
+        month,
+        lastDayNum,
+        days,
+        stats: {
+            workingDaysCount,
+            restDaysCount,
+            unassignedDaysCount,
+            totalDays: lastDayNum
+        },
+        assignments
     };
 };
