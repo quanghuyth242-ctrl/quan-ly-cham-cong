@@ -18,7 +18,7 @@
 <span class="material-symbols-outlined text-[18px] ml-auto">chevron_right</span>
 </button>
 </form>
-</div></aside><div class="pl-64 flex flex-col min-h-screen"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-space-xl flex items-center justify-between gap-space-lg"><div class="flex items-center gap-space-lg flex-1 max-w-lg"><div class="flex items-center w-full bg-surface-container-low px-space-md py-space-xs rounded-xl focus-within:ring-2 focus-within:ring-primary-container transition-all"><span class="material-symbols-outlined text-on-surface-variant text-[20px] mr-space-sm">search</span><input class="w-full bg-transparent border-0 outline-none font-body-md text-body-md text-on-surface placeholder:text-outline" placeholder="Tìm nhân viên, mã số, phòng ban..." type="text"/></div></div><div class="flex items-center gap-space-lg shrink-0"><div class="hidden xl:flex items-center gap-space-sm bg-surface-container-low px-space-md py-space-xs rounded-xl"><span class="material-symbols-outlined text-secondary text-[20px]">schedule</span><span class="font-data-mono text-data-mono text-on-surface font-semibold">14:35:20</span><span class="font-body-sm text-body-sm text-on-surface-variant">• Thứ Năm, 24/10/2024</span></div><button class="flex items-center gap-space-xs bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md hover:bg-primary transition-colors shadow-[0_1px_3px_rgba(15,23,42,0.08)]" type="button"><span class="material-symbols-outlined text-[18px]">touch_app</span><span>Chấm công nhanh</span></button><button class="relative p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[22px]">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error"></span></button><%
+</div></aside><div class="pl-64 flex flex-col min-h-screen"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-space-xl flex items-center justify-between gap-space-lg"><div class="flex items-center gap-space-lg flex-1 max-w-lg"><div class="flex items-center w-full bg-surface-container-low px-space-md py-space-xs rounded-xl focus-within:ring-2 focus-within:ring-primary-container transition-all"><span class="material-symbols-outlined text-on-surface-variant text-[20px] mr-space-sm">search</span><input class="w-full bg-transparent border-0 outline-none font-body-md text-body-md text-on-surface placeholder:text-outline" placeholder="Tìm nhân viên, mã số, phòng ban..." type="text"/></div></div><div class="flex items-center gap-space-lg shrink-0"><div class="hidden xl:flex items-center gap-space-sm bg-surface-container-low px-space-md py-space-xs rounded-xl"><span class="material-symbols-outlined text-secondary text-[20px]">schedule</span><span id="clockTime" class="font-data-mono text-data-mono text-on-surface font-semibold">--:--:--</span><span id="clockDate" class="font-body-sm text-body-sm text-on-surface-variant"></span></div><button class="flex items-center gap-space-xs bg-primary-container text-on-primary px-space-lg py-space-sm rounded-xl font-label-md text-label-md hover:bg-primary transition-colors shadow-[0_1px_3px_rgba(15,23,42,0.08)]" type="button"><span class="material-symbols-outlined text-[18px]">touch_app</span><span>Chấm công nhanh</span></button><button class="relative p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[22px]">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error"></span></button><%
     const currentUser = locals.user || null;
     const roleLabels = { admin: "Quản trị viên", hr: "Quản trị HR", employee: "Nhân viên" };
     const displayName = currentUser && currentUser.username ? currentUser.username : "Nguyễn Mai Anh";
@@ -93,7 +93,7 @@
 <span class="flex h-2 w-2 rounded-full bg-secondary-container animate-pulse"></span>
 <span class="uppercase tracking-wider">Hệ thống đồng bộ dữ liệu thực tế</span>
 <span>•</span>
-<span class="font-data-mono text-data-mono font-medium text-primary">Cập nhật 30 giây trước</span>
+<span id="lastUpdated" class="font-data-mono text-data-mono font-medium text-primary">Đang đồng bộ...</span>
 </div>
 <h1 class="font-headline-lg text-headline-lg text-primary tracking-tight">
         Tổng Quan Chấm Công Hôm Nay - <%= formatOverviewDate(overviewData.todayDate) %>
@@ -143,13 +143,13 @@
 <!-- KPI Metric Summary Row (4 Distinct Cards) -->
 <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-lg">
 <!-- Card 1: Attendance Rate -->
-<div class="relative overflow-hidden bg-surface-container-lowest p-space-xl rounded-xl shadow-sm flex flex-col justify-between group hover:shadow-md transition-shadow">
+<div data-detail="present" role="button" tabindex="0" title="Bấm để xem danh sách" class="cursor-pointer relative overflow-hidden bg-surface-container-lowest p-space-xl rounded-xl shadow-sm flex flex-col justify-between group hover:shadow-md hover:-translate-y-0.5 transition-shadow">
 <div class="flex items-start justify-between">
 <div>
 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Có mặt thực tế</span>
 <div class="flex items-baseline gap-space-xs mt-space-xs">
-<span class="font-headline-xl text-headline-xl text-primary font-bold"><%= overviewData.presentEmployees %></span>
-<span class="font-headline-sm text-headline-sm text-on-surface-variant">/ <%= overviewData.activeEmployees %> NV</span>
+<span class="font-headline-xl text-headline-xl text-primary font-bold"><span data-k="presentEmployees"><%= overviewData.presentEmployees %></span></span>
+<span class="font-headline-sm text-headline-sm text-on-surface-variant">/ <span data-k="activeEmployees"><%= overviewData.activeEmployees %></span> NV</span>
 </div>
 </div>
 <div class="w-12 h-12 rounded-xl bg-surface-container-low text-primary flex items-center justify-center shrink-0">
@@ -159,18 +159,18 @@
 <div class="mt-space-lg flex items-center justify-between pt-space-md bg-surface-container-low/50 -mx-space-xl -mb-space-xl px-space-xl py-space-sm">
 <div class="flex items-center gap-space-xs text-secondary font-label-sm text-label-sm font-semibold">
 <span class="material-symbols-outlined text-[16px]">trending_up</span>
-<span><%= overviewData.attendanceRate %>% Tỷ lệ hiện diện</span>
+<span><span data-k="attendanceRate"><%= overviewData.attendanceRate %></span>% Tỷ lệ hiện diện</span>
 </div>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Hôm qua: <%= overviewData.yesterdayAttendanceRate %>%</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Hôm qua: <span data-k="yesterdayAttendanceRate"><%= overviewData.yesterdayAttendanceRate %></span>%</span>
 </div>
 </div>
 <!-- Card 2: On Time -->
-<div class="relative overflow-hidden bg-surface-container-lowest p-space-xl rounded-xl shadow-sm flex flex-col justify-between group hover:shadow-md transition-shadow">
+<div data-detail="ontime" role="button" tabindex="0" title="Bấm để xem danh sách" class="cursor-pointer relative overflow-hidden bg-surface-container-lowest p-space-xl rounded-xl shadow-sm flex flex-col justify-between group hover:shadow-md hover:-translate-y-0.5 transition-shadow">
 <div class="flex items-start justify-between">
 <div>
 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đi đúng giờ</span>
 <div class="flex items-baseline gap-space-xs mt-space-xs">
-<span class="font-headline-xl text-headline-xl text-on-surface font-bold"><%= overviewData.onTimeEmployees %></span>
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold"><span data-k="onTimeEmployees"><%= overviewData.onTimeEmployees %></span></span>
 <span class="font-headline-sm text-headline-sm text-on-surface-variant">nhân viên</span>
 </div>
 </div>
@@ -181,18 +181,18 @@
 <div class="mt-space-lg flex items-center justify-between pt-space-md bg-surface-container-low/50 -mx-space-xl -mb-space-xl px-space-xl py-space-sm">
 <div class="flex items-center gap-space-xs text-on-surface-variant font-label-sm text-label-sm">
 <span class="inline-block w-2 h-2 rounded-full bg-secondary-container"></span>
-<span><%= overviewData.onTimeRate %>% nhân sự có mặt</span>
+<span><span data-k="onTimeRate"><%= overviewData.onTimeRate %></span>% nhân sự có mặt</span>
 </div>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Trước 08:30 AM</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant"><span data-detail="overtime" role="button" tabindex="0" title="Xem danh sách tăng ca" class="text-primary font-semibold hover:underline">Tăng ca: <span data-k="overtimeEmployees"><%= overviewData.overtimeEmployees %></span></span></span>
 </div>
 </div>
 <!-- Card 3: Late / Early Leave -->
-<div class="relative overflow-hidden bg-surface-container-lowest p-space-xl rounded-xl shadow-sm flex flex-col justify-between group hover:shadow-md transition-shadow">
+<div data-detail="late" role="button" tabindex="0" title="Bấm để xem danh sách" class="cursor-pointer relative overflow-hidden bg-surface-container-lowest p-space-xl rounded-xl shadow-sm flex flex-col justify-between group hover:shadow-md hover:-translate-y-0.5 transition-shadow">
 <div class="flex items-start justify-between">
 <div>
 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Đi muộn / Về sớm</span>
 <div class="flex items-baseline gap-space-xs mt-space-xs">
-<span class="font-headline-xl text-headline-xl text-on-surface font-bold"><%= overviewData.lateOrEarlyEmployees %></span>
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold"><span data-k="lateOrEarlyEmployees"><%= overviewData.lateOrEarlyEmployees %></span></span>
 <span class="font-headline-sm text-headline-sm text-on-surface-variant">nhân viên</span>
 </div>
 </div>
@@ -203,18 +203,18 @@
 <div class="mt-space-lg flex items-center justify-between pt-space-md bg-surface-container-low/50 -mx-space-xl -mb-space-xl px-space-xl py-space-sm">
 <div class="flex items-center gap-space-xs text-on-error-container font-label-sm text-label-sm font-semibold">
 <span class="material-symbols-outlined text-[16px]">timelapse</span>
-<span>TB muộn: <%= overviewData.averageLateMinutes %> phút</span>
+<span><span data-k="lateEmployees"><%= overviewData.lateEmployees %></span> muộn • <span data-k="earlyLeaveEmployees"><%= overviewData.earlyLeaveEmployees %></span> về sớm</span>
 </div>
-<span class="font-body-sm text-body-sm text-on-surface-variant">6 đã gửi đơn giải trình</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant"><span id="pendingText">0 đơn chờ duyệt</span></span>
 </div>
 </div>
 <!-- Card 4: Absent / Leave -->
-<div class="relative overflow-hidden bg-surface-container-lowest p-space-xl rounded-xl shadow-sm flex flex-col justify-between group hover:shadow-md transition-shadow">
+<div data-detail="absent" role="button" tabindex="0" title="Bấm để xem danh sách" class="cursor-pointer relative overflow-hidden bg-surface-container-lowest p-space-xl rounded-xl shadow-sm flex flex-col justify-between group hover:shadow-md hover:-translate-y-0.5 transition-shadow">
 <div class="flex items-start justify-between">
 <div>
 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Vắng mặt / Nghỉ phép</span>
 <div class="flex items-baseline gap-space-xs mt-space-xs">
-<span class="font-headline-xl text-headline-xl text-on-surface font-bold"><%= overviewData.leaveEmployees + overviewData.absentEmployees %></span>
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold"><span data-k="absentOrLeave"><%= overviewData.leaveEmployees + overviewData.absentEmployees %></span></span>
 <span class="font-headline-sm text-headline-sm text-on-surface-variant">người</span>
 </div>
 </div>
@@ -225,9 +225,9 @@
 <div class="mt-space-lg flex items-center justify-between pt-space-md bg-surface-container-low/50 -mx-space-xl -mb-space-xl px-space-xl py-space-sm">
 <div class="flex items-center gap-space-xs text-secondary font-label-sm text-label-sm">
 <span class="material-symbols-outlined text-[16px]">check_circle</span>
-<span><%= overviewData.reportedLeaveEmployees %> nghỉ có phép</span>
+<span><span data-k="reportedLeaveEmployees"><%= overviewData.reportedLeaveEmployees %></span> nghỉ có phép</span>
 </div>
-<span class="font-body-sm text-body-sm text-error font-medium"><%= overviewData.unreportedAbsentEmployees %> chưa báo cáo</span>
+<span class="font-body-sm text-body-sm text-error font-medium"><span data-k="unreportedAbsentEmployees"><%= overviewData.unreportedAbsentEmployees %></span> chưa báo cáo</span>
 </div>
 </div>
 </section>
@@ -526,7 +526,7 @@
 </div>
 <!-- Table Footer with Clean Pagination -->
 <div class="p-space-lg bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-md text-body-sm text-on-surface-variant">
-<span>Hiển thị <strong>1 - <%= overviewData.liveRows.length %></strong> trong số <strong><%= overviewData.activeEmployees %></strong> nhân viên hôm nay</span>
+<span>Hiển thị <strong>1 - <span data-k="liveCount"><%= overviewData.liveRows.length %></span></strong> trong số <strong><span data-k="activeEmployees"><%= overviewData.activeEmployees %></span></strong> nhân viên hôm nay</span>
 <div class="flex items-center gap-space-xs">
 <button class="p-space-xs text-outline cursor-not-allowed rounded-lg hover:bg-surface-container" disabled="" type="button">
 <span class="material-symbols-outlined text-[18px]">chevron_left</span>
@@ -549,44 +549,19 @@
 <div class="flex items-center justify-between mb-space-md">
 <div class="flex flex-col">
 <h3 class="font-headline-sm text-headline-sm text-primary font-semibold">Tỷ lệ Chuyên Cần Tuần Này</h3>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Từ 21/10 đến 25/10/2024</span>
+<span id="weekRange" class="font-body-sm text-body-sm text-on-surface-variant"></span>
 </div>
 <span class="px-space-sm py-1 bg-surface-container-low text-secondary font-data-mono text-data-mono font-semibold rounded-lg">
-            TB: 96.2%
+            <span id="weekAvg">TB: --</span>
           </span>
 </div>
 <!-- Inline SVG Bar Chart with subtle styling -->
 <div class="w-full pt-space-sm pb-space-xs">
-<svg aria-label="Biểu đồ tỷ lệ chấm công tuần này" class="w-full h-auto overflow-visible" viewbox="0 0 320 130">
-<!-- Grid Guidelines -->
-<line class="text-surface-container" stroke="currentColor" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="320" y1="20" y2="20"></line>
-<line class="text-surface-container" stroke="currentColor" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="320" y1="60" y2="60"></line>
-<line class="text-surface-container" stroke="currentColor" stroke-width="1" x1="0" x2="320" y1="100" y2="100"></line>
-<!-- Monday: 95% (height ~ 76px) -->
-<rect class="fill-primary-container/70 hover:fill-primary transition-colors cursor-pointer" height="76" rx="4" width="34" x="20" y="24"></rect>
-<text class="fill-on-surface-variant text-[11px] font-semibold" text-anchor="middle" x="37" y="16">95%</text>
-<text class="fill-on-surface-variant text-[12px]" text-anchor="middle" x="37" y="118">T2</text>
-<!-- Tuesday: 98% (height ~ 79px) -->
-<rect class="fill-primary-container/85 hover:fill-primary transition-colors cursor-pointer" height="79" rx="4" width="34" x="85" y="21"></rect>
-<text class="fill-on-surface-variant text-[11px] font-semibold" text-anchor="middle" x="102" y="14">98%</text>
-<text class="fill-on-surface-variant text-[12px]" text-anchor="middle" x="102" y="118">T3</text>
-<!-- Wednesday: 94% (height ~ 75px) -->
-<rect class="fill-primary-container/70 hover:fill-primary transition-colors cursor-pointer" height="75" rx="4" width="34" x="150" y="25"></rect>
-<text class="fill-on-surface-variant text-[11px] font-semibold" text-anchor="middle" x="167" y="18">94%</text>
-<text class="fill-on-surface-variant text-[12px]" text-anchor="middle" x="167" y="118">T4</text>
-<!-- Thursday (Today): 97% (highlighted with primary fill) -->
-<rect class="fill-primary hover:fill-primary-container transition-colors cursor-pointer" height="78" rx="4" width="34" x="215" y="22"></rect>
-<text class="fill-primary font-bold text-[11px]" text-anchor="middle" x="232" y="14">97%</text>
-<text class="fill-primary font-bold text-[12px]" text-anchor="middle" x="232" y="118">T5 (Nay)</text>
-<!-- Friday: Planned/Dự kiến -->
-<rect class="fill-surface-container" height="50" rx="4" stroke-dasharray="2 2" width="34" x="280" y="50"></rect>
-<text class="fill-outline text-[11px]" text-anchor="middle" x="297" y="44">--</text>
-<text class="fill-outline text-[12px]" text-anchor="middle" x="297" y="118">T6</text>
-</svg>
+<svg id="weekChart" aria-label="Biểu đồ tỷ lệ chấm công tuần này" class="w-full h-auto overflow-visible" viewBox="0 0 320 130"></svg>
 </div>
 <div class="mt-space-md flex items-center justify-between text-body-sm text-on-surface-variant pt-space-sm border-t border-surface-container-low">
 <span class="flex items-center gap-space-xs">
-<span class="w-3 h-3 rounded bg-primary"></span> Hôm nay đạt chỉ tiêu (+1.6%)
+<span class="w-3 h-3 rounded bg-primary"></span> <span id="weekNote">Hôm nay</span>
           </span>
 <a class="text-primary hover:underline font-label-sm text-label-sm font-semibold" href="#">Xem chi tiết tuần</a>
 </div>
@@ -667,107 +642,156 @@
 </div>
 </aside>
 </div>
+<div id="detailModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
+<div class="bg-surface-container-lowest rounded-xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+<div class="flex items-center justify-between px-6 py-4 border-b border-surface-container">
+<h3 id="detailTitle" class="font-headline-sm text-headline-sm text-on-surface font-semibold"></h3>
+<button id="detailClose" type="button" class="p-1 rounded-lg hover:bg-surface-container-low text-on-surface-variant" aria-label="Đóng"><span class="material-symbols-outlined">close</span></button>
+</div>
+<div class="overflow-auto"><table class="w-full text-left"><thead class="bg-surface-container-low"><tr class="text-on-surface-variant font-label-sm text-label-sm uppercase"><th class="px-6 py-3">Nhân viên</th><th class="px-3 py-3">Phòng ban</th><th class="px-3 py-3">Vào</th><th class="px-3 py-3">Ra</th><th class="px-6 py-3">Trạng thái</th></tr></thead><tbody id="detailBody"></tbody></table></div>
+<div class="px-6 py-3 border-t border-surface-container text-right"><a href="/admin/attendance" class="font-label-md text-label-md text-primary font-semibold">Mở bảng chấm công</a></div>
+</div></div>
+<div id="toastBox" class="fixed top-20 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+<div id="overview-data" hidden data-json="<%= JSON.stringify(overviewData) %>"></div>
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const liveRows = <%- JSON.stringify(overviewData.liveRows) %>;
-        const liveBody = document.querySelector('section.lg\\:col-span-8 table tbody');
+(() => {
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
+    const hm = (v) => { const d = v ? new Date(v) : null; return d && !isNaN(d) ? d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'; };
+    const src = { gps: 'GPS Mobile', face: 'Nhận diện khuôn mặt', device: 'Thiết bị chấm công', manual: 'Chấm công thủ công' };
+    const names = { leave: 'Đơn xin nghỉ phép', explanation: 'Đơn giải trình', overtime: 'Đơn xin tăng ca', business_trip: 'Đơn xin công tác', resignation: 'Đơn nghỉ việc' };
 
-        if (!liveBody) return;
+    const renderRows = (rows) => {
+        const body = document.querySelector('section.lg\\:col-span-8 table tbody');
+        if (!body) return;
+        body.innerHTML = rows.length ? rows.map((r) => {
+            const bad = r.late || r.early;
+            const cls = !r.check_in ? 'bg-surface-container-high text-on-surface-variant' : bad ? 'bg-error-container text-on-error-container' : r.overtime ? 'bg-primary-fixed text-on-primary-fixed' : 'bg-secondary-fixed text-on-secondary-fixed';
+            return `<tr class="hover:bg-surface-container-low/70 transition-colors">
+<td class="py-space-md px-space-lg"><div class="flex items-center gap-space-md"><div class="w-9 h-9 rounded-full bg-primary-fixed text-on-primary-fixed font-semibold flex items-center justify-center text-sm shrink-0">${esc(r.initials)}</div><div class="flex flex-col min-w-0"><span class="font-label-md text-label-md text-on-surface font-semibold truncate">${esc(r.full_name)}</span><span class="font-data-mono text-[11px] text-on-surface-variant">${esc(r.employee_code)}${r.department ? ' • ' + esc(r.department) : ''}</span></div></div></td>
+<td class="py-space-md px-space-md font-data-mono text-data-mono font-semibold ${r.late ? 'text-error' : 'text-primary'}">${hm(r.check_in)}</td>
+<td class="py-space-md px-space-md font-data-mono text-data-mono ${r.early ? 'text-error font-semibold' : 'text-on-surface-variant'}">${hm(r.check_out)}</td>
+<td class="py-space-md px-space-md"><span class="font-body-sm text-body-sm">${esc(src[r.record_source] || 'Chưa xác định')}</span></td>
+<td class="py-space-md px-space-md"><span class="font-data-mono text-[11px] text-on-surface-variant">${r.check_in_latitude != null ? esc(r.check_in_latitude) + ', ' + esc(r.check_in_longitude) : 'Không có vị trí'}</span></td>
+<td class="py-space-md px-space-md"><span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full ${cls} text-[11px] font-semibold"><span class="w-1.5 h-1.5 rounded-full ${bad ? 'bg-error' : 'bg-secondary'}"></span>${esc(r.displayStatus)}</span></td>
+<td class="py-space-md px-space-lg text-right"><a class="p-space-xs text-on-surface-variant hover:text-primary" href="/admin/attendance" title="Mở bảng chấm công"><span class="material-symbols-outlined text-[18px]">visibility</span></a></td></tr>`;
+        }).join('') : '<tr><td class="py-space-lg px-space-lg text-on-surface-variant" colspan="7">Chưa có dữ liệu chấm công hôm nay.</td></tr>';
+    };
 
-        if (liveRows.length === 0) {
-            liveBody.innerHTML = '<tr><td class="py-space-lg px-space-lg text-on-surface-variant" colspan="7">Chưa có dữ liệu chấm công hôm nay.</td></tr>';
-            return;
-        }
+    const renderPending = (list) => {
+        const h = Array.from(document.querySelectorAll('h3')).find((n) => n.textContent.includes('Cần Xử Lý Gấp'));
+        const box = h && h.closest('.bg-surface-container-lowest');
+        if (!box) return;
+        const badge = box.querySelector('.bg-error-container');
+        if (badge) badge.textContent = `${list.length} Đơn`;
+        const wrap = box.querySelector('.flex.flex-col.gap-space-md');
+        if (wrap) wrap.innerHTML = list.length ? list.map((q) => `<div class="p-space-md bg-surface-container-low rounded-xl flex flex-col gap-space-xs"><div class="flex items-center justify-between"><span class="font-label-md text-label-md text-on-surface font-semibold">${esc(names[q.request_type] || 'Đơn chờ xử lý')}</span><span class="font-data-mono text-[11px] text-on-surface-variant">${esc(q.created_time || '')}</span></div><p class="font-body-sm text-body-sm text-on-surface-variant"><strong>${esc(q.full_name)}</strong>${q.department ? ' (' + esc(q.department) + ')' : ''}${q.reason ? ' - ' + esc(q.reason) : ''}</p><div class="flex justify-end mt-space-xs"><a class="px-space-md py-1 bg-primary hover:bg-primary-container text-on-primary text-label-sm font-label-sm rounded-lg" href="/admin/requests">Xử lý</a></div></div>`).join('') : '<p class="p-space-md font-body-sm text-body-sm text-on-surface-variant">Không có đơn chờ xử lý.</p>';
+        if ($('pendingText')) $('pendingText').textContent = `${list.length} đơn chờ duyệt`;
+    };
 
-        const escapeHtml = (value) => String(value ?? '')
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('"', '&quot;')
-            .replaceAll("'", '&#039;');
-        const timeOnly = (value) => {
-            if (!value) return '--:--';
-            const date = new Date(value);
-            return Number.isNaN(date.getTime())
-                ? '--:--'
-                : date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-        };
-
-        liveBody.innerHTML = liveRows.map((row) => {
-            const source = row.record_source === 'gps'
-                ? 'GPS Mobile'
-                : row.record_source === 'face'
-                    ? 'Nhận diện khuôn mặt'
-                    : row.record_source === 'device'
-                        ? 'Thiết bị chấm công'
-                        : row.record_source === 'manual'
-                            ? 'Chấm công thủ công'
-                            : 'Chưa xác định';
-            const statusClass = row.day_status
-                ? 'bg-surface-container-high text-on-surface-variant'
-                : row.late
-                    ? 'bg-error-container text-on-error-container'
-                    : 'bg-secondary-fixed text-on-secondary-fixed';
-            const statusDot = row.late && !row.day_status
-                ? 'bg-error'
-                : 'bg-secondary';
-
-            return `
-                <tr class="hover:bg-surface-container-low/70 transition-colors">
-                    <td class="py-space-md px-space-lg">
-                        <div class="flex items-center gap-space-md">
-                            <div class="w-9 h-9 rounded-full bg-primary-fixed text-on-primary-fixed font-semibold flex items-center justify-center text-sm shrink-0">${escapeHtml(row.initials)}</div>
-                            <div class="flex flex-col min-w-0">
-                                <span class="font-label-md text-label-md text-on-surface font-semibold truncate">${escapeHtml(row.full_name)}</span>
-                                <span class="font-data-mono text-[11px] text-on-surface-variant">${escapeHtml(row.employee_code)}${row.department ? ' • ' + escapeHtml(row.department) : ''}</span>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="py-space-md px-space-md font-data-mono text-data-mono font-semibold ${row.late ? 'text-error' : 'text-primary'}">${timeOnly(row.check_in)}</td>
-                    <td class="py-space-md px-space-md font-data-mono text-data-mono text-on-surface-variant">${timeOnly(row.check_out)}</td>
-                    <td class="py-space-md px-space-md"><span class="font-body-sm text-body-sm">${escapeHtml(source)}</span></td>
-                    <td class="py-space-md px-space-md"><span class="font-data-mono text-[11px] text-on-surface-variant">${row.check_in_latitude != null ? escapeHtml(row.check_in_latitude) + ', ' + escapeHtml(row.check_in_longitude) : 'Không có vị trí'}</span></td>
-                    <td class="py-space-md px-space-md"><span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full ${statusClass} text-[11px] font-semibold"><span class="w-1.5 h-1.5 rounded-full ${statusDot}"></span>${escapeHtml(row.displayStatus)}</span></td>
-                    <td class="py-space-md px-space-lg text-right"><a class="p-space-xs text-on-surface-variant hover:text-primary" href="/admin/attendance" title="Mở bảng chấm công"><span class="material-symbols-outlined text-[18px]">visibility</span></a></td>
-                </tr>`;
+    const renderWeek = (d) => {
+        const w = d.weeklyRates || [], svg = $('weekChart');
+        if (!svg || !w.length) return;
+        const dm = (s) => s.slice(8, 10) + '/' + s.slice(5, 7);
+        $('weekRange').textContent = `Từ ${dm(w[0].date)} đến ${dm(w[w.length - 1].date)}`;
+        const past = w.filter((x) => x.date <= d.todayDate);
+        const avg = past.length ? Math.round(past.reduce((a, x) => a + x.rate, 0) / past.length * 10) / 10 : 0;
+        $('weekAvg').textContent = `TB: ${avg}%`;
+        const t = w.find((x) => x.date === d.todayDate);
+        $('weekNote').textContent = t ? `Hôm nay: ${t.rate}%` : 'Hôm nay';
+        svg.innerHTML = [20, 60].map((y) => `<line class="text-surface-container" stroke="currentColor" stroke-dasharray="3 3" x1="0" x2="320" y1="${y}" y2="${y}"/>`).join('') + '<line class="text-surface-container" stroke="currentColor" x1="0" x2="320" y1="100" y2="100"/>' + w.map((x, i) => {
+            const cx = 37 + i * 65, future = x.date > d.todayDate, isToday = x.date === d.todayDate;
+            const h = future ? 50 : Math.max(2, Math.round(x.rate * 0.8)), y = 100 - h;
+            return `<rect class="${future ? 'fill-surface-container' : isToday ? 'fill-primary' : 'fill-primary-container/70'}" x="${cx - 17}" y="${y}" width="34" height="${h}" rx="4"/><text class="${isToday ? 'fill-primary font-bold' : 'fill-on-surface-variant font-semibold'} text-[11px]" text-anchor="middle" x="${cx}" y="${y - 6}">${future ? '--' : x.rate + '%'}</text><text class="fill-on-surface-variant text-[12px]" text-anchor="middle" x="${cx}" y="118">${esc(x.label)}${isToday ? ' (Nay)' : ''}</text>`;
         }).join('');
+    };
 
-        const pendingRequests = <%- JSON.stringify(overviewData.pendingRequests) %>;
-        const pendingCount = pendingRequests.length;
-        const pendingHeading = Array.from(document.querySelectorAll('h3')).find((node) =>
-            node.textContent.includes('Cần Xử Lý Gấp')
-        );
-        if (pendingHeading) {
-            const pendingWidget = pendingHeading.closest('.bg-surface-container-lowest');
-            const countBadge = pendingWidget.querySelector('.bg-error-container');
-            if (countBadge) countBadge.textContent = `${pendingCount} Đơn`;
-            const list = pendingWidget.querySelector('.flex.flex-col.gap-space-md');
-            if (list) {
-                list.innerHTML = pendingCount
-                    ? pendingRequests.map((request) => {
-                        const names = {
-                            leave: 'Đơn xin nghỉ phép',
-                            explanation: 'Đơn giải trình',
-                            overtime: 'Đơn xin tăng ca',
-                            business_trip: 'Đơn xin công tác',
-                            resignation: 'Đơn nghỉ việc'
-                        };
-                        const title = names[request.request_type] || 'Đơn chờ xử lý';
-                        return `<div class="p-space-md bg-surface-container-low rounded-xl flex flex-col gap-space-xs">
-                            <div class="flex items-center justify-between">
-                                <span class="font-label-md text-label-md text-on-surface font-semibold">${escapeHtml(title)}</span>
-                                <span class="font-data-mono text-[11px] text-on-surface-variant">${escapeHtml(request.created_time || '')}</span>
-                            </div>
-                            <p class="font-body-sm text-body-sm text-on-surface-variant"><strong>${escapeHtml(request.full_name)}</strong>${request.department ? ' (' + escapeHtml(request.department) + ')' : ''}${request.reason ? ' - ' + escapeHtml(request.reason) : ''}</p>
-                            <div class="flex items-center justify-end mt-space-xs pt-space-xs">
-                                <a class="px-space-md py-1 bg-primary hover:bg-primary-container text-on-primary text-label-sm font-label-sm rounded-lg" href="/admin/requests">Xử lý</a>
-                            </div>
-                        </div>`;
-                    }).join('')
-                    : '<p class="p-space-md font-body-sm text-body-sm text-on-surface-variant">Không có đơn chờ xử lý.</p>';
+    const seen = new Map();
+    let firstLoad = true;
+    const toast = (r, act) => {
+        const isIn = act === 'in', bad = isIn ? r.late : r.early, el = document.createElement('div');
+        const note = isIn ? (r.late ? `Đi muộn ${r.late_minutes} phút` : 'Đúng giờ') : (r.early ? `Về sớm ${r.early_minutes} phút` : r.overtime ? `Tăng ca ${r.overtime_minutes} phút` : r.stayed_late ? `Ra muộn ${r.stayed_late_minutes} phút (không có đơn tăng ca)` : 'Về đúng giờ');
+        el.className = 'pointer-events-auto flex items-center gap-3 rounded-xl bg-surface-container-lowest px-4 py-3 shadow-lg border-l-4 ' + (bad ? 'border-error' : 'border-secondary');
+        el.innerHTML = `<span class="material-symbols-outlined ${bad ? 'text-error' : 'text-secondary'}">${isIn ? 'login' : 'logout'}</span><div><p class="font-label-md text-label-md text-on-surface font-semibold">${esc(r.full_name)} vừa ${isIn ? 'check-in' : 'check-out'} lúc ${hm(isIn ? r.check_in : r.check_out)}</p><p class="font-body-sm text-body-sm ${bad ? 'text-error' : 'text-on-surface-variant'}">${note}</p></div>`;
+        $('toastBox').appendChild(el);
+        setTimeout(() => el.remove(), 6000);
+    };
+    const watchRows = (rows) => {
+        rows.forEach((r) => {
+            const prev = seen.get(r.id), cin = String(r.check_in || ''), cout = String(r.check_out || '');
+            if (!firstLoad) {
+                if (cin && (!prev || prev.cin !== cin)) toast(r, 'in');
+                else if (cout && prev && prev.cout !== cout) toast(r, 'out');
             }
-        }
+            seen.set(r.id, { cin, cout });
+        });
+        firstLoad = false;
+    };
+
+    const kinds = {
+        present: ['Nhân viên có mặt hôm nay', (r) => r.has_check_in],
+        ontime: ['Nhân viên đúng giờ', (r) => r.has_check_in && !r.late && !r.early],
+        late: ['Nhân viên đi muộn / về sớm', (r) => r.late || r.early],
+        overtime: ['Nhân viên tăng ca (có đơn được duyệt)', (r) => r.overtime],
+        absent: ['Nhân viên vắng hoặc nghỉ', (r) => !r.has_check_in && (r.absent || r.on_leave)]
+    };
+    let openKind = null, lastData = window.__lastData = null;
+    const renderDetail = () => {
+        if (!openKind || !lastData) return;
+        const [title, test] = kinds[openKind];
+        const list = (lastData.people || []).filter(test);
+        const msg = !Array.isArray(lastData.people) ? 'Server chưa gửi danh sách nhân viên. Hãy chép đè notificationService.js rồi chạy lại app.' : !lastData.activeEmployees ? 'Chưa đọc được nhân viên đang hoạt động. Xem cửa sổ PowerShell có dòng "Không tải được dữ liệu tổng quan" không.' : 'Không có nhân viên nào trong nhóm này.';
+        $('detailTitle').textContent = `${title} (${list.length})`;
+        $('detailBody').innerHTML = list.length ? list.map((r) => `<tr class="border-b border-surface-container-low"><td class="px-6 py-3"><div class="font-label-md text-label-md text-on-surface font-semibold">${esc(r.full_name)}</div><div class="font-data-mono text-[11px] text-on-surface-variant">${esc(r.employee_code)}</div></td><td class="px-3 py-3 font-body-sm text-body-sm">${esc(r.department || '-')}</td><td class="px-3 py-3 font-data-mono text-data-mono ${r.late ? 'text-error' : ''}">${hm(r.check_in)}</td><td class="px-3 py-3 font-data-mono text-data-mono ${r.early ? 'text-error' : 'text-on-surface-variant'}">${hm(r.check_out)}</td><td class="px-6 py-3 font-body-sm text-body-sm ${r.late || r.early || r.absent ? 'text-error' : ''}">${esc(r.displayStatus)}</td></tr>`).join('') : `<tr><td colspan="5" class="px-6 py-6 text-on-surface-variant">${esc(msg)}</td></tr>`;
+    };
+    const showDetail = (k) => { openKind = k; renderDetail(); $('detailModal').classList.replace('hidden', 'flex'); };
+    const hideDetail = () => { openKind = null; $('detailModal').classList.replace('flex', 'hidden'); };
+    document.querySelectorAll('[data-detail]').forEach((el) => {
+        el.addEventListener('click', (e) => { e.stopPropagation(); showDetail(el.dataset.detail); });
+        el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.stopPropagation(); showDetail(el.dataset.detail); } });
     });
+    $('detailClose').addEventListener('click', hideDetail);
+    $('detailModal').addEventListener('click', (e) => { if (e.target.id === 'detailModal') hideDetail(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideDetail(); });
+
+    const render = (d) => {
+        lastData = d; renderDetail();
+        watchRows(d.liveRows || []);
+        d.absentOrLeave = (d.leaveEmployees || 0) + (d.absentEmployees || 0);
+        d.liveCount = (d.liveRows || []).length;
+        document.querySelectorAll('[data-k]').forEach((el) => { const v = d[el.dataset.k]; if (v != null) el.textContent = v; });
+        renderRows(d.liveRows || []); renderPending(d.pendingRequests || []); renderWeek(d);
+        $('lastUpdated').textContent = (live ? '● Trực tiếp • ' : '○ Đang kết nối lại • ') + new Date().toLocaleTimeString('vi-VN');
+    };
+
+    let busy = false, live = false;
+    const load = async () => {
+        if (busy) return; busy = true;
+        try {
+            const r = await fetch('/api/overview', { headers: { Accept: 'application/json' }, cache: 'no-store' });
+            const j = await r.json();
+            if (r.ok && j.success) render(j.data);
+        } catch (e) { /* giữ dữ liệu cũ */ } finally { busy = false; }
+    };
+
+    const tick = () => {
+        const n = new Date();
+        $('clockTime').textContent = n.toLocaleTimeString('vi-VN');
+        $('clockDate').textContent = '• ' + n.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        render(JSON.parse($('overview-data').dataset.json));
+        tick(); setInterval(tick, 1000);
+        const es = new EventSource('/api/overview/stream');
+        es.addEventListener('attendance', load);
+        es.onopen = () => { live = true; load(); };
+        es.onerror = () => { live = false; };
+        setInterval(load, 10000); // dự phòng khi mất kết nối realtime
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+    });
+})();
+
 </script>
 <!-- Interactive script for demo interactions without styling pollution -->
 <script>

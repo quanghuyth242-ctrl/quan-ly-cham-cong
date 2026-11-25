@@ -247,6 +247,9 @@ export const getOverviewData = async () => {
         presentEmployees: 0,
         onTimeEmployees: 0,
         lateOrEarlyEmployees: 0,
+        lateEmployees: 0,
+        earlyLeaveEmployees: 0,
+        overtimeEmployees: 0,
         leaveEmployees: 0,
         absentEmployees: 0,
         attendanceRate: 0,
@@ -257,6 +260,7 @@ export const getOverviewData = async () => {
         unreportedAbsentEmployees: 0,
         departments: 0,
         liveRows: [],
+        people: [],
         pendingRequests: [],
         weeklyRates: []
     };
@@ -273,6 +277,20 @@ export const getOverviewData = async () => {
 
         const [attendanceRows] = await db.execute(
             `SELECT e.id, e.employee_code, e.full_name, e.department, e.position,
+                    (SELECT TIME_FORMAT(ws.morning_start, '%H:%i')
+                       FROM employee_shift_assignments sa
+                       INNER JOIN work_shifts ws ON ws.id = sa.shift_id AND ws.status = 1
+                       INNER JOIN shift_workdays sw ON sw.shift_id = ws.id AND sw.weekday = WEEKDAY(?) + 1
+                      WHERE sa.employee_id = e.id AND sa.status = 'active'
+                        AND ? BETWEEN sa.start_date AND sa.end_date
+                      ORDER BY sa.start_date DESC LIMIT 1) AS shift_start,
+                    (SELECT TIME_FORMAT(ws.afternoon_end, '%H:%i')
+                       FROM employee_shift_assignments sa
+                       INNER JOIN work_shifts ws ON ws.id = sa.shift_id AND ws.status = 1
+                       INNER JOIN shift_workdays sw ON sw.shift_id = ws.id AND sw.weekday = WEEKDAY(?) + 1
+                      WHERE sa.employee_id = e.id AND sa.status = 'active'
+                        AND ? BETWEEN sa.start_date AND sa.end_date
+                      ORDER BY sa.start_date DESC LIMIT 1) AS shift_end,
                     a.check_in, a.check_out, a.status, a.record_source,
                     a.check_in_latitude, a.check_in_longitude,
                     ds.status AS day_status, ds.note AS day_status_note
@@ -288,7 +306,7 @@ export const getOverviewData = async () => {
                        a.check_in DESC,
                        e.employee_code ASC
               LIMIT 500`,
-            [todayDate, todayDate]
+            [todayDate, todayDate, todayDate, todayDate, todayDate, todayDate]
         );
 
         const leaveEmployees = attendanceRows.filter((row) =>
@@ -296,15 +314,50 @@ export const getOverviewData = async () => {
         ).length;
         const presentEmployees = attendanceRows.filter((row) => row.check_in).length;
 
-        const isLateOrEarly = (row) => {
-            const status = String(row.status || "").toLowerCase();
-            if (status.includes("late") || status.includes("early_leave")) return true;
-            if (!row.check_in) return false;
-            const date = row.check_in instanceof Date ? row.check_in : new Date(row.check_in);
-            return !Number.isNaN(date.getTime()) && (date.getHours() * 60 + date.getMinutes()) > 8 * 60 + 30;
+        const OVERTIME_AFTER_MINUTES = 30; // ra muộn từ 30 phút sau giờ tan ca thì tính là tăng ca
+        const toMinutes = (t) => { const [h, m] = String(t).split(":").map(Number); return h * 60 + m; };
+        const dateMinutes = (v) => {
+            if (!v) return null;
+            const d = v instanceof Date ? v : new Date(v);
+            return Number.isNaN(d.getTime()) ? null : d.getHours() * 60 + d.getMinutes();
         };
-        const lateOrEarlyEmployees = attendanceRows.filter(isLateOrEarly).length;
-        const onTimeEmployees = attendanceRows.filter((row) => row.check_in && !isLateOrEarly(row)).length;
+        const dayLabels = { leave: "Nghỉ phép", business_trip: "Công tác", overtime: "Tăng ca" };
+        // Phân loại 1 nhân viên theo ca được phân công (không có ca thì mặc định vào 08:30).
+        const analyze = (row) => {
+            const inM = dateMinutes(row.check_in);
+            const outM = dateMinutes(row.check_out);
+            const startM = row.shift_start ? toMinutes(row.shift_start) : 8 * 60 + 30;
+            const endM = row.shift_end ? toMinutes(row.shift_end) : null;
+            const status = String(row.status || "").toLowerCase();
+            const lateMinutes = inM !== null ? Math.max(0, inM - startM) : 0;
+            const earlyMinutes = outM !== null && endM !== null ? Math.max(0, endM - outM) : 0;
+            const overtimeMinutes = outM !== null && endM !== null ? Math.max(0, outM - endM) : 0;
+            const late = inM !== null && (lateMinutes > 0 || status.includes("late"));
+            const early = outM !== null && (earlyMinutes > 0 || status.includes("early_leave"));
+            const overtime = overtimeMinutes >= OVERTIME_AFTER_MINUTES || (inM !== null && row.day_status === "overtime");
+            let displayStatus;
+            if (inM === null) {
+                displayStatus = row.day_status ? (dayLabels[row.day_status] || row.day_status) : "Vắng, chưa chấm công";
+            } else {
+                const parts = [];
+                if (late) parts.push(lateMinutes > 0 ? `Đi muộn ${lateMinutes} phút` : "Đi muộn");
+                if (early) parts.push(earlyMinutes > 0 ? `Về sớm ${earlyMinutes} phút` : "Về sớm");
+                if (overtime) parts.push(overtimeMinutes > 0 ? `Tăng ca ${overtimeMinutes} phút` : "Tăng ca");
+                if (!parts.length) parts.push(outM === null ? "Đang làm việc" : "Đúng giờ");
+                displayStatus = parts.join(" • ");
+            }
+            return { late, early, overtime, late_minutes: lateMinutes, early_minutes: earlyMinutes, overtime_minutes: overtimeMinutes, displayStatus };
+        };
+        attendanceRows.forEach((row) => Object.assign(row, analyze(row)));
+        const lateEmployees = attendanceRows.filter((row) => row.late).length;
+        const earlyLeaveEmployees = attendanceRows.filter((row) => row.early).length;
+        const overtimeEmployees = attendanceRows.filter((row) => row.overtime).length;
+        const lateOrEarlyEmployees = attendanceRows.filter((row) => row.late || row.early).length;
+        const onTimeEmployees = attendanceRows.filter((row) => row.check_in && !row.late && !row.early).length;
+        const lateList = attendanceRows.filter((row) => row.late && row.late_minutes > 0);
+        const averageLateMinutes = lateList.length
+            ? Math.round(lateList.reduce((sum, row) => sum + row.late_minutes, 0) / lateList.length)
+            : 0;
 
         const absentEmployees = Math.max(0, activeEmployees - presentEmployees - leaveEmployees);
         const attendanceRate = activeEmployees
@@ -313,20 +366,6 @@ export const getOverviewData = async () => {
         const onTimeRate = presentEmployees
             ? Math.round((onTimeEmployees / presentEmployees) * 1000) / 10
             : 0;
-
-        const [lateRows] = await db.execute(
-            `SELECT COALESCE(AVG(GREATEST(
-                        0,
-                        TIME_TO_SEC(TIME(a.check_in)) - 8 * 3600 - 30 * 60
-                    ) / 60), 0) AS average_late
-               FROM attendance a
-               JOIN employees e ON e.id = a.employee_id
-              WHERE e.is_active = 1
-                AND a.work_date = ?
-                AND a.check_in IS NOT NULL
-                AND TIME(a.check_in) > '08:30:00'`
-                 [todayDate]
-        );
 
         const [yesterdayRows] = await db.execute(
     `SELECT COUNT(DISTINCT employee_id) AS present
@@ -356,7 +395,6 @@ export const getOverviewData = async () => {
             .filter((row) => row.check_in || row.day_status)
             .slice(0, 6)
             .map((row) => {
-                const late = isLateOrEarly(row);
                 return {
                     ...row,
                     initials: String(row.full_name || "")
@@ -366,12 +404,28 @@ export const getOverviewData = async () => {
                         .map((word) => word[0])
                         .join("")
                         .toUpperCase(),
-                    late,
-                    displayStatus: row.day_status
-                        ? ({ leave: "Nghỉ phép", business_trip: "Công tác", overtime: "Tăng ca" }[row.day_status] || row.day_status)
-                        : late ? "Đi muộn / về sớm" : row.check_in ? "Đúng giờ" : "Chưa chấm công"
                 };
             });
+
+        const people = attendanceRows.map((row) => {
+            return {
+                id: row.id,
+                employee_code: row.employee_code,
+                full_name: row.full_name,
+                department: row.department,
+                check_in: row.check_in,
+                check_out: row.check_out,
+                late: row.late,
+                early: row.early,
+                overtime: row.overtime,
+                late_minutes: row.late_minutes,
+                early_minutes: row.early_minutes,
+                overtime_minutes: row.overtime_minutes,
+                has_check_in: Boolean(row.check_in),
+                day_status: row.day_status || null,
+                displayStatus: row.displayStatus
+            };
+        });
 
         const monday = new Date(today);
         const weekday = (today.getDay() + 6) % 7;
@@ -403,16 +457,20 @@ export const getOverviewData = async () => {
             presentEmployees,
             onTimeEmployees,
             lateOrEarlyEmployees,
+            lateEmployees,
+            earlyLeaveEmployees,
+            overtimeEmployees,
             leaveEmployees,
             absentEmployees,
             attendanceRate,
             yesterdayAttendanceRate,
             onTimeRate,
-            averageLateMinutes: Math.round(Number(lateRows[0]?.average_late || 0)),
+            averageLateMinutes,
             reportedLeaveEmployees: leaveEmployees,
             unreportedAbsentEmployees: absentEmployees,
             departments,
             liveRows,
+            people,
             pendingRequests: requestRows,
             weeklyRates
         };

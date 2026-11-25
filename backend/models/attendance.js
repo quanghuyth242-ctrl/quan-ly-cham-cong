@@ -1,4 +1,5 @@
 import { db } from "../config/db.js";
+import { notifyAttendanceChanged } from "../services/realtimeService.js";
 
 const ATTENDANCE_STATUS_FILTERS = [
     "all",
@@ -276,6 +277,7 @@ export const insertCheckIn = async (
         ]
     );
 
+    notifyAttendanceChanged();
     return findAttendanceById(connection, result.insertId);
 };
 
@@ -303,6 +305,7 @@ export const updateCheckOut = async (
         ]
     );
 
+    notifyAttendanceChanged();
     return findAttendanceById(connection, attendanceId);
 };
 
@@ -679,6 +682,7 @@ export const create = async (data) => {
             data.status
         ]
     );
+    notifyAttendanceChanged();
     return result.insertId;
 };
 
@@ -699,6 +703,7 @@ export const update = async (id, data) => {
             id
         ]
     );
+    notifyAttendanceChanged();
 };
 
 export const syncDeviceRecords = async (deviceId, records) => {
@@ -859,6 +864,7 @@ export const syncDeviceRecords = async (deviceId, records) => {
         );
 
         await connection.commit();
+        notifyAttendanceChanged();
         return result;
     } catch (error) {
         await connection.rollback();
@@ -1069,6 +1075,7 @@ export const syncDeviceEvents = async (deviceId, events) => {
         );
 
         await connection.commit();
+        notifyAttendanceChanged();
         return result;
     } catch (error) {
         await connection.rollback();

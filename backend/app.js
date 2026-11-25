@@ -11,12 +11,13 @@ import FaceRouter from "./routers/FaceRouter.js";
 import AttendanceRouter from "./routers/attendanceRoutes.js";
 import LeaveRequestRouter from "./routers/LeaveRequestRouter.js";
 import * as LeaveRequestController from "./controllers/LeaveRequestController.js";
-import { requireAdmin, requireAuth } from "./middlewares/authMiddleware.js";
+import { requireAdmin, requireAdminApi, requireAuth } from "./middlewares/authMiddleware.js";
 import { getOverviewData, getOverviewNotifications } from "./services/notificationService.js";
 import adminDeviceRoutes from "./routers/adminDeviceRoutes.js";
 import adminEmployeeRoutes from "./routers/adminEmployeeRoutes.js";
 import adminDepartmentRoutes from "./routers/adminDepartmentRoutes.js";
 import adminPositionRoutes from "./routers/adminPositionRoutes.js";
+import { addClient } from "./services/realtimeService.js";
 import deviceApiRoutes from "./routers/deviceApiRoutes.js";
 const app = express();
 
@@ -80,6 +81,13 @@ app.use("/admin/employees", requireAdmin, adminEmployeeRoutes);
 app.use("/admin/departments", requireAdmin, adminDepartmentRoutes);
 app.use("/admin/positions", requireAdmin, adminPositionRoutes);
 app.use("/api/devices", deviceApiRoutes);
+
+// Dữ liệu tổng quan dạng JSON + kênh realtime cho trang Tổng quan
+app.get("/api/overview", requireAdminApi, async (req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.json({ success: true, data: await getOverviewData() });
+});
+app.get("/api/overview/stream", requireAdminApi, addClient);
 
 app.get("/", async (req, res) => {
     if (!req.session.user) {
