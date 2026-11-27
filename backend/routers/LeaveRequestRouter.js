@@ -9,11 +9,11 @@ router.post("/business-trip", LeaveRequestController.createBusinessTrip);
 router.post("/overtime", LeaveRequestController.createOvertime);
 router.post("/:id/approve", (req, res) => {
     req.params.decision = "approve";
-    return LeaveRequestController.reviewBusinessTrip(req, res);
+    return LeaveRequestController.reviewRequest(req, res);
 });
 router.post("/:id/reject", (req, res) => {
     req.params.decision = "reject";
-    return LeaveRequestController.reviewBusinessTrip(req, res);
+    return LeaveRequestController.reviewRequest(req, res);
 });
 
 export default router;

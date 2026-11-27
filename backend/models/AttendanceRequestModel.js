@@ -18,24 +18,27 @@ export const findAll = async () => {
                r.reason, r.destination,
                TIME_FORMAT(r.overtime_start_time, '%H:%i') AS overtime_start_time,
                TIME_FORMAT(r.overtime_end_time, '%H:%i') AS overtime_end_time,
-               r.status, r.created_at, r.reviewed_at, r.review_note,
+               r.status, r.created_at, r.reviewed_by, DATE_FORMAT(r.reviewed_at, '%Y-%m-%d %H:%i') AS reviewed_date, r.review_note,
                r.employee_response, r.employee_responded_at, r.employee_response_note,
                e.id AS employee_id, e.employee_code, e.full_name AS employee_name,
-               e.department, DATE_FORMAT(r.created_at, '%Y-%m-%d %H:%i') AS created_date
+               e.department, DATE_FORMAT(r.created_at, '%Y-%m-%d %H:%i') AS created_date, u.username AS reviewer_name
           FROM attendance_requests r
           JOIN employees e ON e.id = r.employee_id
-         ORDER BY FIELD(r.status, 'pending', 'approved', 'rejected'), r.created_at DESC
+          LEFT JOIN users u ON u.id = r.reviewed_by
+         ORDER BY FIELD(r.status, 'pending', 'awaiting_employee', 'approved', 'rejected'), r.created_at DESC
     `);
     return rows;
 };
 
 export const findById = async (id) => {
     const [rows] = await db.execute(
-        `SELECT id, request_code, request_type, employee_id,
+        `SELECT id, request_code, request_type, category, employee_id, reason, destination,
                 DATE_FORMAT(from_date, '%Y-%m-%d') AS from_date,
                 DATE_FORMAT(to_date, '%Y-%m-%d') AS to_date,
                 TIME_FORMAT(overtime_start_time, '%H:%i') AS overtime_start_time,
-                TIME_FORMAT(overtime_end_time, '%H:%i') AS overtime_end_time, status
+                TIME_FORMAT(overtime_end_time, '%H:%i') AS overtime_end_time, status, reviewed_by, review_note,
+                DATE_FORMAT(reviewed_at, '%Y-%m-%d %H:%i') AS reviewed_date,
+                employee_response, employee_response_note
            FROM attendance_requests WHERE id = ? LIMIT 1`,
         [id]
     );
@@ -61,17 +64,19 @@ export const findEmployeeForUser = async (user) => {
 
 export const findByEmployee = async (employeeId, requestType = "overtime") => {
     const [rows] = await db.execute(`
-        SELECT id, request_code, request_type,
-               DATE_FORMAT(from_date, '%Y-%m-%d') AS from_date,
-               DATE_FORMAT(to_date, '%Y-%m-%d') AS to_date,
-               reason, destination,
-               TIME_FORMAT(overtime_start_time, '%H:%i') AS overtime_start_time,
-               TIME_FORMAT(overtime_end_time, '%H:%i') AS overtime_end_time,
-               status, employee_response, employee_responded_at, employee_response_note, review_note,
-               DATE_FORMAT(created_at, '%Y-%m-%d %H:%i') AS created_date
-          FROM attendance_requests
-         WHERE employee_id = ? AND request_type = ?
-         ORDER BY created_at DESC
+        SELECT r.id, r.request_code, r.request_type,
+               DATE_FORMAT(r.from_date, '%Y-%m-%d') AS from_date,
+               DATE_FORMAT(r.to_date, '%Y-%m-%d') AS to_date,
+               r.reason, r.destination,
+               TIME_FORMAT(r.overtime_start_time, '%H:%i') AS overtime_start_time,
+               TIME_FORMAT(r.overtime_end_time, '%H:%i') AS overtime_end_time,
+               r.status, r.employee_response, r.employee_responded_at, r.employee_response_note, r.review_note,
+               DATE_FORMAT(r.reviewed_at, '%Y-%m-%d %H:%i') AS reviewed_date, u.username AS reviewer_name,
+               DATE_FORMAT(r.created_at, '%Y-%m-%d %H:%i') AS created_date
+          FROM attendance_requests r
+          LEFT JOIN users u ON u.id = r.reviewed_by
+         WHERE r.employee_id = ? AND r.request_type = ?
+         ORDER BY r.created_at DESC
          LIMIT 50
     `, [employeeId, requestType]);
     return rows;
@@ -79,14 +84,16 @@ export const findByEmployee = async (employeeId, requestType = "overtime") => {
 
 export const findEmployeeLeaveRequests = async (employeeId) => {
     const [rows] = await db.execute(`
-        SELECT id, request_code, request_type, category,
-               DATE_FORMAT(from_date, '%Y-%m-%d') AS from_date,
-               DATE_FORMAT(to_date, '%Y-%m-%d') AS to_date,
-               reason, status, employee_response, employee_response_note, review_note,
-               DATE_FORMAT(created_at, '%Y-%m-%d %H:%i') AS created_date
-          FROM attendance_requests
-         WHERE employee_id = ? AND request_type IN ('leave', 'resignation')
-         ORDER BY created_at DESC
+        SELECT r.id, r.request_code, r.request_type, r.category,
+               DATE_FORMAT(r.from_date, '%Y-%m-%d') AS from_date,
+               DATE_FORMAT(r.to_date, '%Y-%m-%d') AS to_date,
+               r.reason, r.status, r.employee_response, r.employee_response_note, r.review_note,
+               DATE_FORMAT(r.reviewed_at, '%Y-%m-%d %H:%i') AS reviewed_date, u.username AS reviewer_name,
+               DATE_FORMAT(r.created_at, '%Y-%m-%d %H:%i') AS created_date
+          FROM attendance_requests r
+          LEFT JOIN users u ON u.id = r.reviewed_by
+         WHERE r.employee_id = ? AND r.request_type IN ('leave', 'resignation')
+         ORDER BY r.created_at DESC
          LIMIT 50
     `, [employeeId]);
     return rows;
@@ -147,6 +154,32 @@ export const create = async (request) => {
         await connection.execute("UPDATE attendance_requests SET request_code = ? WHERE id = ?", [requestCode, result.insertId]);
         await connection.commit();
         return { id: result.insertId, requestCode };
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
+};
+
+// Giải trình dùng các cột sẵn có nên không cần migrate database.
+// subject -> destination, thời gian liên quan -> overtime_start_time/end_time.
+export const createExplanation = async (request) => {
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+        const [result] = await connection.execute(`
+            INSERT INTO attendance_requests
+                (employee_id, request_type, category, from_date, to_date, reason,
+                 destination, overtime_start_time, overtime_end_time, status, created_by)
+            VALUES (?, 'explanation', ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+        `, [request.employeeId, request.category, request.incidentDate, request.incidentDate,
+            request.reason, request.subject, request.startTime || null, request.endTime || null,
+            request.createdBy || null]);
+        const requestCode = `GT-${new Date().getFullYear()}-${String(result.insertId).padStart(6, "0")}`;
+        await connection.execute("UPDATE attendance_requests SET request_code = ? WHERE id = ?", [requestCode, result.insertId]);
+        await connection.commit();
+        return { success: true, id: result.insertId, requestCode };
     } catch (error) {
         await connection.rollback();
         throw error;
@@ -534,6 +567,10 @@ export const review = async ({ id, decision, reviewerId, reviewNote = null, sche
         return { success: true, autoAttendanceDays, scheduledDays: schedules.length, appliedDays: autoAttendanceDays };
     } catch (error) {
         await connection.rollback();
+        // Hai đơn duyệt cùng lúc có thể va nhau ở UNIQUE(employee_id, work_date).
+        if (["ER_DUP_ENTRY", "ER_LOCK_DEADLOCK", "ER_LOCK_WAIT_TIMEOUT"].includes(error.code)) {
+            return { success: false, reason: "overlap" };
+        }
         throw error;
     } finally {
         connection.release();
