@@ -38,6 +38,56 @@ const toWorkdays = (request, schedules) => {
     return byDate;
 };
 
+const EXPLANATION_CATEGORY_LABELS = {
+    late: "Đi muộn",
+    early_leave: "Về sớm",
+    missing_checkin: "Quên check-in",
+    missing_checkout: "Quên check-out",
+    wrong_record: "Sai dữ liệu chấm công",
+    other: "Khác"
+};
+
+const mapRequestItem = (item) => {
+    const explanationCategory = item.request_type === "explanation"
+        ? EXPLANATION_CATEGORY_LABELS[item.category] || "Khác"
+        : null;
+    return {
+        ...item,
+        code: item.request_code,
+        type: item.request_type,
+        typeLabel: explanationCategory ? `Giải trình · ${explanationCategory}` : {
+            business_trip: "Công tác",
+            overtime: "Tăng ca",
+            leave: {
+                annual: "Nghỉ phép năm",
+                sick: "Nghỉ ốm",
+                unpaid: "Nghỉ không lương",
+                personal: "Nghỉ việc riêng"
+            }[item.category] || "Nghỉ phép",
+            resignation: "Nghỉ việc",
+            explanation: "Giải trình"
+        }[item.request_type] || item.request_type,
+        categoryLabel: explanationCategory || "",
+        subject: item.request_type === "explanation" ? (item.destination || "") : "",
+        employeeName: item.employee_name,
+        employeeId: item.employee_code,
+        fromDate: item.from_date,
+        toDate: item.to_date,
+        timeLabel: item.overtime_start_time && item.overtime_end_time
+            ? `${item.overtime_start_time}–${item.overtime_end_time}`
+            : "",
+        statusLabel: item.status === "awaiting_employee" ? "Chờ nhân viên xác nhận"
+            : item.status === "rejected" && item.employee_response === "rejected" ? "Nhân viên từ chối"
+            : { pending: "Chờ duyệt", approved: "Đã duyệt", rejected: "Từ chối" }[item.status],
+        createdAt: item.created_date,
+        reviewedAt: item.reviewed_date || null,
+        reviewerName: item.reviewer_name || (item.reviewed_by ? `Người dùng #${item.reviewed_by}` : null),
+        reviewNote: item.review_note || null,
+        employeeResponseNote: item.employee_response_note || null,
+        canReview: item.status === "pending"
+    };
+};
+
 export const index = async (req, res) => {
     const activeTab = ["explanation", "business_trip", "overtime", "list"].includes(req.query.tab)
         ? req.query.tab
@@ -53,41 +103,21 @@ export const index = async (req, res) => {
             approved: requests.filter((item) => item.status === "approved").length,
             rejected: requests.filter((item) => item.status === "rejected").length
         };
+        const mappedRequests = requests.map(mapRequestItem);
+        const explanationRequests = mappedRequests.filter((item) => item.type === "explanation");
         return res.render("requests/index", {
             user: req.session.user,
             success: req.query.success || null,
             error: req.query.error || null,
             activeTab,
-            requests: requests.map((item) => ({
-                ...item,
-                code: item.request_code,
-                type: item.request_type,
-                typeLabel: {
-                    business_trip: "Công tác",
-                    overtime: "Tăng ca",
-                    leave: {
-                        annual: "Nghỉ phép năm",
-                        sick: "Nghỉ ốm",
-                        unpaid: "Nghỉ không lương",
-                        personal: "Nghỉ việc riêng"
-                    }[item.category] || "Nghỉ phép",
-                    resignation: "Nghỉ việc",
-                    explanation: "Giải trình"
-                }[item.request_type] || item.request_type,
-                employeeName: item.employee_name,
-                employeeId: item.employee_code,
-                fromDate: item.from_date,
-                toDate: item.to_date,
-                statusLabel: item.status === "awaiting_employee" ? "Chờ nhân viên xác nhận"
-                    : item.status === "rejected" && item.employee_response === "rejected" ? "Nhân viên từ chối"
-                    : { pending: "Chờ duyệt", approved: "Đã duyệt", rejected: "Từ chối" }[item.status],
-                createdAt: item.created_date,
-                reviewedAt: item.reviewed_date || null,
-                reviewerName: item.reviewer_name || (item.reviewed_by ? `Người dùng #${item.reviewed_by}` : null),
-                reviewNote: item.review_note || null,
-                employeeResponseNote: item.employee_response_note || null,
-                canReview: item.status === "pending"
-            })),
+            requests: mappedRequests,
+            explanationRequests,
+            explanationStats: {
+                total: explanationRequests.length,
+                pending: explanationRequests.filter((item) => item.status === "pending").length,
+                approved: explanationRequests.filter((item) => item.status === "approved").length,
+                rejected: explanationRequests.filter((item) => item.status === "rejected").length
+            },
             employees,
             stats
         });
@@ -99,6 +129,8 @@ export const index = async (req, res) => {
             error: "Không thể tải dữ liệu đơn. Vui lòng thử lại.",
             activeTab,
             requests: [],
+            explanationRequests: [],
+            explanationStats: { total: 0, pending: 0, approved: 0, rejected: 0 },
             employees: [],
             stats: { total: 0, pending: 0, approved: 0, rejected: 0 }
         });
@@ -392,20 +424,24 @@ export const reviewRequest = async (req, res) => {
     const id = Number(req.params.id);
     const decision = req.params.decision === "approve" ? "approved" : req.params.decision === "reject" ? "rejected" : null;
     const reviewNote = String(req.body.review_note || "").trim();
+    const returnTab = ["explanation", "business_trip", "overtime", "list"].includes(req.query.tab)
+        ? req.query.tab
+        : "list";
+    const fail = (message) => redirect(res, { tab: returnTab, error: message });
     if (!Number.isSafeInteger(id) || id <= 0 || !decision) {
-        return redirect(res, { tab: "list", error: "Yêu cầu duyệt đơn không hợp lệ." });
+        return fail("Yêu cầu duyệt đơn không hợp lệ.");
     }
     if (reviewNote.length > 500) {
-        return redirect(res, { tab: "list", error: "Ghi chú phê duyệt không được quá 500 ký tự." });
+        return fail("Ghi chú phê duyệt không được quá 500 ký tự.");
     }
     if (decision === "rejected" && reviewNote.length < 10) {
-        return redirect(res, { tab: "list", error: "Lý do từ chối cần từ 10 đến 500 ký tự." });
+        return fail("Lý do từ chối cần từ 10 đến 500 ký tự.");
     }
 
     try {
         const request = await AttendanceRequestModel.findById(id);
-        if (!request) return redirect(res, { tab: "list", error: "Không tìm thấy đơn cần duyệt." });
-        if (request.status !== "pending") return redirect(res, { tab: "list", error: "Đơn này đã được xử lý trước đó." });
+        if (!request) return fail("Không tìm thấy đơn cần duyệt.");
+        if (request.status !== "pending") return fail("Đơn này đã được xử lý trước đó.");
 
         let schedules = [];
         if (decision === "approved" && ["business_trip", "leave"].includes(request.request_type)) {
@@ -426,7 +462,7 @@ export const reviewRequest = async (req, res) => {
                 : result.reason === "overlap" ? "Đơn bị trùng với một trạng thái ngày công đã được ghi nhận trong khoảng ngày này."
                 : result.reason === "no_scheduled_days" ? "Không thể duyệt tự động: nhân viên chưa có ngày làm việc được phân ca trong khoảng công tác."
                 : "Không thể xử lý đơn.";
-            return redirect(res, { tab: "list", error });
+            return fail(error);
         }
 
         await writeAttendanceAuditLog({
@@ -458,11 +494,14 @@ export const reviewRequest = async (req, res) => {
             ? `Đã duyệt công tác và cập nhật đủ giờ theo ca cho ${result.autoAttendanceDays} ngày làm việc.`
             : decision === "approved" && request.request_type === "leave"
             ? `Đã duyệt đơn nghỉ; trạng thái nghỉ đã được ghi nhận cho ${result.appliedDays} ngày làm việc trong khoảng đơn.`
-            : decision === "approved" ? "Đã duyệt đơn." : "Đã từ chối đơn.";
-        return redirect(res, { tab: "list", success: message });
+            : decision === "approved" && request.request_type === "explanation"
+            ? `Đã phê duyệt giải trình ${request.request_code}; quyết định và ghi chú đã được lưu.`
+            : decision === "approved" ? "Đã duyệt đơn."
+            : request.request_type === "explanation" ? `Đã từ chối giải trình ${request.request_code}.` : "Đã từ chối đơn.";
+        return redirect(res, { tab: returnTab, success: message });
     } catch (error) {
         console.error("Lỗi duyệt đơn nhân sự:", error);
-        return redirect(res, { tab: "list", error: "Không thể xử lý đơn. Vui lòng thử lại." });
+        return fail("Không thể xử lý đơn. Vui lòng thử lại.");
     }
 };
 
@@ -506,7 +545,7 @@ export const createExplanation = async (req, res) => {
         });
         notifyRequestsChanged();
         return redirect(res, {
-            tab: "list",
+            tab: "explanation",
             success: `Đã gửi đơn giải trình ${result.requestCode}, đang chờ phê duyệt.`
         });
     } catch (error) {
