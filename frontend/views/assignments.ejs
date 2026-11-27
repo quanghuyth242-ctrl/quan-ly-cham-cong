@@ -2,8 +2,22 @@
 
 <%- include("partials/alerts", { success: success, error: error }) %>
 
-<div id="schedule-sync" data-revision="<%= syncRevision || '' %>" class="flex flex-wrap items-center justify-between gap-space-sm px-space-md py-space-sm rounded-xl bg-surface-container-low text-on-surface-variant font-body-sm text-body-sm" role="status">
-    <span id="schedule-sync-status">Đồng bộ tự động đang bật · kiểm tra thay đổi mỗi 20 giây.</span>
+<div id="schedule-sync" data-revision="<%= syncRevision || '' %>" data-sync-url="/admin/shift-assignments/sync-state" class="flex flex-wrap items-center justify-between gap-space-sm px-space-md py-space-sm rounded-xl bg-surface-container-low text-on-surface-variant font-body-sm text-body-sm" role="status">
+    <div class="flex flex-wrap items-center gap-space-sm">
+        <span id="schedule-sync-status">Đồng bộ tự động đang bật · kiểm tra mỗi 30 giây.</span>
+        <label class="inline-flex items-center gap-1 cursor-pointer font-label-sm text-label-sm" title="Bật/tắt tự động đồng bộ lịch phân ca">
+            <input id="schedule-sync-toggle" type="checkbox" class="accent-primary" checked>
+            <span>Tự động</span>
+        </label>
+        <label class="inline-flex items-center gap-1 font-label-sm text-label-sm">
+            <span>Chu kỳ</span>
+            <select id="schedule-sync-interval" class="bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm px-2 py-1 rounded-lg border border-surface-container-high cursor-pointer outline-none">
+                <option value="15000">15 giây</option>
+                <option value="30000" selected>30 giây</option>
+                <option value="60000">60 giây</option>
+            </select>
+        </label>
+    </div>
     <button id="schedule-sync-refresh" class="hidden items-center gap-space-xs px-space-md py-space-sm rounded-lg bg-primary text-on-primary font-label-sm text-label-sm" type="button">
         <span class="material-symbols-outlined text-[18px]">sync</span>
         <span>Cập nhật dữ liệu mới</span>
@@ -122,23 +136,25 @@
 </section>
 
 <%
+    // Cùng thứ tự bảng màu với shift-calendar.js để chú giải và ô lịch luôn khớp.
+    const SHIFT_PALETTE_EJS = [
+        { bg: 'bg-blue-50/90 hover:bg-blue-100', border: 'border-blue-200', text: 'text-blue-900', dot: 'bg-blue-600' },
+        { bg: 'bg-emerald-50/90 hover:bg-emerald-100', border: 'border-emerald-200', text: 'text-emerald-900', dot: 'bg-emerald-600' },
+        { bg: 'bg-amber-50/90 hover:bg-amber-100', border: 'border-amber-200', text: 'text-amber-900', dot: 'bg-amber-600' },
+        { bg: 'bg-purple-50/90 hover:bg-purple-100', border: 'border-purple-200', text: 'text-purple-900', dot: 'bg-purple-600' },
+        { bg: 'bg-indigo-50/90 hover:bg-indigo-100', border: 'border-indigo-200', text: 'text-indigo-900', dot: 'bg-indigo-600' },
+        { bg: 'bg-teal-50/90 hover:bg-teal-100', border: 'border-teal-200', text: 'text-teal-900', dot: 'bg-teal-600' }
+    ];
+    const shiftColorIndexEjs = {};
+    activeShifts.forEach((shift, index) => {
+        shiftColorIndexEjs[String(shift.shift_code || '').toUpperCase()] = index % SHIFT_PALETTE_EJS.length;
+    });
     const getShiftColorEjs = (code) => {
-        switch (String(code || '').toUpperCase()) {
-            case 'CA001':
-                return { bg: 'bg-blue-50/90 hover:bg-blue-100', border: 'border-blue-200', text: 'text-blue-900', dot: 'bg-blue-600' };
-            case 'CA002':
-                return { bg: 'bg-emerald-50/90 hover:bg-emerald-100', border: 'border-emerald-200', text: 'text-emerald-900', dot: 'bg-emerald-600' };
-            case 'CA003':
-                return { bg: 'bg-amber-50/90 hover:bg-amber-100', border: 'border-amber-200', text: 'text-amber-900', dot: 'bg-amber-600' };
-            case 'CA005':
-                return { bg: 'bg-purple-50/90 hover:bg-purple-100', border: 'border-purple-200', text: 'text-purple-900', dot: 'bg-purple-600' };
-            case 'CA006':
-                return { bg: 'bg-indigo-50/90 hover:bg-indigo-100', border: 'border-indigo-200', text: 'text-indigo-900', dot: 'bg-indigo-600' };
-            case 'CA007':
-                return { bg: 'bg-teal-50/90 hover:bg-teal-100', border: 'border-teal-200', text: 'text-teal-900', dot: 'bg-teal-600' };
-            default:
-                return { bg: 'bg-primary-fixed/50 hover:bg-primary-fixed/80', border: 'border-primary/20', text: 'text-primary', dot: 'bg-primary' };
-        }
+        const key = String(code || '').toUpperCase();
+        if (Number.isInteger(shiftColorIndexEjs[key])) return SHIFT_PALETTE_EJS[shiftColorIndexEjs[key]];
+        let hash = 0;
+        for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+        return SHIFT_PALETTE_EJS[hash % SHIFT_PALETTE_EJS.length];
     };
 %>
 
@@ -155,6 +171,7 @@
                         type="button"
                         class="p-1 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors"
                         title="Tuần trước"
+                        aria-label="Tuần trước"
                         data-date="<%= weekInfo.prevWeekDate %>"
                     >
                         <span class="material-symbols-outlined text-[20px]">chevron_left</span>
@@ -164,6 +181,7 @@
                         type="button"
                         class="px-space-md py-1 rounded-lg text-label-sm font-semibold text-primary hover:bg-surface-container-high transition-colors flex items-center gap-1"
                         title="Trở về tuần hiện tại"
+                        aria-label="Trở về tuần hiện tại"
                     >
                         <span class="material-symbols-outlined text-[16px]">today</span>
                         <span>Hôm nay</span>
@@ -173,6 +191,7 @@
                         type="button"
                         class="p-1 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors"
                         title="Tuần sau"
+                        aria-label="Tuần sau"
                         data-date="<%= weekInfo.nextWeekDate %>"
                     >
                         <span class="material-symbols-outlined text-[20px]">chevron_right</span>
@@ -204,7 +223,7 @@
                 >
                     <option value="">Tất cả phòng ban</option>
                     <% departments.forEach((dept) => { %>
-                        <option value="<%= dept %>"><%= dept %></option>
+                        <option value="<%= dept %>" <%= filters.department === dept ? "selected" : "" %>><%= dept %></option>
                     <% }) %>
                 </select>
 
@@ -214,7 +233,7 @@
                 >
                     <option value="">Tất cả ca làm</option>
                     <% activeShifts.forEach((s) => { %>
-                        <option value="<%= s.id %>"><%= s.shift_code %> - <%= s.shift_name %></option>
+                        <option value="<%= s.id %>" <%= filters.shiftId === String(s.id) ? "selected" : "" %>><%= s.shift_code %> - <%= s.shift_name %></option>
                     <% }) %>
                 </select>
 
@@ -223,6 +242,7 @@
                     <input
                         id="cal-search-input"
                         type="text"
+                        value="<%= filters.search %>"
                         placeholder="Tìm tên hoặc mã..."
                         class="w-full bg-surface-container-low border border-surface-container-high text-on-surface font-body-sm text-body-sm pl-8 pr-2.5 py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container"
                     >
@@ -233,12 +253,52 @@
                     type="button"
                     class="flex items-center gap-1 bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant px-space-md py-space-sm rounded-xl font-label-md text-label-md border border-surface-container-high transition-colors"
                     title="In bảng lịch phân ca"
+                    aria-label="In bảng lịch phân ca"
                 >
                     <span class="material-symbols-outlined text-[18px]">print</span>
                     <span class="hidden sm:inline">In lịch</span>
                 </button>
             </div>
         </div>
+
+        <!-- Chú giải trực quan: màu ca + trạng thái ô -->
+        <div class="px-space-lg py-space-sm border-b border-surface-container-high/60 flex flex-wrap items-center gap-x-space-md gap-y-2 bg-surface-container-lowest">
+            <span class="uppercase tracking-wider font-semibold text-on-surface-variant text-[11px]">Chú giải</span>
+            <% activeShifts.forEach((shift) => { const c = getShiftColorEjs(shift.shift_code); %>
+                <span
+                    class="inline-flex items-center gap-1.5 text-[11px] text-on-surface px-1.5 py-0.5 rounded-lg cursor-grab active:cursor-grabbing select-none hover:bg-surface-container-high transition-colors"
+                    title="Kéo ca <%= shift.shift_name %> vào ô trống để phân ca nhanh"
+                    draggable="true"
+                    data-drag-shift="<%= shift.id %>"
+                    data-drag-shift-name="<%= shift.shift_name %>"
+                >
+                    <span class="material-symbols-outlined text-[13px] text-outline/70 shrink-0">drag_indicator</span>
+                    <span class="w-2.5 h-2.5 rounded-full <%= c.dot %> shrink-0"></span>
+                    <span class="font-bold"><%= shift.shift_code %></span>
+                    <span class="text-on-surface-variant"><%= shift.shift_name %></span>
+                </span>
+            <% }) %>
+            <span class="inline-flex items-center gap-1.5 text-[11px] text-on-surface-variant">
+                <span class="w-2.5 h-2.5 rounded-full bg-primary shrink-0"></span>
+                Hôm nay
+            </span>
+            <span class="inline-flex items-center gap-1.5 text-[11px] text-on-surface-variant">
+                <span class="w-3 h-3 rounded-md border border-dashed border-outline-variant/60 shrink-0"></span>
+                Nghỉ ca
+            </span>
+            <span class="inline-flex items-center gap-1.5 text-[11px] text-on-surface-variant">
+                <span class="material-symbols-outlined text-[14px] text-outline shrink-0">add</span>
+                Chưa phân ca
+            </span>
+        </div>
+
+        <!-- Trạng thái tải khi tự động đồng bộ/tải lại lịch -->
+        <div id="cal-matrix-loading" class="hidden items-center gap-2 px-space-lg py-2 bg-primary-fixed/30 text-primary text-label-sm border-b border-primary/10" role="status">
+            <span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+            <span>Đang cập nhật lịch…</span>
+        </div>
+
+        <p class="px-space-lg pt-space-sm text-[11px] text-on-surface-variant sm:hidden">Cuộn ngang để xem các ngày trong tuần →</p>
 
         <!-- Bảng ma trận lịch -->
         <div id="cal-matrix-wrapper" class="overflow-x-auto relative">
@@ -282,6 +342,9 @@
                                 <div class="flex flex-col items-center gap-2">
                                     <span class="material-symbols-outlined text-[36px] text-outline">group_off</span>
                                     <span class="font-label-md">Không tìm thấy nhân viên nào phù hợp bộ lọc.</span>
+                                    <button type="button" data-clear-calendar-filters class="mt-1 px-space-md py-1 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm hover:bg-primary-container transition-colors">
+                                        Xóa bộ lọc
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -341,11 +404,18 @@
                                                 data-end="<%= cell.endDate %>"
                                                 data-note="<%= cell.note || '' %>"
                                                 data-assignment-id="<%= cell.assignmentId %>"
-                                                title="Bấm để xem chi tiết / điều chỉnh"
+                                                title="Bấm để đổi ca · kéo sang ô trống để sao chép ca này"
+                                                draggable="true"
+                                                role="button"
+                                                tabindex="0"
+                                                aria-label="Đổi ca <%= cell.shiftName %> của <%= emp.full_name %> từ ngày <%= day.dateStr %>"
                                             >
-                                                <div class="flex items-center gap-1 font-bold text-[12px] leading-tight truncate">
+                                                <div class="flex items-center gap-1 font-bold text-[12px] leading-tight">
                                                     <span class="w-1.5 h-1.5 rounded-full <%= c.dot %> shrink-0"></span>
-                                                    <span class="truncate"><%= cell.shiftName %></span>
+                                                    <span class="truncate min-w-0"><%= cell.shiftName %></span>
+                                                    <button type="button" class="ml-auto p-0.5 rounded-md text-on-surface-variant/70 hover:text-primary hover:bg-white/60 shrink-0" data-cell-detail title="Xem chi tiết ca" aria-label="Xem chi tiết ca <%= cell.shiftName %>">
+                                                        <span class="material-symbols-outlined text-[14px]">info</span>
+                                                    </button>
                                                 </div>
                                                 <span class="font-data-mono text-[11px] opacity-80 mt-1 truncate">
                                                     <%= cell.morningStart && cell.afternoonEnd ? `${cell.morningStart} - ${cell.afternoonEnd}` : cell.timeFormatted %>
@@ -363,8 +433,11 @@
                                                 data-emp-id="<%= emp.id %>"
                                                 data-date="<%= day.dateStr %>"
                                                 title="Phân ca cho <%= emp.full_name %> từ <%= day.dateStr %>"
+                                                role="button"
+                                                tabindex="0"
+                                                aria-label="Phân ca cho <%= emp.full_name %> từ ngày <%= day.dateStr %>"
                                             >
-                                                <span class="material-symbols-outlined text-[18px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">add</span>
+                                                <span class="material-symbols-outlined text-[18px] text-outline opacity-50 sm:opacity-0 group-hover:opacity-100 transition-opacity">add</span>
                                             </div>
                                         <% } %>
                                     </td>
@@ -591,6 +664,7 @@
                         </button>
                         <% if (pA.status === 'active') { %>
                             <form action="/admin/shift-assignments/<%= pA.id %>/cancel" method="POST" onsubmit="return confirm('Bạn có chắc muốn hủy phân ca này?');">
+                                <input class="js-return-to" type="hidden" name="return_to" value="">
                                 <button class="inline-flex items-center justify-center p-1.5 rounded-lg bg-error-container/60 text-error" type="submit" title="Hủy phân ca">
                                     <span class="material-symbols-outlined text-[18px]">event_busy</span>
                                 </button>
@@ -640,6 +714,7 @@
                                         </button>
                                         <% if (o.status === 'active') { %>
                                             <form action="/admin/shift-assignments/<%= o.id %>/cancel" method="POST" onsubmit="return confirm('Hủy phân ca này?');">
+                                                <input class="js-return-to" type="hidden" name="return_to" value="">
                                                 <button class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-error-container/60 text-error text-[11px] font-semibold transition-colors" type="submit">
                                                     <span class="material-symbols-outlined text-[13px]">cancel</span> Hủy
                                                 </button>
@@ -767,6 +842,7 @@
 
                                     <% if (pA.status === "active") { %>
                                         <form action="/admin/shift-assignments/<%= pA.id %>/cancel" method="POST" onsubmit="return confirm('Bạn có chắc muốn hủy phân ca này?');">
+                                <input class="js-return-to" type="hidden" name="return_to" value="">
                                             <button class="flex items-center gap-1 px-space-sm py-1 bg-error-container/50 hover:bg-error-container text-error font-label-sm text-label-sm rounded-lg transition-colors" type="submit" title="Hủy phân ca">
                                                 <span class="material-symbols-outlined text-[16px]">cancel</span>
                                                 <span>Hủy</span>
@@ -836,6 +912,7 @@
                                                     </button>
                                                     <% if (o.status === "active") { %>
                                                         <form action="/admin/shift-assignments/<%= o.id %>/cancel" method="POST" onsubmit="return confirm('Hủy phân ca này?');">
+                                                <input class="js-return-to" type="hidden" name="return_to" value="">
                                                             <button class="flex items-center gap-1 px-2 py-1 bg-error-container/50 hover:bg-error-container text-error text-[11px] font-semibold rounded-md transition-colors" type="submit">
                                                                 <span class="material-symbols-outlined text-[13px]">cancel</span> Hủy
                                                             </button>
@@ -874,6 +951,11 @@
 
             <form id="assignment-form" action="/admin/shift-assignments/create" method="POST" class="p-space-xl flex flex-col gap-space-lg">
                 <input id="assignment_multi_employee_mode_value" type="hidden" name="multi_employee_mode" value="0">
+                <input class="js-return-to" type="hidden" name="return_to" value="">
+                <div id="assignment-quick-context" class="hidden items-start gap-space-sm p-space-md rounded-xl bg-primary-fixed/40 border border-primary/15 text-primary text-body-md">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">bolt</span>
+                    <span>Đang phân ca nhanh cho <strong id="assignment-quick-employee" class="font-semibold"></strong> từ ngày <strong id="assignment-quick-date" class="font-data-mono font-semibold"></strong><span id="assignment-quick-shift-holder"></span>. <span id="assignment-quick-action">Chọn ca để lưu.</span></span>
+                </div>
                 <div id="assignment-form-error" class="hidden items-start gap-space-sm p-space-md rounded-xl bg-error-container/60 border border-error/30 text-on-error-container text-body-md">
                     <span class="material-symbols-outlined text-[20px]">error</span>
                     <span id="assignment-form-error-text"></span>
@@ -915,6 +997,11 @@
                                 </option>
                             <% }) %>
                         </select>
+                        <div id="assignment-multi-actions" class="hidden flex-wrap items-center gap-space-xs text-[12px]">
+                            <span id="assignment-multi-count" class="font-semibold text-primary">0 nhân viên được chọn</span>
+                            <button type="button" id="assignment-select-visible" class="px-2 py-1 rounded-lg bg-primary-fixed/60 text-primary font-semibold hover:bg-primary-fixed transition-colors">Chọn kết quả lọc</button>
+                            <button type="button" id="assignment-clear-selection" class="px-2 py-1 rounded-lg bg-surface-container-high text-on-surface-variant font-semibold hover:bg-surface-variant transition-colors">Bỏ chọn</button>
+                        </div>
                         <div id="assignment_employee_multi_list" class="hidden max-h-52 overflow-y-auto rounded-xl border border-surface-container-high bg-surface-container-lowest divide-y divide-surface-container-low" role="group" aria-label="Chọn nhiều nhân viên">
                             <% employees.forEach((employee) => { %>
                                 <label class="flex items-center gap-space-sm px-space-md py-space-sm hover:bg-surface-container-low cursor-pointer" data-employee-option data-code="<%= employee.employee_code %>" data-name="<%= employee.full_name %>" data-department="<%= employee.department || '' %>">
@@ -1015,6 +1102,7 @@
             <form id="adjust-shift-form" action="" method="POST" class="p-space-xl flex flex-col gap-space-lg">
                 <input type="hidden" name="return_view" id="adjust_return_view" value="">
                 <input type="hidden" name="return_date" id="adjust_return_date" value="">
+                <input class="js-return-to" type="hidden" name="return_to" value="">
 
                 <!-- Error Box -->
                 <div id="adjust-form-error" class="hidden items-start gap-space-sm p-space-md rounded-xl bg-error-container/60 border border-error/30 text-on-error-container text-body-md">
@@ -1343,6 +1431,17 @@
         const shiftHint = document.getElementById('assignment-shift-hint');
         const startInput = document.getElementById('assignment_start');
         const endInput = document.getElementById('assignment_end');
+        const quickContext = document.getElementById('assignment-quick-context');
+        const quickEmployee = document.getElementById('assignment-quick-employee');
+        const quickDate = document.getElementById('assignment-quick-date');
+        const quickShiftHolder = document.getElementById('assignment-quick-shift-holder');
+        const quickAction = document.getElementById('assignment-quick-action');
+        const multiActions = document.getElementById('assignment-multi-actions');
+        const multiCount = document.getElementById('assignment-multi-count');
+        const selectVisibleBtn = document.getElementById('assignment-select-visible');
+        const clearSelectionBtn = document.getElementById('assignment-clear-selection');
+
+        let visibleEmployeeIds = new Set();
 
         const showError = (message) => {
             errorText.textContent = message;
@@ -1406,12 +1505,18 @@
                 if (match) visibleCount += 1;
             });
 
+            visibleEmployeeIds = new Set();
             employeeMultiList.querySelectorAll('[data-employee-option]').forEach((employeeOption) => {
                 const searchableText = `${employeeOption.dataset.code || ''} ${employeeOption.dataset.name || ''} ${employeeOption.dataset.department || ''}`
                     .normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('vi');
                 const matchesDepartment = !department || employeeOption.dataset.department === department;
                 const matchesQuery = !query || searchableText.includes(query);
-                employeeOption.hidden = !(matchesDepartment && matchesQuery);
+                const match = matchesDepartment && matchesQuery;
+                employeeOption.hidden = !match;
+                if (match) {
+                    const checkbox = employeeOption.querySelector('input[name="employee_ids"]');
+                    if (checkbox) visibleEmployeeIds.add(checkbox.value);
+                }
             });
 
             if (employeeSelect.selectedOptions[0] && employeeSelect.selectedOptions[0].disabled) {
@@ -1440,6 +1545,7 @@
             employeeSelect.required = !enabled;
             employeeSelect.classList.toggle('hidden', enabled);
             employeeMultiList.classList.toggle('hidden', !enabled);
+            if (multiActions) multiActions.classList.toggle('hidden', !enabled);
             employeeMultiHelp.classList.toggle('hidden', !enabled);
             employeeMultiList.querySelectorAll('input[name="employee_ids"]').forEach((checkbox) => {
                 checkbox.disabled = !enabled;
@@ -1453,6 +1559,8 @@
                 employeeHint.textContent = selected.length
                     ? `Đã chọn ${selected.length} nhân viên${selected.length <= 3 ? `: ${selected.map((checkbox) => checkbox.closest('[data-employee-option]').dataset.name).join(', ')}` : ''}`
                     : 'Chọn một hoặc nhiều nhân viên trong danh sách.';
+                if (multiCount) multiCount.textContent = `${selected.length} nhân viên được chọn`;
+                submitLabel.textContent = selected.length ? `Lưu phân ca (${selected.length} NV)` : 'Lưu phân ca';
                 return;
             }
 
@@ -1483,6 +1591,12 @@
             adjustmentCurrent.classList.add('hidden');
             adjustmentCurrent.classList.remove('flex');
             adjustmentCurrentSummary.textContent = '';
+            if (quickContext) {
+                quickContext.classList.add('hidden');
+                quickContext.classList.remove('flex');
+            }
+            if (quickShiftHolder) quickShiftHolder.textContent = '';
+            if (quickAction) quickAction.textContent = 'Chọn ca để lưu.';
             submitLabel.textContent = 'Lưu phân ca';
             departmentFilter.value = '';
             employeeSearch.value = '';
@@ -1492,6 +1606,48 @@
             filterEmployees();
             filterShifts();
             clearError();
+        };
+
+        // Mở modal phân ca, có thể điền sẵn nhân viên/ngày khi bấm từ ô trống trên lịch.
+        window.openShiftAssignmentModal = ({ employeeId = '', employeeName = '', startDate = '', endDate = startDate, shiftId = '', shiftName = '' } = {}) => {
+            resetForm();
+
+            if (employeeId) employeeSelect.value = String(employeeId);
+            if (startDate) startInput.value = startDate;
+            if (endDate) endInput.value = endDate;
+
+            // Ca được kéo thả vào ô trống thì chọn sẵn; nếu chỉ có 1 ca active cũng tự chọn.
+            const availableShifts = Array.from(shiftSelect.options).filter((option) => option.value && !option.disabled);
+            if (shiftId) shiftSelect.value = String(shiftId);
+            else if (availableShifts.length === 1) shiftSelect.value = availableShifts[0].value;
+
+            filterEmployees();
+            updateShiftHint();
+            updateEmployeeHint();
+
+            if (employeeId || employeeName) {
+                const selectedOption = employeeSelect.selectedOptions[0];
+                const name = employeeName || (selectedOption && (selectedOption.dataset.name || selectedOption.textContent.trim())) || 'nhân viên này';
+                if (quickEmployee) quickEmployee.textContent = name;
+                if (quickDate) quickDate.textContent = startDate || '—';
+                if (quickShiftHolder) {
+                    quickShiftHolder.textContent = shiftName
+                        ? ` theo ca ${shiftName}`
+                        : (shiftSelect.value ? ' theo ca đã chọn' : '');
+                }
+                if (quickAction) {
+                    quickAction.textContent = shiftSelect.value
+                        ? 'Ca đã được chọn, bấm Lưu phân ca.'
+                        : 'Chọn ca để lưu.';
+                }
+                if (quickContext) {
+                    quickContext.classList.remove('hidden');
+                    quickContext.classList.add('flex');
+                }
+            }
+
+            openModal();
+            if (shiftSelect.value) endInput.focus(); else shiftSelect.focus();
         };
 
         const openCreateButton = document.getElementById('open-create-assignment');
@@ -1514,8 +1670,7 @@
         if (openCreateButton) {
             openCreateButton.addEventListener('click', () => {
                 if (openCreateButton.disabled) return;
-                resetForm();
-                openModal();
+                window.openShiftAssignmentModal({});
             });
         }
 
@@ -1539,6 +1694,10 @@
                 submitLabel.textContent = isActiveAssignment ? 'Lưu điều chỉnh' : 'Cập nhật & kích hoạt';
                 employeeMultiModeControl.classList.add('hidden');
                 setMultiEmployeeMode(false);
+                if (quickContext) {
+                    quickContext.classList.add('hidden');
+                    quickContext.classList.remove('flex');
+                }
 
                 departmentFilter.value = '';
                 employeeSearch.value = '';
@@ -1566,6 +1725,34 @@
         employeeMultiList.addEventListener('change', updateEmployeeHint);
         shiftSearch.addEventListener('input', filterShifts);
         shiftSelect.addEventListener('change', updateShiftHint);
+
+        if (selectVisibleBtn) {
+            selectVisibleBtn.addEventListener('click', () => {
+                employeeMultiList.querySelectorAll('input[name="employee_ids"]').forEach((checkbox) => {
+                    if (visibleEmployeeIds.has(checkbox.value)) checkbox.checked = true;
+                });
+                updateEmployeeHint();
+            });
+        }
+
+        if (clearSelectionBtn) {
+            clearSelectionBtn.addEventListener('click', () => {
+                employeeMultiList.querySelectorAll('input[name="employee_ids"]').forEach((checkbox) => {
+                    checkbox.checked = false;
+                });
+                updateEmployeeHint();
+            });
+        }
+
+        // Lưu lại lịch tuần/bộ lọc hiện tại để quay lại đúng chỗ sau khi lưu/hủy.
+        document.addEventListener('submit', (event) => {
+            const submittedForm = event.target;
+            if (!(submittedForm instanceof HTMLFormElement)) return;
+            if (!submittedForm.action.startsWith(`${window.location.origin}/admin/shift-assignments`)) return;
+            submittedForm.querySelectorAll('.js-return-to').forEach((field) => {
+                field.value = window.location.href;
+            });
+        }, true);
 
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape' && !modal.classList.contains('hidden')) {

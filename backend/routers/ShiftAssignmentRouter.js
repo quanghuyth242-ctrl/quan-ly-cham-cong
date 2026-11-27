@@ -5,6 +5,7 @@ const router = express.Router();
 
 router.get("/", ShiftAssignmentController.index);
 router.get("/calendar-data", ShiftAssignmentController.calendarData);
+router.get("/sync-state", ShiftAssignmentController.syncState);
 router.get("/employee-calendar", ShiftAssignmentController.employeeCalendar);
 router.post("/create", ShiftAssignmentController.create);
 router.post("/:id/adjust", ShiftAssignmentController.adjust);

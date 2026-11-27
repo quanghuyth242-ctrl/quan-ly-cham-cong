@@ -1,6 +1,15 @@
 (() => {
     'use strict';
 
+    // Dữ liệu lịch được render lại từ API: luôn escape trước khi đưa vào innerHTML.
+    const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[char]);
+
     // 1. Quản lý chuyển đổi chế độ xem (Lịch phân ca / Danh sách)
     const toggleCalendarBtn = document.getElementById('toggle-view-calendar');
     const toggleListBtn = document.getElementById('toggle-view-list');
@@ -63,66 +72,33 @@
         }
     }
 
-    // 2. Định nghĩa màu sắc phân ca
+    // 2. Bảng màu dùng chung với chú giải trong assignments.ejs.
+    const SHIFT_PALETTE = [
+        { bg: 'bg-blue-50/90 hover:bg-blue-100', border: 'border-blue-200 hover:border-blue-300', text: 'text-blue-900', dot: 'bg-blue-600', badge: 'bg-blue-100 text-blue-800' },
+        { bg: 'bg-emerald-50/90 hover:bg-emerald-100', border: 'border-emerald-200 hover:border-emerald-300', text: 'text-emerald-900', dot: 'bg-emerald-600', badge: 'bg-emerald-100 text-emerald-800' },
+        { bg: 'bg-amber-50/90 hover:bg-amber-100', border: 'border-amber-200 hover:border-amber-300', text: 'text-amber-900', dot: 'bg-amber-600', badge: 'bg-amber-100 text-amber-800' },
+        { bg: 'bg-purple-50/90 hover:bg-purple-100', border: 'border-purple-200 hover:border-purple-300', text: 'text-purple-900', dot: 'bg-purple-600', badge: 'bg-purple-100 text-purple-800' },
+        { bg: 'bg-indigo-50/90 hover:bg-indigo-100', border: 'border-indigo-200 hover:border-indigo-300', text: 'text-indigo-900', dot: 'bg-indigo-600', badge: 'bg-indigo-100 text-indigo-800' },
+        { bg: 'bg-teal-50/90 hover:bg-teal-100', border: 'border-teal-200 hover:border-teal-300', text: 'text-teal-900', dot: 'bg-teal-600', badge: 'bg-teal-100 text-teal-800' }
+    ];
+
+    let shiftColorMap = new Map();
+
+    const syncShiftPalette = (shifts = []) => {
+        shiftColorMap = new Map();
+        shifts.forEach((shift, index) => {
+            shiftColorMap.set(String(shift.shift_code || '').toUpperCase(), index % SHIFT_PALETTE.length);
+        });
+    };
+
     const getShiftColor = (shiftCode) => {
-        switch (String(shiftCode || '').toUpperCase()) {
-            case 'CA001': // Ca hành chính
-                return {
-                    bg: 'bg-blue-50/90 hover:bg-blue-100',
-                    border: 'border-blue-200 hover:border-blue-300',
-                    text: 'text-blue-900',
-                    dot: 'bg-blue-600',
-                    badge: 'bg-blue-100 text-blue-800'
-                };
-            case 'CA002': // Ca sáng
-                return {
-                    bg: 'bg-emerald-50/90 hover:bg-emerald-100',
-                    border: 'border-emerald-200 hover:border-emerald-300',
-                    text: 'text-emerald-900',
-                    dot: 'bg-emerald-600',
-                    badge: 'bg-emerald-100 text-emerald-800'
-                };
-            case 'CA003': // Ca chiều
-                return {
-                    bg: 'bg-amber-50/90 hover:bg-amber-100',
-                    border: 'border-amber-200 hover:border-amber-300',
-                    text: 'text-amber-900',
-                    dot: 'bg-amber-600',
-                    badge: 'bg-amber-100 text-amber-800'
-                };
-            case 'CA005': // Ca trực cuối tuần
-                return {
-                    bg: 'bg-purple-50/90 hover:bg-purple-100',
-                    border: 'border-purple-200 hover:border-purple-300',
-                    text: 'text-purple-900',
-                    dot: 'bg-purple-600',
-                    badge: 'bg-purple-100 text-purple-800'
-                };
-            case 'CA006': // Ca đêm
-                return {
-                    bg: 'bg-indigo-50/90 hover:bg-indigo-100',
-                    border: 'border-indigo-200 hover:border-indigo-300',
-                    text: 'text-indigo-900',
-                    dot: 'bg-indigo-600',
-                    badge: 'bg-indigo-100 text-indigo-800'
-                };
-            case 'CA007': // Ca bán thời gian
-                return {
-                    bg: 'bg-teal-50/90 hover:bg-teal-100',
-                    border: 'border-teal-200 hover:border-teal-300',
-                    text: 'text-teal-900',
-                    dot: 'bg-teal-600',
-                    badge: 'bg-teal-100 text-teal-800'
-                };
-            default:
-                return {
-                    bg: 'bg-primary-fixed/50 hover:bg-primary-fixed/80',
-                    border: 'border-primary/20 hover:border-primary/40',
-                    text: 'text-primary',
-                    dot: 'bg-primary',
-                    badge: 'bg-primary-fixed text-primary'
-                };
-        }
+        const code = String(shiftCode || '').toUpperCase();
+        const index = shiftColorMap.get(code);
+        if (Number.isInteger(index)) return SHIFT_PALETTE[index];
+
+        let hash = 0;
+        for (let i = 0; i < code.length; i += 1) hash = (hash * 31 + code.charCodeAt(i)) >>> 0;
+        return SHIFT_PALETTE[hash % SHIFT_PALETTE.length];
     };
 
     // 3. Quản lý Lịch tuần (Weekly Matrix Board)
@@ -137,18 +113,60 @@
     const calPrintBtn = document.getElementById('cal-print-btn');
     const matrixTable = document.getElementById('cal-schedule-table');
     const matrixTbody = document.getElementById('cal-matrix-tbody');
+    const matrixLoading = document.getElementById('cal-matrix-loading');
     const matrixTfootRow = document.getElementById('cal-matrix-tfoot-row');
     const empCountBadge = document.getElementById('cal-emp-count-badge');
 
     let currentSelectedDate = (calDatePicker && calDatePicker.value) || new Date().toISOString().slice(0, 10);
     let isFetchingMatrix = false;
 
+    // Dùng chung cho lần tải đầu và cho chế độ tự động đồng bộ (không reload trang).
+    const applyMatrixData = (data, fallbackDate = currentSelectedDate) => {
+        renderMatrixTable(data);
+        currentSelectedDate = data.weekInfo ? data.weekInfo.selectedDate : fallbackDate;
+
+        if (calDatePicker) calDatePicker.value = currentSelectedDate;
+        if (calPrevBtn && data.weekInfo) calPrevBtn.dataset.date = data.weekInfo.prevWeekDate;
+        if (calNextBtn && data.weekInfo) calNextBtn.dataset.date = data.weekInfo.nextWeekDate;
+
+        if (calPeriodTitle && data.weekInfo) {
+            const s = data.weekInfo.weekStart.split('-');
+            const e = data.weekInfo.weekEnd.split('-');
+            calPeriodTitle.textContent = `Tuần ${s[2]}/${s[1]} – ${e[2]}/${e[1]}/${e[0]}`;
+        }
+
+        const url = new URL(window.location.href);
+        const params = new URLSearchParams({
+            view: 'calendar',
+            date: currentSelectedDate,
+            department: calDeptFilter ? calDeptFilter.value : '',
+            shift_id: calShiftFilter ? calShiftFilter.value : '',
+            search: calSearchInput ? calSearchInput.value.trim() : ''
+        });
+        params.forEach((value, key) => {
+            if (value) url.searchParams.set(key, value);
+            else url.searchParams.delete(key);
+        });
+        window.history.replaceState({}, '', url.toString());
+    };
+
+    // Được shift-schedule-sync.js gọi khi có revision mới.
+    window.refreshShiftSchedule = (snapshot) => {
+        if (!snapshot || !snapshot.success || !snapshot.calendar) return false;
+        const calendarView = document.getElementById('calendar-view-container');
+        if (calendarView && calendarView.classList.contains('hidden')) return false;
+        applyMatrixData(snapshot.calendar);
+        return true;
+    };
+
     const fetchAndRenderMatrix = async (date) => {
         if (isFetchingMatrix) return;
         isFetchingMatrix = true;
 
-        if (matrixTbody) {
-            matrixTbody.style.opacity = '0.5';
+        if (matrixTbody) matrixTbody.style.opacity = '0.5';
+        if (matrixLoading) {
+            matrixLoading.classList.remove('hidden');
+            matrixLoading.classList.add('flex');
         }
 
         try {
@@ -157,6 +175,7 @@
             const search = calSearchInput ? calSearchInput.value.trim() : '';
 
             const params = new URLSearchParams({
+                view: 'calendar',
                 date: date || currentSelectedDate,
                 department: dept,
                 shift_id: shift,
@@ -169,27 +188,16 @@
             const data = await response.json();
             if (!data.success) throw new Error(data.error || 'Dữ liệu không hợp lệ');
 
-            renderMatrixTable(data);
-            currentSelectedDate = data.weekInfo ? data.weekInfo.selectedDate : date;
-
-            if (calDatePicker) calDatePicker.value = currentSelectedDate;
-            if (calPrevBtn && data.weekInfo) calPrevBtn.dataset.date = data.weekInfo.prevWeekDate;
-            if (calNextBtn && data.weekInfo) calNextBtn.dataset.date = data.weekInfo.nextWeekDate;
-
-            if (calPeriodTitle && data.weekInfo) {
-                const s = data.weekInfo.weekStart.split('-');
-                const e = data.weekInfo.weekEnd.split('-');
-                calPeriodTitle.textContent = `Tuần ${s[2]}/${s[1]} – ${e[2]}/${e[1]}/${e[0]}`;
-            }
-
-            const url = new URL(window.location.href);
-            url.searchParams.set('date', currentSelectedDate);
-            window.history.replaceState({}, '', url.toString());
+            applyMatrixData(data, date);
 
         } catch (err) {
             console.error('Lỗi tải lịch tuần:', err);
         } finally {
             if (matrixTbody) matrixTbody.style.opacity = '1';
+            if (matrixLoading) {
+                matrixLoading.classList.add('hidden');
+                matrixLoading.classList.remove('flex');
+            }
             isFetchingMatrix = false;
         }
     };
@@ -198,6 +206,7 @@
         if (!matrixTable || !matrixTbody) return;
 
         const { days, employees, matrix, summary } = data;
+        syncShiftPalette(data.activeShifts || []);
 
         if (empCountBadge) {
             empCountBadge.textContent = `${employees.length} NV`;
@@ -248,12 +257,20 @@
                         <span class="material-symbols-outlined text-[36px] text-outline">group_off</span>
                         <span class="font-label-md">Không tìm thấy nhân viên nào phù hợp bộ lọc.</span>
                         <span class="text-[12px]">Hãy thử chọn lại phòng ban hoặc từ khóa tìm kiếm.</span>
+                        <button type="button" data-clear-calendar-filters class="mt-1 px-space-md py-1 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm hover:bg-primary-container transition-colors">
+                            Xóa bộ lọc
+                        </button>
                     </div>
                 </td>
             `;
             matrixTbody.appendChild(emptyTr);
         } else {
             employees.forEach((emp) => {
+                const empName = esc(emp.full_name);
+                const empCode = esc(emp.employee_code);
+                const empDept = esc(emp.department || '');
+                const empInitials = esc(String(emp.full_name || 'NV').trim().slice(0, 2).toUpperCase());
+
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-surface-container-low/60 transition-colors';
                 tr.dataset.empRow = 'true';
@@ -264,32 +281,31 @@
                 // Cột sticky nhân viên
                 const empTd = document.createElement('td');
                 empTd.className = 'py-2.5 px-3 sticky left-0 z-10 bg-surface-container-lowest border-r border-surface-container-high shadow-xs';
-                const initials = emp.full_name.trim().slice(0, 2).toUpperCase();
 
                 empTd.innerHTML = `
                     <div class="flex items-center justify-between gap-2">
                         <div class="flex items-center gap-2.5 min-w-0">
                             <div class="w-8 h-8 rounded-full bg-primary-fixed text-primary font-bold text-xs flex items-center justify-center shrink-0">
-                                ${initials}
+                                ${empInitials}
                             </div>
                             <div class="flex flex-col min-w-0">
-                                <span class="font-label-md text-label-md text-on-surface font-semibold truncate" title="${emp.full_name}">
-                                    ${emp.full_name}
+                                <span class="font-label-md text-label-md text-on-surface font-semibold truncate" title="${empName}">
+                                    ${empName}
                                 </span>
                                 <span class="font-data-mono text-[11px] text-on-surface-variant truncate">
-                                    ${emp.employee_code}${emp.department ? ` · ${emp.department}` : ''}
+                                    ${empCode}${emp.department ? ` · ${empDept}` : ''}
                                 </span>
                             </div>
                         </div>
                         <button
                             type="button"
                             class="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary-fixed/50 transition-colors shrink-0"
-                            title="Xem lịch chi tiết của ${emp.full_name}"
+                            title="Xem lịch chi tiết của ${empName}"
                             data-view-employee-calendar
                             data-id="${emp.id}"
-                            data-name="${emp.full_name}"
-                            data-code="${emp.employee_code}"
-                            data-dept="${emp.department || ''}"
+                            data-name="${empName}"
+                            data-code="${empCode}"
+                            data-dept="${empDept}"
                         >
                             <span class="material-symbols-outlined text-[18px]">calendar_month</span>
                         </button>
@@ -313,40 +329,50 @@
                         const displayTime = cellData.morningStart && cellData.afternoonEnd
                             ? `${cellData.morningStart} - ${cellData.afternoonEnd}`
                             : (cellData.timeFormatted || '');
+                        const shiftName = esc(cellData.shiftName);
+                        const shiftCode = esc(cellData.shiftCode);
+                        const dateLabel = esc(`${day.weekdayLabel}, ${String(day.dayNumber).padStart(2, '0')}/${String(day.monthNumber).padStart(2, '0')}/${day.dateStr.slice(0, 4)}`);
 
                         cellTd.innerHTML = `
                             <div
                                 class="flex flex-col p-2 rounded-xl border ${colors.bg} ${colors.border} ${colors.text} cursor-pointer transition-all shadow-xs group"
                                 data-cell-work
                                 data-emp-id="${emp.id}"
-                                data-emp-name="${emp.full_name}"
-                                data-emp-code="${emp.employee_code}"
-                                data-emp-dept="${emp.department || ''}"
+                                data-emp-name="${empName}"
+                                data-emp-code="${empCode}"
+                                data-emp-dept="${empDept}"
                                 data-date="${day.dateStr}"
-                                data-date-label="${day.weekdayLabel}, ${String(day.dayNumber).padStart(2, '0')}/${String(day.monthNumber).padStart(2, '0')}/${day.dateStr.slice(0, 4)}"
+                                data-date-label="${dateLabel}"
                                 data-shift-id="${cellData.shiftId}"
-                                data-shift-code="${cellData.shiftCode}"
-                                data-shift-name="${cellData.shiftName}"
-                                data-morning="${morningStr}"
-                                data-afternoon="${afternoonStr}"
-                                data-start="${cellData.startDate}"
-                                data-end="${cellData.endDate}"
-                                data-note="${cellData.note || ''}"
+                                data-shift-code="${shiftCode}"
+                                data-shift-name="${shiftName}"
+                                data-morning="${esc(morningStr)}"
+                                data-afternoon="${esc(afternoonStr)}"
+                                data-start="${esc(cellData.startDate)}"
+                                data-end="${esc(cellData.endDate)}"
+                                data-note="${esc(cellData.note || '')}"
                                 data-assignment-id="${cellData.assignmentId}"
-                                title="Bấm để xem chi tiết / điều chỉnh"
+                                title="Bấm để đổi ca · kéo sang ô trống để sao chép ca này"
+                                draggable="true"
+                                role="button"
+                                tabindex="0"
+                                aria-label="Đổi ca ${shiftName} của ${empName} từ ngày ${day.dateStr}"
                             >
-                                <div class="flex items-center gap-1 font-bold text-[12px] leading-tight truncate">
+                                <div class="flex items-center gap-1 font-bold text-[12px] leading-tight">
                                     <span class="w-1.5 h-1.5 rounded-full ${colors.dot} shrink-0"></span>
-                                    <span class="truncate">${cellData.shiftName}</span>
+                                    <span class="truncate min-w-0">${shiftName}</span>
+                                    <button type="button" class="ml-auto p-0.5 rounded-md text-on-surface-variant/70 hover:text-primary hover:bg-white/60 shrink-0" data-cell-detail title="Xem chi tiết ca" aria-label="Xem chi tiết ca ${shiftName}">
+                                        <span class="material-symbols-outlined text-[14px]">info</span>
+                                    </button>
                                 </div>
                                 <span class="font-data-mono text-[11px] opacity-80 mt-1 truncate">
-                                    ${displayTime}
+                                    ${esc(displayTime)}
                                 </span>
                             </div>
                         `;
                     } else if (cellData && cellData.type === 'rest') {
                         cellTd.innerHTML = `
-                            <div class="h-full min-h-[52px] flex flex-col items-center justify-center p-1.5 rounded-xl bg-surface-container-high/40 text-on-surface-variant/70 text-[11px] font-medium border border-dashed border-outline-variant/40" title="Nghỉ theo quy định ca ${cellData.shiftName || ''}">
+                            <div class="h-full min-h-[52px] flex flex-col items-center justify-center p-1.5 rounded-xl bg-surface-container-high/40 text-on-surface-variant/70 text-[11px] font-medium border border-dashed border-outline-variant/40" title="Nghỉ theo quy định ca ${esc(cellData.shiftName || '')}">
                                 <span class="material-symbols-outlined text-[16px] opacity-60">bedtime</span>
                                 <span>Nghỉ ca</span>
                             </div>
@@ -359,9 +385,12 @@
                                 data-cell-add
                                 data-emp-id="${emp.id}"
                                 data-date="${day.dateStr}"
-                                title="Phân ca cho ${emp.full_name} từ ${day.dateStr}"
+                                title="Phân ca cho ${empName} từ ${day.dateStr}"
+                                role="button"
+                                tabindex="0"
+                                aria-label="Phân ca cho ${empName} từ ngày ${day.dateStr}"
                             >
-                                <span class="material-symbols-outlined text-[18px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">add</span>
+                                <span class="material-symbols-outlined text-[18px] text-outline opacity-50 sm:opacity-0 group-hover:opacity-100 transition-opacity">add</span>
                             </div>
                         `;
                     }
@@ -566,16 +595,16 @@
         }
 
         if (effectiveDate < currentAdjustData.start || effectiveDate > currentAdjustData.end) {
-            adjustPreviewText.innerHTML = `<span class="text-error font-semibold">Ngày hiệu lực phải nằm trong khoảng từ ${currentAdjustData.start} đến ${currentAdjustData.end}.</span>`;
+            adjustPreviewText.innerHTML = `<span class="text-error font-semibold">Ngày hiệu lực phải nằm trong khoảng từ ${esc(currentAdjustData.start)} đến ${esc(currentAdjustData.end)}.</span>`;
             return;
         }
 
-        const newShiftLabel = newShiftName ? `<strong>${newShiftName}</strong>` : 'ca mới';
+        const newShiftLabel = newShiftName ? `<strong>${esc(newShiftName)}</strong>` : 'ca mới';
         if (effectiveDate === currentAdjustData.start) {
-            adjustPreviewText.innerHTML = `Toàn bộ khoảng thời gian từ <strong>${currentAdjustData.start}</strong> đến <strong>${currentAdjustData.end}</strong> sẽ được đổi sang ${newShiftLabel}.`;
+            adjustPreviewText.innerHTML = `Toàn bộ khoảng thời gian từ <strong>${esc(currentAdjustData.start)}</strong> đến <strong>${esc(currentAdjustData.end)}</strong> sẽ được đổi sang ${newShiftLabel}.`;
         } else {
             const prev = getPrevDay(effectiveDate);
-            adjustPreviewText.innerHTML = `Lịch cũ (<strong>${currentShiftName}</strong>) giữ nguyên từ <strong>${currentAdjustData.start}</strong> đến <strong>${prev}</strong>. ${newShiftLabel} sẽ bắt đầu áp dụng từ <strong>${effectiveDate}</strong> đến hết <strong>${currentAdjustData.end}</strong>.`;
+            adjustPreviewText.innerHTML = `Lịch cũ (<strong>${esc(currentShiftName)}</strong>) giữ nguyên từ <strong>${esc(currentAdjustData.start)}</strong> đến <strong>${esc(prev)}</strong>. ${newShiftLabel} sẽ bắt đầu áp dụng từ <strong>${esc(effectiveDate)}</strong> đến hết <strong>${esc(currentAdjustData.end)}</strong>.`;
         }
     };
 
@@ -873,8 +902,8 @@
                 const colors = getShiftColor(day.schedule.shiftCode);
                 bodyHtml = `
                     <div class="mt-1 p-1 rounded-lg ${colors.bg} ${colors.text} border ${colors.border} flex flex-col">
-                        <span class="font-bold text-[11px] truncate leading-tight">${day.schedule.shiftName}</span>
-                        <span class="font-data-mono text-[10px] opacity-80 mt-0.5 truncate">${day.schedule.morningTime || day.schedule.timeFormatted}</span>
+                        <span class="font-bold text-[11px] truncate leading-tight">${esc(day.schedule.shiftName)}</span>
+                        <span class="font-data-mono text-[10px] opacity-80 mt-0.5 truncate">${esc(day.schedule.morningTime || day.schedule.timeFormatted)}</span>
                     </div>
                 `;
             } else if (isRest) {
@@ -944,36 +973,141 @@
             return;
         }
 
-        // C. Bấm thẻ ca làm việc trên ma trận lịch
-        const workCard = e.target.closest('[data-cell-work]');
-        if (workCard) {
-            openCellDetailModal(workCard.dataset);
+        // C. Bấm biểu tượng info: xem chi tiết (không đổi ca)
+        const detailBtn = e.target.closest('[data-cell-detail]');
+        if (detailBtn) {
+            const card = detailBtn.closest('[data-cell-work]');
+            if (card) openCellDetailModal(card.dataset);
             return;
         }
 
-        // D. Bấm ô trống (+) để phân ca nhanh
+        // D. Bấm thẻ ca trên lịch: vào thẳng điều chỉnh ca từ ngày đó
+        const workCard = e.target.closest('[data-cell-work]');
+        if (workCard) {
+            openAdjustShiftModal({
+                ...workCard.dataset,
+                preferredEffectiveDate: workCard.dataset.date
+            });
+            return;
+        }
+
+        // E. Bấm ô trống (+) để phân ca nhanh
         const addCell = e.target.closest('[data-cell-add]');
         if (addCell) {
-            const empId = addCell.dataset.empId;
-            const date = addCell.dataset.date;
-            const openCreateBtn = document.getElementById('open-create-assignment');
-            if (openCreateBtn) {
-                openCreateBtn.click();
-                const empSelect = document.getElementById('assignment_employee');
-                const startInput = document.getElementById('assignment_start');
-                const endInput = document.getElementById('assignment_end');
-                if (empSelect) {
-                    empSelect.value = empId;
-                    empSelect.dispatchEvent(new Event('change'));
-                }
-                if (startInput) startInput.value = date;
-                if (endInput) endInput.value = date;
+            const empRow = addCell.closest('tr[data-emp-row]');
+            if (typeof window.openShiftAssignmentModal === 'function') {
+                window.openShiftAssignmentModal({
+                    employeeId: addCell.dataset.empId,
+                    employeeName: addCell.dataset.empName || empRow?.dataset.empName || '',
+                    startDate: addCell.dataset.date
+                });
             }
             return;
         }
     });
 
-    // 8. Xử lý ESC để đóng modal
+    // 8. Kéo thả ca vào ô trống.
+    const DRAG_MIME = 'application/x-shift-assignment';
+    const DROP_CLASSES = ['shift-drop-target', 'ring-2', 'ring-primary', 'bg-primary-fixed/40'];
+    let dragPayload = null;
+
+    const clearDropHighlight = () => {
+        document.querySelectorAll('.shift-drop-target').forEach((cell) => {
+            DROP_CLASSES.forEach((className) => cell.classList.remove(className));
+        });
+    };
+
+    const readDragPayload = (dataTransfer) => {
+        try {
+            const raw = dataTransfer.getData(DRAG_MIME) || dataTransfer.getData('text/plain');
+            const parsed = raw ? JSON.parse(raw) : null;
+            return parsed && parsed.shiftId ? parsed : null;
+        } catch {
+            return null;
+        }
+    };
+
+    document.addEventListener('dragstart', (e) => {
+        const chip = e.target.closest('[data-drag-shift]');
+        const workCard = e.target.closest('[data-cell-work]');
+        if (!chip && !workCard) return;
+
+        dragPayload = chip
+            ? { shiftId: chip.dataset.dragShift, shiftName: chip.dataset.dragShiftName || '' }
+            : { shiftId: workCard.dataset.shiftId, shiftName: workCard.dataset.shiftName || '' };
+
+        if (!dragPayload.shiftId) {
+            dragPayload = null;
+            return;
+        }
+
+        e.dataTransfer.effectAllowed = 'copy';
+        const serialized = JSON.stringify(dragPayload);
+        e.dataTransfer.setData(DRAG_MIME, serialized);
+        e.dataTransfer.setData('text/plain', serialized);
+        (chip || workCard).classList.add('opacity-60');
+    });
+
+    document.addEventListener('dragend', (e) => {
+        const source = e.target.closest('[data-drag-shift], [data-cell-work]');
+        if (source) source.classList.remove('opacity-60');
+        dragPayload = null;
+        clearDropHighlight();
+    });
+
+    document.addEventListener('dragover', (e) => {
+        const cell = e.target.closest('[data-cell-add]');
+        if (!cell) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        DROP_CLASSES.forEach((className) => cell.classList.add(className));
+    });
+
+    document.addEventListener('dragleave', (e) => {
+        const cell = e.target.closest('[data-cell-add]');
+        if (!cell || cell.contains(e.relatedTarget)) return;
+        DROP_CLASSES.forEach((className) => cell.classList.remove(className));
+    });
+
+    document.addEventListener('drop', (e) => {
+        const cell = e.target.closest('[data-cell-add]');
+        if (!cell) return;
+        e.preventDefault();
+        clearDropHighlight();
+
+        const payload = readDragPayload(e.dataTransfer) || dragPayload;
+        dragPayload = null;
+        if (!payload || typeof window.openShiftAssignmentModal !== 'function') return;
+
+        const empRow = cell.closest('tr[data-emp-row]');
+        window.openShiftAssignmentModal({
+            employeeId: cell.dataset.empId,
+            employeeName: cell.dataset.empName || empRow?.dataset.empName || '',
+            startDate: cell.dataset.date,
+            shiftId: payload.shiftId,
+            shiftName: payload.shiftName
+        });
+    });
+
+    // 9. Thao tác bàn phím trên ô lịch (Enter/Space) và xóa bộ lọc nhanh.
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const target = e.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (!target.matches('[data-cell-work], [data-cell-add]')) return;
+        e.preventDefault();
+        target.click();
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('[data-clear-calendar-filters]')) return;
+        if (calDeptFilter) calDeptFilter.value = '';
+        if (calShiftFilter) calShiftFilter.value = '';
+        if (calSearchInput) calSearchInput.value = '';
+        fetchAndRenderMatrix(currentSelectedDate);
+    });
+
+    // 10. Xử lý ESC để đóng modal
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (adjustModal && !adjustModal.classList.contains('hidden')) {
