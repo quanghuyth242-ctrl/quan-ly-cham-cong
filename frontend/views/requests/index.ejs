@@ -232,6 +232,121 @@
         </div>
     </aside>
 </section>
+
+<section class="mt-space-xl bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+    <div class="p-space-lg border-b border-surface-container-high flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
+        <div>
+            <h3 class="font-headline-md text-headline-md text-primary font-semibold">Giải trình chờ phê duyệt</h3>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs"><%= explanationStats.pending %> đơn chờ xử lý · <%= explanationStats.approved %> đã duyệt · <%= explanationStats.rejected %> từ chối</p>
+        </div>
+        <div class="relative sm:w-52">
+            <select id="explanation-status-filter" class="w-full appearance-none bg-surface-container-low text-on-surface font-label-sm text-label-sm py-space-sm pl-space-md pr-space-xl rounded-xl outline-none cursor-pointer">
+                <option value="">Tất cả trạng thái</option>
+                <option value="pending">Chờ duyệt</option>
+                <option value="approved">Đã duyệt</option>
+                <option value="rejected">Từ chối</option>
+            </select>
+            <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
+        </div>
+    </div>
+
+    <div class="px-space-lg py-space-sm bg-primary-fixed/30 text-primary text-body-sm border-b border-primary/10 flex items-start gap-space-sm">
+        <span class="material-symbols-outlined text-[18px] shrink-0">fact_check</span>
+        <span>Đối chiếu nội dung và minh chứng trước khi quyết định. Phê duyệt giải trình chỉ lưu quyết định cùng ghi chú, không tự động chỉnh sửa bản ghi chấm công.</span>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[900px]">
+            <thead>
+                <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                    <th class="py-space-md px-space-lg font-semibold">Mã đơn</th>
+                    <th class="py-space-md px-space-md font-semibold">Nhân viên</th>
+                    <th class="py-space-md px-space-md font-semibold">Loại giải trình</th>
+                    <th class="py-space-md px-space-md font-semibold">Ngày / khung giờ</th>
+                    <th class="py-space-md px-space-md font-semibold">Tiêu đề / nội dung</th>
+                    <th class="py-space-md px-space-md font-semibold">Trạng thái</th>
+                    <th class="py-space-md px-space-lg font-semibold text-right">Xử lý</th>
+                </tr>
+            </thead>
+            <tbody id="explanation-table-body" data-review-table-body class="divide-y divide-surface-container-low text-body-sm text-on-surface">
+                <% if (explanationRequests.length === 0) { %>
+                    <tr>
+                        <td colspan="7" class="py-space-2xl px-space-lg text-center">
+                            <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
+                                <span class="material-symbols-outlined text-[40px] text-outline">edit_document</span>
+                                <span class="font-label-md text-label-md">Chưa có đơn giải trình nào</span>
+                                <span class="font-body-sm text-body-sm">Gửi giải trình ở form phía trên để tạo đơn chờ phê duyệt.</span>
+                            </div>
+                        </td>
+                    </tr>
+                <% } else { %>
+                    <% explanationRequests.forEach((item) => { %>
+                        <tr class="request-row explanation-row hover:bg-surface-container-low/70 transition-colors align-top"
+                            data-status="<%= item.status %>"
+                            data-detail="<%= JSON.stringify({
+                                id: item.id, code: item.code, typeLabel: item.typeLabel, returnTab: 'explanation',
+                                employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
+                                fromDate: item.fromDate, toDate: item.toDate, subject: item.subject,
+                                time: item.timeLabel, reason: item.reason, destination: "",
+                                statusLabel: item.statusLabel, createdAt: item.createdAt,
+                                reviewerName: item.reviewerName, reviewedAt: item.reviewedAt,
+                                reviewNote: item.reviewNote, employeeResponseNote: item.employeeResponseNote
+                            }) %>">
+                            <td class="py-space-md px-space-lg">
+                                <span class="inline-flex px-space-sm py-1 rounded-lg bg-primary-fixed text-primary font-data-mono text-data-mono font-semibold"><%= item.code %></span>
+                            </td>
+                            <td class="py-space-md px-space-md">
+                                <div class="flex flex-col">
+                                    <span class="font-label-md text-label-md text-on-surface font-semibold"><%= item.employeeName %></span>
+                                    <span class="font-data-mono text-[11px] text-on-surface-variant"><%= item.employeeId %> • <%= item.department %></span>
+                                </div>
+                            </td>
+                            <td class="py-space-md px-space-md">
+                                <span class="inline-flex items-center gap-1.5 font-label-md text-label-md text-on-surface">
+                                    <span class="material-symbols-outlined text-secondary text-[16px]">edit_document</span>
+                                    <%= item.categoryLabel %>
+                                </span>
+                            </td>
+                            <td class="py-space-md px-space-md">
+                                <div class="flex flex-col gap-0.5">
+                                    <span class="font-data-mono text-data-mono text-on-surface"><%= item.fromDate %></span>
+                                    <% if (item.timeLabel) { %><span class="font-body-sm text-body-sm text-on-surface-variant"><%= item.timeLabel %></span><% } %>
+                                </div>
+                            </td>
+                            <td class="py-space-md px-space-md max-w-[360px]">
+                                <span class="font-label-md text-label-md text-on-surface"><%= item.subject %></span>
+                                <p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2" title="<%= item.reason %>"><%= item.reason %></p>
+                                <% if (item.reviewedAt) { %><p class="mt-1 text-[11px] text-on-surface-variant"><strong><%= item.status === "rejected" ? "Từ chối bởi" : "Duyệt bởi" %>:</strong> <%= item.reviewerName || "Admin" %> · <%= item.reviewedAt %></p><% } %>
+                                <% if (item.reviewNote) { %><p class="mt-1 text-[11px] text-on-surface-variant"><strong><%= item.status === "rejected" ? "Lý do từ chối" : "Ghi chú duyệt" %>:</strong> <%= item.reviewNote %></p><% } %>
+                            </td>
+                            <td class="py-space-md px-space-md">
+                                <% if (item.status === "approved") { %>
+                                    <span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-green-50 text-green-700 text-[11px] font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span><%= item.statusLabel %></span>
+                                <% } else if (item.status === "rejected") { %>
+                                    <span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-error-container text-on-error-container text-[11px] font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-error"></span><%= item.statusLabel %></span>
+                                <% } else { %>
+                                    <span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[11px] font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span><%= item.statusLabel %></span>
+                                <% } %>
+                            </td>
+                            <td class="py-space-md px-space-lg">
+                                <div class="flex justify-end gap-space-xs">
+                                    <button type="button" data-review-action="view" title="Xem chi tiết giải trình" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm"><span class="material-symbols-outlined text-[16px]">visibility</span>Xem</button>
+                                    <% if (item.canReview) { %>
+                                        <button type="button" data-review-action="approve" title="Phê duyệt giải trình" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 font-label-sm"><span class="material-symbols-outlined text-[16px]">check</span>Duyệt</button>
+                                        <button type="button" data-review-action="reject" title="Từ chối giải trình" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-error-container hover:bg-red-100 text-error font-label-sm"><span class="material-symbols-outlined text-[16px]">close</span>Từ chối</button>
+                                    <% } %>
+                                </div>
+                            </td>
+                        </tr>
+                    <% }) %>
+                    <tr id="explanation-empty-filter" class="hidden">
+                        <td colspan="7" class="py-space-2xl px-space-lg text-center text-body-sm text-on-surface-variant">Không có giải trình nào với trạng thái này.</td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+</section>
 <% } %>
 
 <% if (activeTab === "list") { %>
@@ -288,7 +403,7 @@
                     <th class="py-space-md px-space-lg font-semibold text-right">Xử lý</th>
                 </tr>
             </thead>
-            <tbody id="request-table-body" class="divide-y divide-surface-container-low text-body-sm text-on-surface">
+            <tbody id="request-table-body" data-review-table-body class="divide-y divide-surface-container-low text-body-sm text-on-surface">
                 <% if (requests.length === 0) { %>
                     <tr>
                         <td colspan="8" class="py-space-2xl px-space-lg text-center">
@@ -305,15 +420,15 @@
                             data-status="<%= item.status %>"
                             data-type="<%= item.type %>"
                             data-search="<%= [item.code, item.typeLabel, item.employeeName, item.employeeId, item.reason, item.destination, item.department].join(' ').toLowerCase() %>"
-                            data-detail='<%= JSON.stringify({
-                                id: item.id, code: item.code, typeLabel: item.typeLabel,
+                            data-detail="<%= JSON.stringify({
+                                id: item.id, code: item.code, typeLabel: item.typeLabel, returnTab: 'list',
                                 employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
                                 fromDate: item.fromDate, toDate: item.toDate, reason: item.reason,
-                                destination: item.destination, time: item.overtime_start_time && item.overtime_end_time ? `${item.overtime_start_time}–${item.overtime_end_time}` : '',
+                                destination: item.destination, subject: item.subject, time: item.timeLabel,
                                 statusLabel: item.statusLabel, createdAt: item.createdAt,
                                 reviewerName: item.reviewerName, reviewedAt: item.reviewedAt,
                                 reviewNote: item.reviewNote, employeeResponseNote: item.employeeResponseNote
-                            }) %>'>
+                            }) %>">
                             <td class="py-space-md px-space-lg">
                                 <span class="inline-flex px-space-sm py-1 rounded-lg bg-primary-fixed text-primary font-data-mono text-data-mono font-semibold"><%= item.code %></span>
                             </td>
@@ -558,6 +673,21 @@
             el.addEventListener(eventName, applyFilters);
         });
 
+        const explanationFilter = document.getElementById('explanation-status-filter');
+        const explanationRows = Array.from(document.querySelectorAll('.explanation-row'));
+        const explanationEmpty = document.getElementById('explanation-empty-filter');
+        const applyExplanationFilter = () => {
+            const status = explanationFilter?.value || '';
+            let count = 0;
+            explanationRows.forEach((row) => {
+                const visible = !status || row.dataset.status === status;
+                row.classList.toggle('hidden', !visible);
+                if (visible) count += 1;
+            });
+            if (explanationEmpty) explanationEmpty.classList.toggle('hidden', count !== 0 || explanationRows.length === 0);
+        };
+        explanationFilter?.addEventListener('change', applyExplanationFilter);
+
         // Xem chi tiết / phê duyệt / từ chối trong cùng một modal.
         const reviewModal = document.getElementById('review-modal');
         const reviewTitle = document.getElementById('review-modal-title');
@@ -568,7 +698,7 @@
         const reviewNoteLabel = document.getElementById('review-note-label');
         const reviewNoteHint = document.getElementById('review-note-hint');
         const reviewSubmit = document.getElementById('review-submit');
-        const requestTableBody = document.getElementById('request-table-body');
+        const reviewTableBodies = Array.from(document.querySelectorAll('[data-review-table-body]'));
         let reviewMode = 'view';
 
         const appendDetailField = (label, value, tone) => {
@@ -592,12 +722,16 @@
             try { detail = JSON.parse(row.dataset.detail || '{}'); } catch { detail = {}; }
             reviewMode = mode;
             reviewDetail.replaceChildren();
-            reviewTitle.textContent = mode === 'approve' ? 'Phê duyệt đơn' : mode === 'reject' ? 'Từ chối đơn' : 'Chi tiết đơn';
+            const isExplanation = Boolean(detail.typeLabel && detail.typeLabel.startsWith('Giải trình'));
+            reviewTitle.textContent = isExplanation
+                ? (mode === 'approve' ? 'Phê duyệt giải trình' : mode === 'reject' ? 'Từ chối giải trình' : 'Chi tiết giải trình')
+                : (mode === 'approve' ? 'Phê duyệt đơn' : mode === 'reject' ? 'Từ chối đơn' : 'Chi tiết đơn');
             reviewSubtitle.textContent = [detail.code, detail.typeLabel, detail.statusLabel].filter(Boolean).join(' · ');
 
             appendDetailField('Nhân viên', [detail.employeeName, detail.employeeId].filter(Boolean).join(' · '));
             appendDetailField('Phòng ban', detail.department);
-            appendDetailField('Thời gian', [detail.fromDate, detail.toDate && detail.toDate !== detail.fromDate ? `→ ${detail.toDate}` : '', detail.time].filter(Boolean).join(' '));
+            appendDetailField(detail.typeLabel && detail.typeLabel.startsWith('Giải trình') ? 'Ngày phát sinh' : 'Thời gian', [detail.fromDate, detail.toDate && detail.toDate !== detail.fromDate ? `→ ${detail.toDate}` : '', detail.time].filter(Boolean).join(' '));
+            appendDetailField('Tiêu đề', detail.subject);
             appendDetailField('Nội dung', detail.reason);
             appendDetailField('Địa điểm', detail.destination);
             appendDetailField('Ngày gửi', detail.createdAt);
@@ -609,11 +743,14 @@
                 reviewForm.classList.add('hidden');
             } else {
                 reviewForm.classList.remove('hidden');
-                reviewForm.action = `/admin/requests/${detail.id}/${mode}`;
+                const returnTab = detail.returnTab === 'explanation' ? 'explanation' : 'list';
+                reviewForm.action = `/admin/requests/${detail.id}/${mode}?tab=${returnTab}`;
                 reviewNote.value = '';
                 reviewNote.setCustomValidity('');
                 const rejecting = mode === 'reject';
-                reviewNoteLabel.textContent = rejecting ? 'Lý do từ chối *' : 'Ghi chú phê duyệt (không bắt buộc)';
+                reviewNoteLabel.textContent = rejecting
+                    ? (isExplanation ? 'Lý do từ chối giải trình *' : 'Lý do từ chối *')
+                    : (isExplanation ? 'Ghi chú phê duyệt giải trình (không bắt buộc)' : 'Ghi chú phê duyệt (không bắt buộc)');
                 reviewNoteHint.textContent = rejecting
                     ? 'Bắt buộc từ 10 đến 500 ký tự để nhân viên nắm rõ.'
                     : 'Tối đa 500 ký tự. Ghi chú được lưu cùng quyết định và hiển thị ở danh sách.';
@@ -633,14 +770,14 @@
             document.body.classList.remove('overflow-hidden');
         };
 
-        if (requestTableBody) {
-            requestTableBody.addEventListener('click', (event) => {
+        reviewTableBodies.forEach((tableBody) => {
+            tableBody.addEventListener('click', (event) => {
                 const button = event.target.closest('[data-review-action]');
                 if (!button) return;
                 const row = button.closest('.request-row');
                 if (row) openReviewModal(row, button.dataset.reviewAction);
             });
-        }
+        });
 
         reviewModal?.querySelectorAll('[data-close-review-modal]').forEach((el) => {
             el.addEventListener('click', closeReviewModal);
