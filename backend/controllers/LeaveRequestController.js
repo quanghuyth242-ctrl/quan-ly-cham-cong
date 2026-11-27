@@ -3,6 +3,8 @@ import {
     buildAttendanceSchedule,
     getShiftSchedulesForEmployeeRange
 } from "../services/shiftScheduleService.js";
+import { writeAttendanceAuditLog } from "../services/attendanceAuditService.js";
+import { notifyRequestsChanged } from "../services/realtimeService.js";
 
 const isValidDate = (value) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return false;
@@ -80,6 +82,10 @@ export const index = async (req, res) => {
                     : item.status === "rejected" && item.employee_response === "rejected" ? "Nhân viên từ chối"
                     : { pending: "Chờ duyệt", approved: "Đã duyệt", rejected: "Từ chối" }[item.status],
                 createdAt: item.created_date,
+                reviewedAt: item.reviewed_date || null,
+                reviewerName: item.reviewer_name || (item.reviewed_by ? `Người dùng #${item.reviewed_by}` : null),
+                reviewNote: item.review_note || null,
+                employeeResponseNote: item.employee_response_note || null,
                 canReview: item.status === "pending"
             })),
             employees,
@@ -382,14 +388,17 @@ export const respondToAdminRequest = async (req, res) => {
     }
 };
 
-export const reviewBusinessTrip = async (req, res) => {
+export const reviewRequest = async (req, res) => {
     const id = Number(req.params.id);
     const decision = req.params.decision === "approve" ? "approved" : req.params.decision === "reject" ? "rejected" : null;
     const reviewNote = String(req.body.review_note || "").trim();
     if (!Number.isSafeInteger(id) || id <= 0 || !decision) {
         return redirect(res, { tab: "list", error: "Yêu cầu duyệt đơn không hợp lệ." });
     }
-    if (decision === "rejected" && (reviewNote.length < 10 || reviewNote.length > 500)) {
+    if (reviewNote.length > 500) {
+        return redirect(res, { tab: "list", error: "Ghi chú phê duyệt không được quá 500 ký tự." });
+    }
+    if (decision === "rejected" && reviewNote.length < 10) {
         return redirect(res, { tab: "list", error: "Lý do từ chối cần từ 10 đến 500 ký tự." });
     }
 
@@ -408,7 +417,7 @@ export const reviewBusinessTrip = async (req, res) => {
             id,
             decision,
             reviewerId: req.session.user?.id,
-            reviewNote: decision === "rejected" ? reviewNote : null,
+            reviewNote: reviewNote || null,
             schedules
         });
         if (!result.success) {
@@ -420,10 +429,35 @@ export const reviewBusinessTrip = async (req, res) => {
             return redirect(res, { tab: "list", error });
         }
 
+        await writeAttendanceAuditLog({
+            action: "request_review",
+            method: "admin_form",
+            result: "success",
+            actor: {
+                id: req.session.user?.id,
+                username: req.session.user?.username,
+                role: req.session.user?.role
+            },
+            employee: { id: request.employee_id },
+            workDate: `${request.from_date}..${request.to_date}`,
+            reason: reviewNote || null,
+            detail: {
+                requestId: id,
+                requestCode: request.request_code,
+                requestType: request.request_type,
+                decision,
+                appliedDays: result.appliedDays || 0
+            },
+            req
+        });
+        notifyRequestsChanged();
+
         const message = decision === "approved" && request.request_type === "overtime"
             ? `Đã duyệt đơn tăng ca; trạng thái tăng ca đã được cập nhật cho ${result.appliedDays} ngày.`
             : decision === "approved" && request.request_type === "business_trip"
             ? `Đã duyệt công tác và cập nhật đủ giờ theo ca cho ${result.autoAttendanceDays} ngày làm việc.`
+            : decision === "approved" && request.request_type === "leave"
+            ? `Đã duyệt đơn nghỉ; trạng thái nghỉ đã được ghi nhận cho ${result.appliedDays} ngày làm việc trong khoảng đơn.`
             : decision === "approved" ? "Đã duyệt đơn." : "Đã từ chối đơn.";
         return redirect(res, { tab: "list", success: message });
     } catch (error) {
@@ -432,7 +466,51 @@ export const reviewBusinessTrip = async (req, res) => {
     }
 };
 
+// Tên cũ giữ lại để tương thích với import cũ.
+export const reviewBusinessTrip = reviewRequest;
+
 export const createExplanation = async (req, res) => {
-    const params = new URLSearchParams({ success: "Đơn giải trình hiện chỉ là giao diện mẫu.", tab: "explanation" });
-    return res.redirect(`/admin/requests?${params.toString()}`);
+    const fail = (message) => redirect(res, { tab: "explanation", error: message });
+    const employeeId = Number(req.body.employee_id);
+    const category = String(req.body.explanation_type || "").trim();
+    const incidentDate = String(req.body.incident_date || "").trim();
+    const startTime = String(req.body.from_time || "").trim();
+    const endTime = String(req.body.to_time || "").trim();
+    const subject = String(req.body.subject || "").trim();
+    const reason = String(req.body.reason || "").trim();
+
+    const allowedTypes = ["late", "early_leave", "missing_checkin", "missing_checkout", "wrong_record", "other"];
+    if (!Number.isSafeInteger(employeeId) || employeeId <= 0) return fail("Vui lòng chọn nhân viên giải trình.");
+    if (!allowedTypes.includes(category)) return fail("Vui lòng chọn loại giải trình.");
+    if (!isValidDate(incidentDate)) return fail("Ngày phát sinh không hợp lệ.");
+    if (startTime && !isValidTime(startTime)) return fail("Thời gian bắt đầu không hợp lệ.");
+    if (endTime && !isValidTime(endTime)) return fail("Thời gian kết thúc không hợp lệ.");
+    if (startTime && endTime && endTime <= startTime) return fail("Thời gian kết thúc phải sau thời gian bắt đầu.");
+    if (subject.length < 5 || subject.length > 120) return fail("Tiêu đề giải trình cần từ 5 đến 120 ký tự.");
+    if (reason.length < 20 || reason.length > 5000) return fail("Nội dung giải trình cần từ 20 đến 5.000 ký tự.");
+
+    try {
+        const employees = await AttendanceRequestModel.getEmployees();
+        if (!employees.some((employee) => Number(employee.id) === employeeId)) {
+            return fail("Không tìm thấy nhân viên đang hoạt động.");
+        }
+        const result = await AttendanceRequestModel.createExplanation({
+            employeeId,
+            category,
+            incidentDate,
+            startTime,
+            endTime,
+            subject,
+            reason,
+            createdBy: req.session.user?.username
+        });
+        notifyRequestsChanged();
+        return redirect(res, {
+            tab: "list",
+            success: `Đã gửi đơn giải trình ${result.requestCode}, đang chờ phê duyệt.`
+        });
+    } catch (error) {
+        console.error("Lỗi tạo đơn giải trình:", error);
+        return fail("Không thể gửi giải trình. Vui lòng thử lại.");
+    }
 };

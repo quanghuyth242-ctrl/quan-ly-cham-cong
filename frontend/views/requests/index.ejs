@@ -131,9 +131,9 @@
                 <h3 class="font-headline-md text-headline-md text-primary font-semibold">Tạo đơn giải trình</h3>
                 <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Giải trình đi muộn, về sớm, quên chấm công hoặc sai lệch dữ liệu chấm công.</p>
             </div>
-            <span class="hidden sm:inline-flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm">
-                <span class="material-symbols-outlined text-[16px]">info</span>
-                Giao diện demo
+            <span class="hidden sm:inline-flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-green-50 text-green-700 font-label-sm text-label-sm">
+                <span class="material-symbols-outlined text-[16px]">fact_check</span>
+                Gửi để phê duyệt
             </span>
         </div>
 
@@ -144,6 +144,14 @@
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg">
+                <div class="flex flex-col gap-space-xs">
+                    <label class="font-label-sm text-label-sm text-on-surface" for="exp_employee">Nhân viên <span class="text-error">*</span></label>
+                    <select id="exp_employee" name="employee_id" required class="w-full appearance-none bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container">
+                        <option value="">-- Chọn nhân viên --</option>
+                        <% employees.forEach((employee) => { %><option value="<%= employee.id %>"><%= employee.employee_code %> · <%= employee.full_name %><%= employee.department ? ` · ${employee.department}` : "" %></option><% }); %>
+                    </select>
+                </div>
+
                 <div class="flex flex-col gap-space-xs">
                     <label class="font-label-sm text-label-sm text-on-surface" for="exp_type">Loại giải trình <span class="text-error">*</span></label>
                     <div class="relative">
@@ -189,10 +197,9 @@
                 <span class="font-body-sm text-body-sm text-on-surface-variant">Tối thiểu 20 ký tự để đảm bảo thông tin rõ ràng cho người phê duyệt.</span>
             </div>
 
-            <div class="flex flex-col gap-space-xs">
-                <label class="font-label-sm text-label-sm text-on-surface" for="exp_attachment">Minh chứng đính kèm</label>
-                <input id="exp_attachment" name="attachment" type="file" class="block w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm px-space-md py-space-sm rounded-xl file:mr-space-md file:py-1 file:px-space-sm file:rounded-lg file:border-0 file:bg-primary-fixed file:text-primary file:font-label-sm">
-                <span class="font-body-sm text-body-sm text-on-surface-variant">Ảnh chụp màn hình, biên bản, xác nhận của quản lý trực tiếp, v.v.</span>
+            <div class="flex items-start gap-space-sm p-space-md rounded-xl bg-surface-container-low text-on-surface-variant">
+                <span class="material-symbols-outlined text-[18px] shrink-0">attachment</span>
+                <span class="font-body-sm text-body-sm">Ghi rõ minh chứng trong nội dung giải trình (mã biên bản, ảnh chụp màn hình, người xác nhận...). Hệ thống hiện chưa lưu tệp đính kèm.</span>
             </div>
 
             <div class="flex items-center justify-end gap-space-sm pt-space-md border-t border-surface-container-high">
@@ -262,6 +269,11 @@
         </span>
     </div>
 
+    <div class="px-space-lg py-space-sm bg-primary-fixed/30 text-primary text-body-sm border-b border-primary/10 flex items-start gap-space-sm">
+        <span class="material-symbols-outlined text-[18px] shrink-0">fact_check</span>
+        <span>Duyệt đơn nghỉ sẽ ghi nhận ngày nghỉ vào chấm công; duyệt công tác cập nhật giờ theo ca đã phân; duyệt tăng ca ghi nhận trạng thái tăng ca. Đơn đã xử lý không thể duyệt lại — hãy kiểm tra kỹ trước khi xác nhận.</span>
+    </div>
+
     <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse min-w-[980px]">
             <thead>
@@ -292,7 +304,16 @@
                         <tr class="request-row hover:bg-surface-container-low/70 transition-colors align-top"
                             data-status="<%= item.status %>"
                             data-type="<%= item.type %>"
-                            data-search="<%= [item.code, item.typeLabel, item.employeeName, item.employeeId, item.reason, item.destination, item.department].join(' ').toLowerCase() %>">
+                            data-search="<%= [item.code, item.typeLabel, item.employeeName, item.employeeId, item.reason, item.destination, item.department].join(' ').toLowerCase() %>"
+                            data-detail='<%= JSON.stringify({
+                                id: item.id, code: item.code, typeLabel: item.typeLabel,
+                                employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
+                                fromDate: item.fromDate, toDate: item.toDate, reason: item.reason,
+                                destination: item.destination, time: item.overtime_start_time && item.overtime_end_time ? `${item.overtime_start_time}–${item.overtime_end_time}` : '',
+                                statusLabel: item.statusLabel, createdAt: item.createdAt,
+                                reviewerName: item.reviewerName, reviewedAt: item.reviewedAt,
+                                reviewNote: item.reviewNote, employeeResponseNote: item.employeeResponseNote
+                            }) %>'>
                             <td class="py-space-md px-space-lg">
                                 <span class="inline-flex px-space-sm py-1 rounded-lg bg-primary-fixed text-primary font-data-mono text-data-mono font-semibold"><%= item.code %></span>
                             </td>
@@ -332,6 +353,8 @@
                             <td class="py-space-md px-space-md max-w-[360px]">
                                 <p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2" title="<%= item.reason %>"><%= item.destination ? `${item.destination} · ` : "" %><%= item.reason %></p>
                                 <% if (item.status === "rejected") { const declineReason = item.employee_response === "rejected" ? item.employee_response_note : item.review_note; if (declineReason) { %><p class="mt-1 text-[11px] text-error"><strong>Lý do từ chối:</strong> <%= declineReason %></p><% } } %>
+                                 <% if (item.reviewedAt) { %><p class="mt-1 text-[11px] text-on-surface-variant"><strong><%= item.status === "rejected" ? "Từ chối bởi" : "Duyệt bởi" %>:</strong> <%= item.reviewerName || "Admin" %> · <%= item.reviewedAt %></p><% } %>
+                                 <% if (item.status === "approved" && item.reviewNote) { %><p class="mt-1 text-[11px] text-on-surface-variant"><strong>Ghi chú duyệt:</strong> <%= item.reviewNote %></p><% } %>
                             </td>
                             <td class="py-space-md px-space-md">
                                 <% if (item.status === 'approved') { %>
@@ -355,21 +378,13 @@
                                 <span class="font-data-mono text-[11px] text-on-surface-variant whitespace-nowrap"><%= item.createdAt %></span>
                             </td>
                             <td class="py-space-md px-space-lg">
-                                <% if (item.canReview) { %>
-                                    <div class="flex justify-end gap-space-xs">
-                                        <form action="/admin/requests/<%= item.id %>/approve" method="POST" onsubmit="return confirm('<%= item.type === 'overtime' ? 'Duyệt đơn tăng ca và cập nhật trạng thái tăng ca vào bảng chấm công?' : item.type === 'business_trip' ? 'Duyệt đơn công tác và ghi nhận đủ công theo ca đã phân?' : 'Duyệt đơn này?' %>');">
-                                            <button class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 font-label-sm" type="submit" title="Duyệt đơn"><span class="material-symbols-outlined text-[16px]">check</span>Duyệt</button>
-                                        </form>
-                                        <details class="relative">
-                                            <summary class="list-none cursor-pointer inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-error-container hover:bg-red-100 text-error font-label-sm"><span class="material-symbols-outlined text-[16px]">close</span>Từ chối</summary>
-                                            <form action="/admin/requests/<%= item.id %>/reject" method="POST" class="absolute right-0 top-full z-20 mt-1 w-64 rounded-xl border border-surface-container-high bg-white p-3 shadow-lg">
-                                                <label class="mb-2 block text-left text-xs font-semibold text-on-surface" for="reject-reason-<%= item.id %>">Lý do từ chối (10–500 ký tự)</label>
-                                                <textarea id="reject-reason-<%= item.id %>" name="review_note" minlength="10" maxlength="500" required rows="3" class="w-full rounded-lg border border-surface-container-high p-2 text-xs" placeholder="Nhập lý do để nhân viên nắm rõ"></textarea>
-                                                <button class="mt-2 w-full rounded-lg bg-error px-3 py-2 text-xs font-semibold text-white" type="submit">Xác nhận từ chối</button>
-                                            </form>
-                                        </details>
-                                    </div>
-                                <% } else { %><span class="block text-right text-on-surface-variant">—</span><% } %>
+                                <div class="flex justify-end gap-space-xs">
+                                    <button type="button" data-review-action="view" title="Xem chi tiết đơn" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm"><span class="material-symbols-outlined text-[16px]">visibility</span>Xem</button>
+                                    <% if (item.canReview) { %>
+                                        <button type="button" data-review-action="approve" title="Phê duyệt đơn" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 font-label-sm"><span class="material-symbols-outlined text-[16px]">check</span>Duyệt</button>
+                                        <button type="button" data-review-action="reject" title="Từ chối đơn" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-error-container hover:bg-red-100 text-error font-label-sm"><span class="material-symbols-outlined text-[16px]">close</span>Từ chối</button>
+                                    <% } %>
+                                </div>
                             </td>
                         </tr>
                     <% }) %>
@@ -388,6 +403,36 @@
     </div>
 </section>
 <% } %>
+
+<!-- Modal xem chi tiết / phê duyệt / từ chối đơn -->
+<div id="review-modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="review-modal-title">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-xs" data-close-review-modal></div>
+    <div class="relative mx-auto mt-[5vh] w-[min(640px,calc(100%-2rem))] max-h-[90vh] overflow-y-auto rounded-2xl bg-surface-container-lowest shadow-xl">
+        <div class="sticky top-0 z-10 flex items-start justify-between gap-space-md border-b border-surface-container-high bg-surface-container-lowest px-space-xl py-space-lg">
+            <div>
+                <h3 id="review-modal-title" class="font-headline-md text-headline-md text-primary font-semibold">Chi tiết đơn</h3>
+                <p id="review-modal-subtitle" class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs"></p>
+            </div>
+            <button type="button" class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-review-modal aria-label="Đóng">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+
+        <div id="review-modal-detail" class="px-space-xl py-space-lg flex flex-col gap-space-sm"></div>
+
+        <form id="review-form" method="POST" class="hidden px-space-xl pb-space-xl flex flex-col gap-space-md border-t border-surface-container-high pt-space-lg">
+            <label for="review-note" class="flex flex-col gap-space-xs">
+                <span id="review-note-label" class="font-label-sm text-label-sm text-on-surface">Ghi chú phê duyệt</span>
+                <textarea id="review-note" name="review_note" maxlength="500" rows="4" class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container resize-y" placeholder="Ghi chú để nhân viên nắm rõ quyết định..."></textarea>
+                <span id="review-note-hint" class="font-body-sm text-body-sm text-on-surface-variant"></span>
+            </label>
+            <div class="flex justify-end gap-space-sm">
+                <button type="button" data-close-review-modal class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md rounded-xl transition-colors">Hủy</button>
+                <button id="review-submit" type="submit" class="px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl transition-colors">Xác nhận</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -442,6 +487,12 @@
         if (explanationForm) {
             explanationForm.addEventListener('submit', (event) => {
                 clearInlineError('explanation-form-error', 'explanation-form-error-text');
+
+                if (!explanationForm.employee_id.value) {
+                    event.preventDefault();
+                    showInlineError('explanation-form-error', 'explanation-form-error-text', 'Vui lòng chọn nhân viên giải trình.');
+                    return;
+                }
 
                 const type = explanationForm.explanation_type.value;
                 const subject = (explanationForm.subject.value || '').trim();
@@ -505,6 +556,108 @@
             if (!el) return;
             const eventName = el.tagName === 'INPUT' ? 'input' : 'change';
             el.addEventListener(eventName, applyFilters);
+        });
+
+        // Xem chi tiết / phê duyệt / từ chối trong cùng một modal.
+        const reviewModal = document.getElementById('review-modal');
+        const reviewTitle = document.getElementById('review-modal-title');
+        const reviewSubtitle = document.getElementById('review-modal-subtitle');
+        const reviewDetail = document.getElementById('review-modal-detail');
+        const reviewForm = document.getElementById('review-form');
+        const reviewNote = document.getElementById('review-note');
+        const reviewNoteLabel = document.getElementById('review-note-label');
+        const reviewNoteHint = document.getElementById('review-note-hint');
+        const reviewSubmit = document.getElementById('review-submit');
+        const requestTableBody = document.getElementById('request-table-body');
+        let reviewMode = 'view';
+
+        const appendDetailField = (label, value, tone) => {
+            if (!value) return;
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-[110px_1fr] gap-space-sm text-body-sm';
+            const key = document.createElement('span');
+            key.className = 'font-label-sm text-label-sm text-on-surface-variant';
+            key.textContent = label;
+            const val = document.createElement('span');
+            val.className = 'text-on-surface whitespace-pre-wrap break-words';
+            if (tone === 'error') val.classList.add('text-error');
+            if (tone === 'success') val.classList.add('text-green-700');
+            val.textContent = value;
+            row.append(key, val);
+            reviewDetail.appendChild(row);
+        };
+
+        const openReviewModal = (row, mode) => {
+            let detail = {};
+            try { detail = JSON.parse(row.dataset.detail || '{}'); } catch { detail = {}; }
+            reviewMode = mode;
+            reviewDetail.replaceChildren();
+            reviewTitle.textContent = mode === 'approve' ? 'Phê duyệt đơn' : mode === 'reject' ? 'Từ chối đơn' : 'Chi tiết đơn';
+            reviewSubtitle.textContent = [detail.code, detail.typeLabel, detail.statusLabel].filter(Boolean).join(' · ');
+
+            appendDetailField('Nhân viên', [detail.employeeName, detail.employeeId].filter(Boolean).join(' · '));
+            appendDetailField('Phòng ban', detail.department);
+            appendDetailField('Thời gian', [detail.fromDate, detail.toDate && detail.toDate !== detail.fromDate ? `→ ${detail.toDate}` : '', detail.time].filter(Boolean).join(' '));
+            appendDetailField('Nội dung', detail.reason);
+            appendDetailField('Địa điểm', detail.destination);
+            appendDetailField('Ngày gửi', detail.createdAt);
+            appendDetailField(detail.statusLabel === 'Từ chối' ? 'Người từ chối' : 'Người duyệt', detail.reviewedAt ? `${detail.reviewerName || 'Admin'} · ${detail.reviewedAt}` : '');
+            appendDetailField('Ghi chú duyệt', detail.reviewNote, 'success');
+            appendDetailField('Lý do từ chối', detail.employeeResponseNote, 'error');
+
+            if (mode === 'view') {
+                reviewForm.classList.add('hidden');
+            } else {
+                reviewForm.classList.remove('hidden');
+                reviewForm.action = `/admin/requests/${detail.id}/${mode}`;
+                reviewNote.value = '';
+                reviewNote.setCustomValidity('');
+                const rejecting = mode === 'reject';
+                reviewNoteLabel.textContent = rejecting ? 'Lý do từ chối *' : 'Ghi chú phê duyệt (không bắt buộc)';
+                reviewNoteHint.textContent = rejecting
+                    ? 'Bắt buộc từ 10 đến 500 ký tự để nhân viên nắm rõ.'
+                    : 'Tối đa 500 ký tự. Ghi chú được lưu cùng quyết định và hiển thị ở danh sách.';
+                reviewSubmit.textContent = rejecting ? 'Xác nhận từ chối' : 'Xác nhận duyệt';
+                reviewSubmit.className = rejecting
+                    ? 'px-space-lg py-space-sm bg-error hover:bg-error/90 text-white font-label-md text-label-md rounded-xl transition-colors'
+                    : 'px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl transition-colors';
+            }
+            reviewModal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            if (mode !== 'view') window.setTimeout(() => reviewNote.focus(), 0);
+        };
+
+        const closeReviewModal = () => {
+            if (!reviewModal || reviewModal.classList.contains('hidden')) return;
+            reviewModal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        };
+
+        if (requestTableBody) {
+            requestTableBody.addEventListener('click', (event) => {
+                const button = event.target.closest('[data-review-action]');
+                if (!button) return;
+                const row = button.closest('.request-row');
+                if (row) openReviewModal(row, button.dataset.reviewAction);
+            });
+        }
+
+        reviewModal?.querySelectorAll('[data-close-review-modal]').forEach((el) => {
+            el.addEventListener('click', closeReviewModal);
+        });
+
+        reviewNote?.addEventListener('input', () => reviewNote.setCustomValidity(''));
+        reviewForm?.addEventListener('submit', (event) => {
+            if (reviewMode !== 'reject') return;
+            if (reviewNote.value.trim().length < 10) {
+                event.preventDefault();
+                reviewNote.setCustomValidity('Lý do từ chối cần từ 10 đến 500 ký tự.');
+                reviewNote.reportValidity();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') closeReviewModal();
         });
     });
 </script>

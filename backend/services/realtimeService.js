@@ -21,3 +21,14 @@ export const notifyAttendanceChanged = () => {
     clearTimeout(timer);
     timer = setTimeout(() => broadcast("attendance"), 400);
 };
+
+// Duyệt đơn làm thay đổi cả chấm công lẫn danh sách đơn chờ xử lý.
+// Trang chủ đã lắng nghe "attendance"; "requests" dành cho trang đơn mở song song.
+let requestTimer = null;
+export const notifyRequestsChanged = () => {
+    clearTimeout(requestTimer);
+    requestTimer = setTimeout(() => {
+        broadcast("requests");
+        broadcast("attendance");
+    }, 400);
+};
