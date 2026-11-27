@@ -248,7 +248,49 @@ export const getStats = async () => {
     };
 };
 
+let syncRevisionModeChecked = false;
+let syncRevisionUsesUpdatedAt = false;
+
+// DB hiện tại có thể chưa có cột updated_at dù script init đã định nghĩa.
+// Thử phát hiện một lần, sau đó chọn đường tính revision phù hợp.
+const ensureSyncRevisionMode = async () => {
+    if (syncRevisionModeChecked) return;
+
+    try {
+        const [columns] = await db.execute(`
+            SELECT COUNT(DISTINCT TABLE_NAME) AS total
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME IN ('work_shifts', 'employee_shift_assignments')
+              AND COLUMN_NAME = 'updated_at'
+        `);
+        syncRevisionUsesUpdatedAt = Number(columns[0]?.total || 0) === 2;
+    } catch {
+        syncRevisionUsesUpdatedAt = false;
+    }
+
+    syncRevisionModeChecked = true;
+};
+
 export const getScheduleSyncRevision = async () => {
+    await ensureSyncRevisionMode();
+
+    if (syncRevisionUsesUpdatedAt) {
+        // Đường nhanh khi schema đã có updated_at: count + mốc cập nhật/id lớn nhất.
+        const [rows] = await db.execute(`
+            SELECT CONCAT(
+                (SELECT COUNT(*) FROM work_shifts), ':',
+                COALESCE((SELECT CONCAT(UNIX_TIMESTAMP(MAX(updated_at)), ':', COALESCE(MAX(id), 0))
+                    FROM work_shifts), '0:0'), ':',
+                (SELECT COUNT(*) FROM employee_shift_assignments), ':',
+                COALESCE((SELECT CONCAT(UNIX_TIMESTAMP(MAX(updated_at)), ':', COALESCE(MAX(id), 0))
+                    FROM employee_shift_assignments), '0:0')
+            ) AS revision
+        `);
+        return String(rows[0]?.revision || "");
+    }
+
+    // Fallback tương thích DB cũ: CRC32 nội dung như trước.
     const [rows] = await db.execute(`
         SELECT CONCAT(
             (SELECT COUNT(*) FROM work_shifts), ':',

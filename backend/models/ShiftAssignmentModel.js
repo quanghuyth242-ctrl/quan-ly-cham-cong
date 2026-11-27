@@ -474,6 +474,7 @@ export const getScheduleMatrix = async ({
 
     const assignConditions = [
         "a.status = 'active'",
+        "s.status = 1",
         "a.start_date <= ?",
         "a.end_date >= ?"
     ];
@@ -504,7 +505,7 @@ export const getScheduleMatrix = async ({
            FROM employee_shift_assignments a
           INNER JOIN work_shifts s ON s.id = a.shift_id
           WHERE ${assignConditions.join(" AND ")}
-          ORDER BY a.start_date ASC, a.id ASC`,
+          ORDER BY a.start_date DESC, a.id DESC`,
         assignParams
     );
 
@@ -624,8 +625,13 @@ export const getEmployeeMonthlySchedule = async (employeeId, yearMonth) => {
 
     const ymMatch = String(yearMonth || "").match(/^(\d{4})-(\d{2})$/);
     const now = new Date();
-    const year = ymMatch ? Number(ymMatch[1]) : now.getFullYear();
-    const month = ymMatch ? Number(ymMatch[2]) : (now.getMonth() + 1);
+    const parsedMonth = ymMatch ? Number(ymMatch[2]) : 0;
+    const year = ymMatch && parsedMonth >= 1 && parsedMonth <= 12
+        ? Number(ymMatch[1])
+        : now.getFullYear();
+    const month = parsedMonth >= 1 && parsedMonth <= 12
+        ? parsedMonth
+        : (now.getMonth() + 1);
     const formattedYm = `${year}-${String(month).padStart(2, "0")}`;
 
     const startDate = `${formattedYm}-01`;
@@ -650,12 +656,12 @@ export const getEmployeeMonthlySchedule = async (employeeId, yearMonth) => {
                    FROM shift_workdays sw
                   WHERE sw.shift_id = s.id) AS workdays
            FROM employee_shift_assignments a
-          INNER JOIN work_shifts s ON s.id = a.shift_id
+          INNER JOIN work_shifts s ON s.id = a.shift_id AND s.status = 1
           WHERE a.employee_id = ?
             AND a.status = 'active'
             AND a.start_date <= ?
             AND a.end_date >= ?
-          ORDER BY a.start_date ASC`,
+          ORDER BY a.start_date DESC, a.id DESC`,
         [employeeId, endDate, startDate]
     );
 

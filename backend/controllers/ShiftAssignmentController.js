@@ -12,12 +12,21 @@ const WEEKDAY_LABELS = {
 };
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const ASSIGNMENTS_PATH = "/admin/shift-assignments";
+const RETURN_PARAM_KEYS = ["view", "date", "status", "search", "department", "shift_id", "start_date", "end_date"];
 
 const isValidDate = (value) => {
     if (!DATE_PATTERN.test(value)) return false;
 
     const date = new Date(`${value}T00:00:00Z`);
     return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+
+const parseYearMonth = (value) => {
+    const match = String(value || "").match(/^(\d{4})-(\d{2})$/);
+    const month = match ? Number(match[2]) : 0;
+    if (!match || month < 1 || month > 12) return null;
+    return { year: Number(match[1]), month, formatted: `${match[1]}-${match[2]}` };
 };
 
 const redirectWith = (res, path, { success = null, error = null } = {}) => {
@@ -27,7 +36,33 @@ const redirectWith = (res, path, { success = null, error = null } = {}) => {
     if (error) params.set("error", error);
 
     const query = params.toString();
-    res.redirect(query ? `${path}?${query}` : path);
+    if (!query) return res.redirect(path);
+
+    // path có thể đã kèm query (view/date/filter) khi quay lại danh sách.
+    res.redirect(`${path}${path.includes("?") ? "&" : "?"}${query}`);
+};
+
+// Giữ ngữ cảnh lịch tuần/bộ lọc sau khi lưu, nhưng chỉ cho phép quay lại
+// chính trang phân ca và chỉ các tham số biết trước.
+const buildReturnPath = (req) => {
+    const raw = String(req.body?.return_to || req.query?.return_to || "").trim();
+    if (!raw) return ASSIGNMENTS_PATH;
+
+    try {
+        const url = new URL(raw, "http://localhost");
+        if (url.pathname !== ASSIGNMENTS_PATH) return ASSIGNMENTS_PATH;
+
+        const params = new URLSearchParams();
+        for (const key of RETURN_PARAM_KEYS) {
+            const value = url.searchParams.get(key);
+            if (value) params.set(key, value);
+        }
+
+        const query = params.toString();
+        return query ? `${ASSIGNMENTS_PATH}?${query}` : ASSIGNMENTS_PATH;
+    } catch {
+        return ASSIGNMENTS_PATH;
+    }
 };
 
 const parseId = (value) => {
@@ -208,7 +243,7 @@ export const index = async (req, res) => {
         const groupedAssignments = Array.from(empMap.values()).map(group => {
             const sorted = group.assignments.slice().sort((a, b) => {
                 if (a.status !== b.status) return a.status === "active" ? -1 : 1;
-                return b.start_date > a.start_date ? 1 : -1;
+                return String(b.start_date).localeCompare(String(a.start_date));
             });
             return {
                 employee_id: group.employee_id,
@@ -274,55 +309,82 @@ export const index = async (req, res) => {
     }
 };
 
-export const calendarData = async (req, res) => {
-    try {
-        const search = String(req.query.search || "").trim();
-        const department = String(req.query.department || "").trim();
-        const shiftId = parseId(req.query.shift_id);
-        const mode = req.query.mode === "month" ? "month" : "week";
+const buildCalendarPayload = async (query) => {
+    const search = String(query.search || "").trim();
+    const department = String(query.department || "").trim();
+    const shiftId = parseId(query.shift_id);
+    const mode = query.mode === "month" ? "month" : "week";
 
-        let startDate = "";
-        let endDate = "";
-        let weekInfo = null;
+    let startDate = "";
+    let endDate = "";
+    let weekInfo = null;
 
-        if (mode === "month") {
-            const ymMatch = String(req.query.month || "").match(/^(\d{4})-(\d{2})$/);
-            const now = new Date();
-            const year = ymMatch ? Number(ymMatch[1]) : now.getFullYear();
-            const month = ymMatch ? Number(ymMatch[2]) : (now.getMonth() + 1);
-            const formattedYm = `${year}-${String(month).padStart(2, "0")}`;
-            startDate = `${formattedYm}-01`;
-            const lastDay = new Date(Date.UTC(year, month, 0, 12, 0, 0)).getUTCDate();
-            endDate = `${formattedYm}-${String(lastDay).padStart(2, "0")}`;
-        } else {
-            weekInfo = getWeekRange(req.query.date);
-            startDate = weekInfo.weekStart;
-            endDate = weekInfo.weekEnd;
-        }
+    if (mode === "month") {
+        const parsedYm = parseYearMonth(query.month);
+        const now = new Date();
+        const year = parsedYm ? parsedYm.year : now.getFullYear();
+        const month = parsedYm ? parsedYm.month : (now.getMonth() + 1);
+        const formattedYm = `${year}-${String(month).padStart(2, "0")}`;
+        startDate = `${formattedYm}-01`;
+        const lastDay = new Date(Date.UTC(year, month, 0, 12, 0, 0)).getUTCDate();
+        endDate = `${formattedYm}-${String(lastDay).padStart(2, "0")}`;
+    } else {
+        weekInfo = getWeekRange(query.date);
+        startDate = weekInfo.weekStart;
+        endDate = weekInfo.weekEnd;
+    }
 
-        const [scheduleMatrix, activeShifts] = await Promise.all([
-            ShiftAssignmentModel.getScheduleMatrix({
-                startDate,
-                endDate,
-                department,
-                shiftId: shiftId || "",
-                search
-            }),
-            WorkShiftModel.findActive()
-        ]);
-
-        res.json({
-            success: true,
-            mode,
+    const [scheduleMatrix, activeShifts] = await Promise.all([
+        ShiftAssignmentModel.getScheduleMatrix({
             startDate,
             endDate,
-            weekInfo,
-            activeShifts,
-            ...scheduleMatrix
-        });
+            department,
+            shiftId: shiftId || "",
+            search
+        }),
+        WorkShiftModel.findActive()
+    ]);
+
+    return {
+        success: true,
+        mode,
+        startDate,
+        endDate,
+        weekInfo,
+        activeShifts,
+        ...scheduleMatrix
+    };
+};
+
+export const calendarData = async (req, res) => {
+    try {
+        res.json(await buildCalendarPayload(req.query));
     } catch (error) {
         console.error("Lỗi lấy dữ liệu lịch phân ca:", error);
         res.status(500).json({ success: false, error: "Không thể lấy dữ liệu lịch phân ca." });
+    }
+};
+
+// Một request cho cả revision và dữ liệu lịch để đồng bộ tại chỗ.
+export const syncState = async (req, res) => {
+    try {
+        const includeCalendar = String(req.query.include_calendar || "1") !== "0";
+        const [revision, calendar] = await Promise.all([
+            WorkShiftModel.getScheduleSyncRevision(),
+            includeCalendar ? buildCalendarPayload(req.query) : Promise.resolve(null)
+        ]);
+
+        res.set("Cache-Control", "no-store").json({
+            success: true,
+            revision: String(revision || ""),
+            calendar
+        });
+    } catch (error) {
+        console.error("Lỗi đồng bộ lịch phân ca:", error);
+        res.status(503).set("Cache-Control", "no-store").json({
+            success: false,
+            error: "Không thể đồng bộ trạng thái lịch phân ca."
+        });
     }
 };
 
@@ -333,7 +395,8 @@ export const employeeCalendar = async (req, res) => {
             return res.status(400).json({ success: false, error: "Thiếu mã nhân viên hợp lệ." });
         }
 
-        const month = String(req.query.month || "").trim();
+        const parsedMonth = parseYearMonth(req.query.month);
+        const month = parsedMonth ? parsedMonth.formatted : new Date().toISOString().slice(0, 7);
         const result = await ShiftAssignmentModel.getEmployeeMonthlySchedule(employeeId, month);
         if (!result) {
             return res.status(404).json({ success: false, error: "Không tìm thấy nhân viên." });
@@ -347,6 +410,8 @@ export const employeeCalendar = async (req, res) => {
 };
 
 export const create = async (req, res) => {
+    const returnPath = buildReturnPath(req);
+
     try {
         const bulkMode = String(req.body.multi_employee_mode) === "1";
         const rawEmployeeIds = req.body.employee_ids === undefined
@@ -365,7 +430,7 @@ export const create = async (req, res) => {
         }
 
         if (errors.length > 0) {
-            return redirectWith(res, "/admin/shift-assignments", {
+            return redirectWith(res, returnPath, {
                 error: errors.join(" ")
             });
         }
@@ -374,7 +439,7 @@ export const create = async (req, res) => {
             const result = await ShiftAssignmentModel.createMany(data, employeeIds);
             if (result.created.length === 0) {
                 const skippedNames = result.skipped.slice(0, 5).map((item) => item.employeeName).join(", ");
-                return redirectWith(res, "/admin/shift-assignments", {
+                return redirectWith(res, returnPath, {
                     error: `Không phân ca được cho nhân viên nào. Các trường hợp bị bỏ qua: ${skippedNames || "nhân viên không đủ điều kiện"}.`
                 });
             }
@@ -382,31 +447,33 @@ export const create = async (req, res) => {
             const skippedSummary = result.skipped.length
                 ? ` Bỏ qua ${result.skipped.length} nhân viên do trùng lịch hoặc không còn hoạt động: ${result.skipped.slice(0, 5).map((item) => item.employeeName).join(", ")}${result.skipped.length > 5 ? "…" : ""}.`
                 : "";
-            return redirectWith(res, "/admin/shift-assignments", {
+            return redirectWith(res, returnPath, {
                 success: `Đã phân ca thành công cho ${result.created.length} nhân viên.${skippedSummary}`
             });
         }
 
         await ShiftAssignmentModel.create(data);
 
-        redirectWith(res, "/admin/shift-assignments", {
+        redirectWith(res, returnPath, {
             success: "Đã phân ca cho nhân viên."
         });
     } catch (error) {
         console.log("Lỗi phân ca:", error);
 
-        redirectWith(res, "/admin/shift-assignments", {
+        redirectWith(res, returnPath, {
             error: getSaveErrorMessage(error, "Không thể lưu phân ca. Vui lòng thử lại.")
         });
     }
 };
 
 export const update = async (req, res) => {
+    const returnPath = buildReturnPath(req);
+
     try {
         const assignment = await ShiftAssignmentModel.findById(req.params.id);
 
         if (!assignment) {
-            return redirectWith(res, "/admin/shift-assignments", {
+            return redirectWith(res, returnPath, {
                 error: "Phân ca không tồn tại."
             });
         }
@@ -414,20 +481,20 @@ export const update = async (req, res) => {
         const { data, errors } = await validateAssignment(req.body, assignment.id);
 
         if (errors.length > 0) {
-            return redirectWith(res, "/admin/shift-assignments", {
+            return redirectWith(res, returnPath, {
                 error: errors.join(" ")
             });
         }
 
         await ShiftAssignmentModel.update(assignment.id, data);
 
-        redirectWith(res, "/admin/shift-assignments", {
+        redirectWith(res, returnPath, {
             success: "Đã điều chỉnh ca làm việc và khoảng thời gian áp dụng."
         });
     } catch (error) {
         console.log("Lỗi cập nhật phân ca:", error);
 
-        redirectWith(res, "/admin/shift-assignments", {
+        redirectWith(res, returnPath, {
             error: getSaveErrorMessage(error, "Không thể cập nhật phân ca. Vui lòng thử lại.")
         });
     }
@@ -435,6 +502,8 @@ export const update = async (req, res) => {
 
 export const adjust = async (req, res) => {
     const isJson = Boolean(req.xhr || req.headers.accept?.includes("application/json") || req.body._format === "json");
+    const returnPath = buildReturnPath(req);
+
     try {
         const assignmentId = parseId(req.params.id);
         const shiftId = parseId(req.body.shift_id);
@@ -451,7 +520,7 @@ export const adjust = async (req, res) => {
             if (isJson) {
                 return res.status(400).json({ success: false, error: errors.join(" ") });
             }
-            return redirectWith(res, "/admin/shift-assignments", { error: errors.join(" ") });
+            return redirectWith(res, returnPath, { error: errors.join(" ") });
         }
 
         const result = await ShiftAssignmentModel.adjustShift(assignmentId, {
@@ -468,12 +537,13 @@ export const adjust = async (req, res) => {
             return res.json({ success: true, message: successMsg, result });
         }
 
-        let redirectUrl = "/admin/shift-assignments";
-        if (returnView || returnDate) {
+        let redirectUrl = returnPath;
+        // Fallback cho các modal cũ chưa gửi return_to.
+        if (redirectUrl === ASSIGNMENTS_PATH && (returnView || returnDate)) {
             const params = new URLSearchParams();
             if (returnView) params.set("view", returnView);
             if (returnDate) params.set("date", returnDate);
-            redirectUrl = `/admin/shift-assignments?${params.toString()}`;
+            redirectUrl = `${ASSIGNMENTS_PATH}?${params.toString()}`;
         }
 
         redirectWith(res, redirectUrl, {
@@ -498,35 +568,37 @@ export const adjust = async (req, res) => {
             return res.status(400).json({ success: false, error: message });
         }
 
-        redirectWith(res, "/admin/shift-assignments", { error: message });
+        redirectWith(res, returnPath, { error: message });
     }
 };
 
 export const cancel = async (req, res) => {
+    const returnPath = buildReturnPath(req);
+
     try {
         const assignment = await ShiftAssignmentModel.findById(req.params.id);
 
         if (!assignment) {
-            return redirectWith(res, "/admin/shift-assignments", {
+            return redirectWith(res, returnPath, {
                 error: "Phân ca không tồn tại."
             });
         }
 
         if (assignment.status === "cancelled") {
-            return redirectWith(res, "/admin/shift-assignments", {
+            return redirectWith(res, returnPath, {
                 error: "Phân ca này đã được hủy trước đó."
             });
         }
 
         await ShiftAssignmentModel.cancel(assignment.id);
 
-        redirectWith(res, "/admin/shift-assignments", {
+        redirectWith(res, returnPath, {
             success: `Đã hủy phân ca của "${assignment.full_name}".`
         });
     } catch (error) {
         console.log("Lỗi hủy phân ca:", error);
 
-        redirectWith(res, "/admin/shift-assignments", {
+        redirectWith(res, returnPath, {
             error: "Không thể hủy phân ca. Vui lòng thử lại."
         });
     }

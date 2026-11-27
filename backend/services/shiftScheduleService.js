@@ -60,7 +60,7 @@ export const getShiftForDate = async (employeeId, workDate) => {
                    FROM shift_workdays sw
                   WHERE sw.shift_id = s.id) AS workdays
            FROM employee_shift_assignments a
-           INNER JOIN work_shifts s ON s.id = a.shift_id
+           INNER JOIN work_shifts s ON s.id = a.shift_id AND s.status = 1
           WHERE a.employee_id = ?
             AND a.status = 'active'
             AND ? BETWEEN a.start_date AND a.end_date
@@ -100,7 +100,7 @@ export const getShiftSchedulesForEmployeesOnDate = async (employeeIds, workDate)
                 TIME_FORMAT(s.afternoon_end, '%H:%i') AS afternoon_end,
                 sw.weekday
            FROM employee_shift_assignments a
-           INNER JOIN work_shifts s ON s.id = a.shift_id
+           INNER JOIN work_shifts s ON s.id = a.shift_id AND s.status = 1
            LEFT JOIN shift_workdays sw ON sw.shift_id = s.id
           WHERE a.employee_id IN (${placeholders})
             AND a.status = 'active'
