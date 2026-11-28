@@ -5,6 +5,7 @@ import {
 } from "../services/shiftScheduleService.js";
 import { writeAttendanceAuditLog, getRequestAuditLogs } from "../services/attendanceAuditService.js";
 import { notifyRequestsChanged } from "../services/realtimeService.js";
+import { REJECT_REASON_TEMPLATES, getRejectReasonTemplates } from "../constants/rejectReasons.js";
 
 const isValidDate = (value) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return false;
@@ -219,6 +220,7 @@ export const index = async (req, res) => {
             success: req.query.success || null,
             error: req.query.error || null,
             query: req.query,
+            rejectReasonTemplates: REJECT_REASON_TEMPLATES,
             activeTab,
             requests: mappedRequests,
             leaveRequests,
@@ -259,6 +261,7 @@ export const index = async (req, res) => {
             success: null,
             error: "Không thể tải dữ liệu đơn. Vui lòng thử lại.",
             query: req.query,
+            rejectReasonTemplates: REJECT_REASON_TEMPLATES,
             activeTab,
             requests: [],
             leaveRequests: [],
@@ -305,6 +308,7 @@ export const detail = async (req, res) => {
             request,
             auditLogs,
             dayStatuses,
+            rejectReasonTemplates: getRejectReasonTemplates(raw),
             returnQuery
         });
     } catch (error) {
@@ -606,7 +610,9 @@ export const reviewRequest = async (req, res) => {
         return fail("Yêu cầu duyệt đơn không hợp lệ.");
     }
     if (reviewNote.length > 500) {
-        return fail("Ghi chú phê duyệt không được quá 500 ký tự.");
+        return fail(decision === "rejected"
+            ? "Lý do từ chối không được quá 500 ký tự."
+            : "Ghi chú phê duyệt không được quá 500 ký tự.");
     }
     if (decision === "rejected" && reviewNote.length < 10) {
         return fail("Lý do từ chối cần từ 10 đến 500 ký tự.");
