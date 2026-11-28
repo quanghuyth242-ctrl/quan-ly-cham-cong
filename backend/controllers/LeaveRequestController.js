@@ -20,7 +20,7 @@ const redirect = (res, values) => {
 };
 
 const FILTER_QUERY_KEYS = ["q", "status", "type", "category", "dateField", "dateFrom", "dateTo"];
-const VALID_TABS = ["leave", "explanation", "business_trip", "overtime", "list"];
+const VALID_TABS = ["leave", "explanation", "late_explanation", "business_trip", "overtime", "list"];
 
 // Giữ lại tab và các filter khi redirect sau khi tạo/duyệt đơn.
 const getReturnQuery = (req) => {
@@ -209,6 +209,7 @@ export const index = async (req, res) => {
         };
         const mappedRequests = requests.map(mapRequestItem);
         const explanationRequests = mappedRequests.filter((item) => item.type === "explanation");
+        const lateExplanationRequests = explanationRequests.filter((item) => item.category === "late");
         // Đơn nghỉ và nghỉ việc đều được nhân viên gửi từ form đăng ký nghỉ.
         const leaveRequests = mappedRequests.filter((item) => ["leave", "resignation"].includes(item.type));
         return res.render("requests/index", {
@@ -231,6 +232,13 @@ export const index = async (req, res) => {
                 approved: explanationRequests.filter((item) => item.status === "approved").length,
                 rejected: explanationRequests.filter((item) => item.status === "rejected").length
             },
+            lateExplanationRequests,
+            lateExplanationStats: {
+                total: lateExplanationRequests.length,
+                pending: lateExplanationRequests.filter((item) => item.status === "pending").length,
+                approved: lateExplanationRequests.filter((item) => item.status === "approved").length,
+                rejected: lateExplanationRequests.filter((item) => item.status === "rejected").length
+            },
             employees,
             stats
         });
@@ -246,6 +254,8 @@ export const index = async (req, res) => {
             leaveStats: { total: 0, pending: 0, approved: 0, rejected: 0 },
             explanationRequests: [],
             explanationStats: { total: 0, pending: 0, approved: 0, rejected: 0 },
+            lateExplanationRequests: [],
+            lateExplanationStats: { total: 0, pending: 0, approved: 0, rejected: 0 },
             employees: [],
             stats: { total: 0, pending: 0, awaitingEmployee: 0, approved: 0, rejected: 0 }
         });
