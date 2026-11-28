@@ -62,10 +62,96 @@ const EXPLANATION_CATEGORY_LABELS = {
     other: "Khác"
 };
 
+const parseRequestDate = (value) => {
+    if (!value) return null;
+    const date = new Date(String(value).replace(" ", "T"));
+    return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const buildDurationLabel = (createdAt, finishedAt) => {
+    const start = parseRequestDate(createdAt);
+    const end = parseRequestDate(finishedAt);
+    if (!start || !end || end < start) return "";
+    const minutes = Math.max(1, Math.round((end - start) / 60000));
+    if (minutes < 60) return `Xử lý trong ${minutes} phút`;
+    const hours = Math.floor(minutes / 60);
+    const restMinutes = minutes % 60;
+    if (hours < 24) return `Xử lý trong ${hours} giờ${restMinutes ? ` ${restMinutes} phút` : ""}`;
+    const days = Math.floor(hours / 24);
+    const restHours = hours % 24;
+    return `Xử lý trong ${days} ngày${restHours ? ` ${restHours} giờ` : ""}`;
+};
+
+// Lịch sử trạng thái được suy từ các cột có sẵn nên không cần migrate database.
+const buildStatusTimeline = (item, reviewerLabel) => {
+    const hasEmployeeStep = ["business_trip", "overtime"].includes(item.request_type)
+        && (item.status === "awaiting_employee" || Boolean(item.employee_response));
+    const steps = [{
+        key: "submitted",
+        label: "Đơn được gửi",
+        time: item.created_date || null,
+        actor: item.created_by || item.employee_name || "Hệ thống",
+        note: "",
+        state: "done",
+        tone: "primary"
+    }];
+
+    if (hasEmployeeStep) {
+        const accepted = item.employee_response === "accepted";
+        const rejectedByEmployee = item.employee_response === "rejected";
+        steps.push({
+            key: "employee",
+            label: rejectedByEmployee ? "Nhân viên từ chối" : accepted ? "Nhân viên đã xác nhận" : "Chờ nhân viên xác nhận",
+            time: item.employee_responded_date || null,
+            actor: rejectedByEmployee || accepted ? item.employee_name || null : null,
+            note: item.employee_response_note || "",
+            state: rejectedByEmployee ? "error" : accepted ? "done" : "current",
+            tone: rejectedByEmployee ? "error" : accepted ? "success" : "warning"
+        });
+    }
+
+    const hasAdminReview = Boolean(item.reviewed_at || item.reviewed_by || item.review_note);
+    if (hasAdminReview) {
+        const rejectedByAdmin = item.status === "rejected";
+        steps.push({
+            key: "review",
+            label: rejectedByAdmin ? "Admin từ chối" : "Admin phê duyệt",
+            time: item.reviewed_date || null,
+            actor: reviewerLabel || "Admin",
+            note: item.review_note || "",
+            state: rejectedByAdmin ? "error" : "done",
+            tone: rejectedByAdmin ? "error" : "success"
+        });
+    } else if (!hasEmployeeStep) {
+        steps.push({
+            key: "review",
+            label: "Chờ admin phê duyệt",
+            time: null,
+            actor: null,
+            note: "",
+            state: "current",
+            tone: "warning"
+        });
+    }
+    return steps;
+};
+
 const mapRequestItem = (item) => {
     const explanationCategory = item.request_type === "explanation"
         ? EXPLANATION_CATEGORY_LABELS[item.category] || "Khác"
         : null;
+    const hasEmployeeStep = ["business_trip", "overtime"].includes(item.request_type)
+        && (item.status === "awaiting_employee" || Boolean(item.employee_response));
+    const reviewerLabel = item.reviewer_name || (item.reviewed_by ? `Người dùng #${item.reviewed_by}` : null);
+    const statusHint = item.status === "pending" ? "Chờ admin phê duyệt"
+        : item.status === "awaiting_employee" ? "Chờ nhân viên xác nhận"
+        : item.status === "approved" ? (hasEmployeeStep ? "Đã xác nhận bởi nhân viên" : "Đã hoàn tất phê duyệt")
+        : item.status === "rejected" ? (item.employee_response === "rejected" ? "Nhân viên đã từ chối" : "Admin đã từ chối")
+        : "";
+    const statusTone = item.status === "approved" ? "success"
+        : item.status === "rejected" ? "error" : "warning";
+    const finishedAt = item.employee_responded_date || item.reviewed_date || null;
+
     return {
         ...item,
         code: item.request_code,
@@ -94,9 +180,13 @@ const mapRequestItem = (item) => {
         statusLabel: item.status === "awaiting_employee" ? "Chờ nhân viên xác nhận"
             : item.status === "rejected" && item.employee_response === "rejected" ? "Nhân viên từ chối"
             : { pending: "Chờ duyệt", approved: "Đã duyệt", rejected: "Từ chối" }[item.status],
+        statusHint,
+        statusTone,
+        durationLabel: buildDurationLabel(item.created_date, finishedAt),
+        timeline: buildStatusTimeline(item, reviewerLabel),
         createdAt: item.created_date,
         reviewedAt: item.reviewed_date || null,
-        reviewerName: item.reviewer_name || (item.reviewed_by ? `Người dùng #${item.reviewed_by}` : null),
+        reviewerName: reviewerLabel,
         reviewNote: item.review_note || null,
         employeeResponseNote: item.employee_response_note || null,
         canReview: item.status === "pending"
@@ -113,6 +203,7 @@ export const index = async (req, res) => {
         const stats = {
             total: requests.length,
             pending: requests.filter((item) => ["pending", "awaiting_employee"].includes(item.status)).length,
+            awaitingEmployee: requests.filter((item) => item.status === "awaiting_employee").length,
             approved: requests.filter((item) => item.status === "approved").length,
             rejected: requests.filter((item) => item.status === "rejected").length
         };
@@ -145,7 +236,7 @@ export const index = async (req, res) => {
             explanationRequests: [],
             explanationStats: { total: 0, pending: 0, approved: 0, rejected: 0 },
             employees: [],
-            stats: { total: 0, pending: 0, approved: 0, rejected: 0 }
+            stats: { total: 0, pending: 0, awaitingEmployee: 0, approved: 0, rejected: 0 }
         });
     }
 };
