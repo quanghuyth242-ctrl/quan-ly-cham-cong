@@ -2,6 +2,8 @@
 
 <%- include("../partials/alerts", { success: success, error: error }) %>
 
+<% const detailQuery = new URLSearchParams(query || {}).toString(); %>
+
 <div id="requests-update-banner" class="hidden fixed top-4 right-4 z-[60] max-w-sm items-center gap-space-md rounded-xl border border-primary-container bg-surface-container-lowest px-space-lg py-space-md shadow-lg">
     <span class="material-symbols-outlined text-primary text-[22px]">sync</span>
     <div class="flex flex-col">
@@ -222,7 +224,7 @@
                             data-from-date="<%= item.fromDate %>"
                             data-created-date="<%= String(item.createdAt || '').slice(0, 10) %>"
                             data-detail="<%= JSON.stringify({
-                                id: item.id, code: item.code, typeLabel: item.typeLabel, returnTab: 'leave',
+                                id: item.id, code: item.code, typeLabel: item.typeLabel, createdBy: item.createdBy, returnTab: 'leave',
                                 employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
                                 fromDate: item.fromDate, toDate: item.toDate, subject: item.subject,
                                 time: item.timeLabel, reason: item.reason, destination: item.destination,
@@ -272,6 +274,7 @@
                                 <div class="flex justify-end gap-space-xs">
                                     <button type="button" data-review-action="track" title="Theo dõi trạng thái đơn nghỉ" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-primary-fixed/60 hover:bg-primary-fixed text-primary font-label-sm"><span class="material-symbols-outlined text-[16px]">timeline</span>Theo dõi</button>
                                     <button type="button" data-review-action="view" title="Xem chi tiết đơn nghỉ" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm"><span class="material-symbols-outlined text-[16px]">visibility</span>Xem</button>
+                                    <a href="/admin/requests/<%= item.id %>?<%= detailQuery %>" title="Mở trang chi tiết đơn nghỉ" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm"><span class="material-symbols-outlined text-[16px]">open_in_new</span>Chi tiết</a>
                                     <% if (item.canReview) { %>
                                         <button type="button" data-review-action="approve" title="Phê duyệt đơn nghỉ" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 font-label-sm"><span class="material-symbols-outlined text-[16px]">check</span>Duyệt</button>
                                         <button type="button" data-review-action="reject" title="Từ chối đơn nghỉ" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-error-container hover:bg-red-100 text-error font-label-sm"><span class="material-symbols-outlined text-[16px]">close</span>Từ chối</button>
@@ -464,7 +467,7 @@
                             data-from-date="<%= item.fromDate %>"
                             data-created-date="<%= String(item.createdAt || '').slice(0, 10) %>"
                             data-detail="<%= JSON.stringify({
-                                id: item.id, code: item.code, typeLabel: item.typeLabel, returnTab: 'explanation',
+                                id: item.id, code: item.code, typeLabel: item.typeLabel, createdBy: item.createdBy, returnTab: 'explanation',
                                 employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
                                 fromDate: item.fromDate, toDate: item.toDate, subject: item.subject,
                                 time: item.timeLabel, reason: item.reason, destination: "",
@@ -516,6 +519,7 @@
                                 <div class="flex justify-end gap-space-xs">
                                     <button type="button" data-review-action="track" title="Theo dõi trạng thái giải trình" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-primary-fixed/60 hover:bg-primary-fixed text-primary font-label-sm"><span class="material-symbols-outlined text-[16px]">timeline</span>Theo dõi</button>
                                     <button type="button" data-review-action="view" title="Xem chi tiết giải trình" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm"><span class="material-symbols-outlined text-[16px]">visibility</span>Xem</button>
+                                    <a href="/admin/requests/<%= item.id %>?<%= detailQuery %>" title="Mở trang chi tiết giải trình" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm"><span class="material-symbols-outlined text-[16px]">open_in_new</span>Chi tiết</a>
                                     <% if (item.canReview) { %>
                                         <button type="button" data-review-action="approve" title="Phê duyệt giải trình" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 font-label-sm"><span class="material-symbols-outlined text-[16px]">check</span>Duyệt</button>
                                         <button type="button" data-review-action="reject" title="Từ chối giải trình" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-error-container hover:bg-red-100 text-error font-label-sm"><span class="material-symbols-outlined text-[16px]">close</span>Từ chối</button>
@@ -602,7 +606,7 @@
                             data-from-date="<%= item.fromDate %>"
                             data-created-date="<%= String(item.createdAt || '').slice(0, 10) %>"
                             data-detail="<%= JSON.stringify({
-                                id: item.id, code: item.code, typeLabel: item.typeLabel, returnTab: categoryExplanation.returnTab,
+                                id: item.id, code: item.code, typeLabel: item.typeLabel, createdBy: item.createdBy, returnTab: categoryExplanation.returnTab,
                                 employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
                                 fromDate: item.fromDate, toDate: item.toDate, subject: item.subject,
                                 time: item.timeLabel, reason: item.reason, destination: "",
@@ -648,6 +652,7 @@
                                 <div class="flex justify-end gap-space-xs">
                                     <button type="button" data-review-action="track" title="Theo dõi trạng thái giải trình <%= categoryExplanation.label %>" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-primary-fixed/60 hover:bg-primary-fixed text-primary font-label-sm"><span class="material-symbols-outlined text-[16px]">timeline</span>Theo dõi</button>
                                     <button type="button" data-review-action="view" title="Xem chi tiết giải trình <%= categoryExplanation.label %>" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm"><span class="material-symbols-outlined text-[16px]">visibility</span>Xem</button>
+                                    <a href="/admin/requests/<%= item.id %>?<%= detailQuery %>" title="Mở trang chi tiết giải trình <%= categoryExplanation.label %>" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm"><span class="material-symbols-outlined text-[16px]">open_in_new</span>Chi tiết</a>
                                     <% if (item.canReview) { %>
                                         <button type="button" data-review-action="approve" title="Phê duyệt giải trình <%= categoryExplanation.label %>" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 font-label-sm"><span class="material-symbols-outlined text-[16px]">check</span>Duyệt</button>
                                         <button type="button" data-review-action="reject" title="Từ chối giải trình <%= categoryExplanation.label %>" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-error-container hover:bg-red-100 text-error font-label-sm"><span class="material-symbols-outlined text-[16px]">close</span>Từ chối</button>
@@ -756,7 +761,7 @@
                             data-created-date="<%= String(item.createdAt || '').slice(0, 10) %>"
                             data-search="<%= [item.code, item.typeLabel, item.employeeName, item.employeeId, item.reason, item.destination, item.department].join(' ').toLowerCase() %>"
                             data-detail="<%= JSON.stringify({
-                                id: item.id, code: item.code, typeLabel: item.typeLabel, categoryLabel: item.categoryLabel, returnTab: 'list',
+                                id: item.id, code: item.code, typeLabel: item.typeLabel, createdBy: item.createdBy, categoryLabel: item.categoryLabel, returnTab: 'list',
                                 employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
                                 fromDate: item.fromDate, toDate: item.toDate, reason: item.reason,
                                 destination: item.destination, subject: item.subject, time: item.timeLabel,
@@ -835,6 +840,7 @@
                                 <div class="flex justify-end gap-space-xs">
                                     <button type="button" data-review-action="track" title="Theo dõi trạng thái đơn" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-primary-fixed/60 hover:bg-primary-fixed text-primary font-label-sm"><span class="material-symbols-outlined text-[16px]">timeline</span>Theo dõi</button>
                                     <button type="button" data-review-action="view" title="Xem chi tiết đơn" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm"><span class="material-symbols-outlined text-[16px]">visibility</span>Xem</button>
+                                    <a href="/admin/requests/<%= item.id %>?<%= detailQuery %>" title="Mở trang chi tiết đơn" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm"><span class="material-symbols-outlined text-[16px]">open_in_new</span>Chi tiết</a>
                                     <% if (item.canReview) { %>
                                         <button type="button" data-review-action="approve" title="Phê duyệt đơn" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 font-label-sm"><span class="material-symbols-outlined text-[16px]">check</span>Duyệt</button>
                                         <button type="button" data-review-action="reject" title="Từ chối đơn" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-error-container hover:bg-red-100 text-error font-label-sm"><span class="material-symbols-outlined text-[16px]">close</span>Từ chối</button>
@@ -888,9 +894,14 @@
                 <h3 id="review-modal-title" class="font-headline-md text-headline-md text-primary font-semibold">Chi tiết đơn</h3>
                 <p id="review-modal-subtitle" class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs"></p>
             </div>
-            <button type="button" class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-review-modal aria-label="Đóng">
-                <span class="material-symbols-outlined">close</span>
-            </button>
+            <div class="flex items-center gap-space-xs">
+                <a id="review-full-detail" href="#" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-space-md py-1 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm transition-colors" title="Mở trang chi tiết đầy đủ trong tab mới">
+                    <span class="material-symbols-outlined text-[16px]">open_in_new</span>Trang chi tiết
+                </a>
+                <button type="button" class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors" data-close-review-modal aria-label="Đóng">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
         </div>
 
         <div id="review-modal-detail" class="px-space-xl py-space-lg flex flex-col gap-space-sm"></div>
@@ -1460,6 +1471,12 @@
                         ? (mode === 'approve' ? 'Phê duyệt đơn nghỉ' : mode === 'reject' ? 'Từ chối đơn nghỉ' : 'Chi tiết đơn nghỉ')
                         : (mode === 'approve' ? 'Phê duyệt đơn' : mode === 'reject' ? 'Từ chối đơn' : 'Chi tiết đơn');
             reviewSubtitle.textContent = [detail.code, detail.typeLabel, detail.statusLabel].filter(Boolean).join(' · ');
+            const fullDetailLink = document.getElementById('review-full-detail');
+            if (fullDetailLink) {
+                fullDetailLink.href = detail.id
+                    ? `/admin/requests/${detail.id}${window.location.search}`
+                    : '#';
+            }
 
             if (isTracking) {
                 appendDetailField('Mã đơn', detail.code);
@@ -1472,15 +1489,16 @@
                 appendDetailField('Nhân viên', [detail.employeeName, detail.employeeId].filter(Boolean).join(' · '));
                 appendDetailField('Phòng ban', detail.department);
                 appendDetailField('Loại giải trình', detail.categoryLabel);
-                appendDetailField(detail.typeLabel && detail.typeLabel.startsWith('Giải trình') ? 'Ngày phát sinh' : 'Thời gian', [detail.fromDate, detail.toDate && detail.toDate !== detail.fromDate ? `→ ${detail.toDate}` : '', detail.time].filter(Boolean).join(' '));
-                appendDetailField('Tiêu đề', detail.subject);
+                appendDetailField(isExplanation ? 'Ngày phát sinh' : 'Thời gian', [detail.fromDate, detail.toDate && detail.toDate !== detail.fromDate ? `→ ${detail.toDate}` : '', detail.time].filter(Boolean).join(' '));
+                if (detail.subject && detail.subject !== detail.destination) appendDetailField('Tiêu đề', detail.subject);
                 appendDetailField('Nội dung', detail.reason);
-                appendDetailField('Địa điểm', detail.destination);
+                appendDetailField(isExplanation ? 'Tiêu đề giải trình' : 'Địa điểm', detail.destination);
                 appendDetailField('Trạng thái', [detail.statusLabel, detail.statusHint].filter(Boolean).join(' · '));
                 appendDetailField('Ngày gửi', detail.createdAt);
                 appendDetailField(detail.statusLabel === 'Từ chối' ? 'Người từ chối' : 'Người duyệt', detail.reviewedAt ? `${detail.reviewerName || 'Admin'} · ${detail.reviewedAt}` : '');
                 appendDetailField('Ghi chú duyệt', detail.statusLabel === 'Từ chối' && !detail.employeeResponseNote ? '' : detail.reviewNote, 'success');
                 appendDetailField('Lý do từ chối', detail.employeeResponseNote || (detail.statusLabel === 'Từ chối' ? detail.reviewNote : ''), 'error');
+                if (mode === 'view') renderTimeline(detail);
             }
 
             if (mode === 'view' || isTracking) {

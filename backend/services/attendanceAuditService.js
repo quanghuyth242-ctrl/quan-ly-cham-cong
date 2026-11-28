@@ -56,6 +56,37 @@ export const writeAttendanceAuditLog = async ({
     }
 };
 
+/** Đọc lịch sử audit liên quan đến một đơn để hiển thị ở trang chi tiết. */
+export const getRequestAuditLogs = async ({ requestId, requestCode, limit = 20 } = {}) => {
+    try {
+        const content = await readFile(LOG_FILE, "utf8");
+        const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+        return content.split(/\r?\n/).filter(Boolean).reverse().flatMap((line) => {
+            try {
+                const event = JSON.parse(line);
+                const matches = (requestId && Number(event.detail?.requestId) === Number(requestId))
+                    || (requestCode && event.detail?.requestCode === requestCode);
+                if (!matches) return [];
+                return [{
+                    at: event.at,
+                    action: event.action,
+                    method: event.method,
+                    result: event.result,
+                    actor: event.actor,
+                    reason: event.reason,
+                    detail: event.detail
+                }];
+            } catch {
+                return [];
+            }
+        }).slice(0, safeLimit);
+    } catch (error) {
+        // Nhật ký chỉ là thông tin bổ trợ, không được chặn trang chi tiết.
+        console.warn("Không đọc được nhật ký chấm công:", error.message);
+        return [];
+    }
+};
+
 /** Đọc các sự kiện chấm công thành công gần nhất để hiển thị trên bảng quản trị. */
 export const getRecentAttendanceEvents = async ({ date, limit = 30 } = {}) => {
     try {

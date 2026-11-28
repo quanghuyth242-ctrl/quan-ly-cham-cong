@@ -1,0 +1,273 @@
+<%- include("../partials/adminHead", { pageTitle: "Chi tiết đơn", activePage: "leave", user: user }) %>
+
+<%- include("../partials/alerts", { success: success, error: error }) %>
+
+<%
+    const backQuery = new URLSearchParams(returnQuery || { tab: "list" }).toString();
+    const statusClass = request.status === "approved"
+        ? "bg-green-50 text-green-700"
+        : request.status === "rejected"
+            ? "bg-error-container text-on-error-container"
+            : "bg-secondary-fixed text-on-secondary-fixed";
+    const dayStatusLabels = { leave: "Nghỉ", business_trip: "Công tác", overtime: "Tăng ca" };
+%>
+
+<style>
+    @media print {
+        #detail-update-banner, #detail-print, #detail-review, .detail-action { display: none !important; }
+    }
+</style>
+
+<div id="detail-update-banner" class="hidden fixed top-4 right-4 z-[60] max-w-sm items-center gap-space-md rounded-xl border border-primary-container bg-surface-container-lowest px-space-lg py-space-md shadow-lg">
+    <span class="material-symbols-outlined text-primary text-[22px]">sync</span>
+    <div class="flex flex-col">
+        <span class="font-label-md text-label-md text-on-surface font-semibold">Trạng thái đơn vừa thay đổi</span>
+        <span class="font-body-sm text-body-sm text-on-surface-variant">Nhấn để tải thông tin mới nhất.</span>
+    </div>
+    <button id="detail-refresh" type="button" class="ml-auto px-space-md py-1 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm hover:bg-primary-container">Làm mới</button>
+</div>
+
+<section class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
+    <div class="flex flex-col gap-space-xs">
+        <a href="/admin/requests?<%= backQuery %>" class="inline-flex items-center gap-1 w-fit text-on-surface-variant hover:text-primary font-label-sm text-label-sm transition-colors">
+            <span class="material-symbols-outlined text-[18px]">arrow_back</span>Quay lại danh sách
+        </a>
+        <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm mt-space-sm">
+            <span class="flex h-2 w-2 rounded-full bg-primary-container"></span>
+            <span class="uppercase tracking-wider">Nhân sự &amp; chấm công / Chi tiết đơn</span>
+        </div>
+        <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Chi tiết <%= request.typeLabel %></h2>
+        <p class="font-body-md text-body-md text-on-surface-variant"><%= request.code %> · gửi ngày <%= request.createdAt %></p>
+    </div>
+    <div class="flex flex-wrap gap-space-sm self-start lg:self-auto detail-action">
+        <button id="detail-print" type="button" class="inline-flex items-center gap-1 px-space-lg py-space-sm rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-md text-label-md transition-colors">
+            <span class="material-symbols-outlined text-[18px]">print</span>In
+        </button>
+        <% if (request.canReview) { %>
+            <a href="#detail-review" class="inline-flex items-center gap-1 px-space-lg py-space-sm rounded-xl bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md transition-colors">
+                <span class="material-symbols-outlined text-[18px]">fact_check</span>Xử lý đơn
+            </a>
+        <% } %>
+    </div>
+</section>
+
+<section class="bg-surface-container-lowest rounded-xl shadow-sm p-space-xl">
+    <div class="flex flex-wrap items-start justify-between gap-space-md">
+        <div class="flex flex-col gap-space-xs">
+            <span class="font-data-mono text-data-mono text-on-surface-variant"><%= request.code %></span>
+            <h3 class="font-headline-md text-headline-md text-on-surface font-semibold"><%= request.typeLabel %></h3>
+            <% if (request.durationLabel) { %><p class="font-body-sm text-body-sm text-on-surface-variant"><%= request.durationLabel %></p><% } %>
+        </div>
+        <div class="text-right">
+            <span class="inline-flex items-center gap-1.5 px-space-md py-1 rounded-full text-[12px] font-semibold <%= statusClass %>">
+                <span class="w-2 h-2 rounded-full bg-current"></span><%= request.statusLabel %>
+            </span>
+            <% if (request.statusHint) { %><p class="mt-space-xs font-body-sm text-body-sm text-on-surface-variant"><%= request.statusHint %></p><% } %>
+        </div>
+    </div>
+</section>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-space-lg">
+    <section class="bg-surface-container-lowest rounded-xl shadow-sm p-space-xl">
+        <h3 class="font-headline-sm text-headline-sm text-primary font-semibold mb-space-lg">Thông tin đơn</h3>
+        <dl class="grid grid-cols-[130px_1fr] gap-x-space-md gap-y-space-md text-body-sm text-body-sm">
+            <dt class="text-on-surface-variant">Mã đơn</dt>
+            <dd class="font-data-mono text-data-mono text-on-surface"><%= request.code %></dd>
+
+            <dt class="text-on-surface-variant">Loại đơn</dt>
+            <dd class="text-on-surface"><%= request.typeLabel %></dd>
+
+            <% if (request.categoryLabel) { %>
+                <dt class="text-on-surface-variant">Loại giải trình</dt>
+                <dd class="text-on-surface"><%= request.categoryLabel %></dd>
+            <% } %>
+
+            <dt class="text-on-surface-variant">Nhân viên</dt>
+            <dd class="text-on-surface font-semibold"><%= request.employeeName %> <span class="font-data-mono text-[11px] font-normal text-on-surface-variant"><%= request.employeeId %></span></dd>
+
+            <dt class="text-on-surface-variant">Phòng ban</dt>
+            <dd class="text-on-surface"><%= request.department || "—" %></dd>
+
+            <dt class="text-on-surface-variant">Thời gian</dt>
+            <dd class="text-on-surface">
+                <%= request.fromDate %><% if (request.toDate && request.toDate !== request.fromDate) { %> → <%= request.toDate %><% } %>
+                <% if (request.timeLabel) { %><span class="block font-data-mono text-[11px] text-on-surface-variant"><%= request.timeLabel %></span><% } %>
+            </dd>
+
+            <% if (request.subject && request.subject !== request.destination) { %>
+                <dt class="text-on-surface-variant">Tiêu đề</dt>
+                <dd class="text-on-surface"><%= request.subject %></dd>
+            <% } %>
+
+            <dt class="text-on-surface-variant">Nội dung</dt>
+            <dd class="text-on-surface whitespace-pre-wrap break-words"><%= request.reason %></dd>
+
+            <% if (request.destination) { %>
+                <dt class="text-on-surface-variant"><%= request.type === "explanation" ? "Tiêu đề giải trình" : "Địa điểm" %></dt>
+                <dd class="text-on-surface"><%= request.destination %></dd>
+            <% } %>
+
+            <dt class="text-on-surface-variant">Người tạo</dt>
+            <dd class="text-on-surface"><%= request.createdBy || "—" %></dd>
+
+            <dt class="text-on-surface-variant">Ngày gửi</dt>
+            <dd class="text-on-surface font-data-mono text-[12px]"><%= request.createdAt %></dd>
+        </dl>
+    </section>
+
+    <section class="bg-surface-container-lowest rounded-xl shadow-sm p-space-xl">
+        <h3 class="font-headline-sm text-headline-sm text-primary font-semibold mb-space-lg">Kết quả xử lý</h3>
+        <dl class="grid grid-cols-[130px_1fr] gap-x-space-md gap-y-space-md text-body-sm text-body-sm">
+            <dt class="text-on-surface-variant">Trạng thái</dt>
+            <dd class="text-on-surface font-semibold"><%= request.statusLabel %></dd>
+
+            <% if (request.statusHint) { %>
+                <dt class="text-on-surface-variant">Gợi ý</dt>
+                <dd class="text-on-surface"><%= request.statusHint %></dd>
+            <% } %>
+
+            <dt class="text-on-surface-variant">Người duyệt</dt>
+            <dd class="text-on-surface"><%= request.reviewedAt ? (request.reviewerName || "Admin") : "Chưa có" %></dd>
+
+            <dt class="text-on-surface-variant">Thời gian duyệt</dt>
+            <dd class="text-on-surface font-data-mono text-[12px]"><%= request.reviewedAt || "—" %></dd>
+
+            <% if (request.reviewNote) { %>
+                <dt class="text-on-surface-variant"><%= request.status === "rejected" ? "Lý do từ chối" : "Ghi chú duyệt" %></dt>
+                <dd class="text-on-surface whitespace-pre-wrap break-words <%= request.status === "rejected" ? "text-error" : "" %>"><%= request.reviewNote %></dd>
+            <% } %>
+
+            <% if (request.employeeResponseNote) { %>
+                <dt class="text-on-surface-variant">Phản hồi NV</dt>
+                <dd class="text-on-surface whitespace-pre-wrap break-words"><%= request.employeeResponseNote %></dd>
+            <% } %>
+        </dl>
+    </section>
+</div>
+
+<section class="bg-surface-container-lowest rounded-xl shadow-sm p-space-xl">
+    <h3 class="font-headline-sm text-headline-sm text-primary font-semibold mb-space-lg">Tiến trình xử lý</h3>
+    <ol class="relative border-l border-outline-variant ml-1">
+        <% request.timeline.forEach((step) => { %>
+            <li class="ml-space-md pb-space-lg last:pb-0 relative">
+                <span class="absolute -left-[25px] top-0.5 h-3 w-3 rounded-full ring-4 ring-surface-container-lowest <%= step.tone === "success" ? "bg-green-500" : step.tone === "error" ? "bg-error" : "bg-secondary" %>"></span>
+                <div class="flex flex-wrap items-center gap-space-sm">
+                    <span class="font-label-md text-label-md text-on-surface font-semibold"><%= step.label %></span>
+                    <% if (step.time) { %><span class="font-data-mono text-[11px] text-on-surface-variant"><%= step.time %></span><% } %>
+                </div>
+                <% if (step.actor) { %><p class="font-body-sm text-body-sm text-on-surface-variant"><%= step.actor %></p><% } %>
+                <% if (step.note) { %><p class="font-body-sm text-body-sm text-on-surface whitespace-pre-wrap break-words"><%= step.note %></p><% } %>
+            </li>
+        <% }) %>
+    </ol>
+</section>
+
+<% if (dayStatuses.length) { %>
+    <section class="bg-surface-container-lowest rounded-xl shadow-sm p-space-xl">
+        <h3 class="font-headline-sm text-headline-sm text-primary font-semibold mb-space-xs">Ảnh hưởng chấm công</h3>
+        <p class="font-body-sm text-body-sm text-on-surface-variant mb-space-lg">Các ngày công đã được ghi nhận khi đơn được phê duyệt.</p>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-body-sm text-body-sm">
+                <thead>
+                    <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                        <th class="py-space-sm px-space-md font-semibold">Ngày</th>
+                        <th class="py-space-sm px-space-md font-semibold">Trạng thái</th>
+                        <th class="py-space-sm px-space-md font-semibold">Ghi chú</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-surface-container-low">
+                    <% dayStatuses.forEach((day) => { %>
+                        <tr>
+                            <td class="py-space-sm px-space-md font-data-mono"><%= day.work_date %></td>
+                            <td class="py-space-sm px-space-md text-on-surface"><%= dayStatusLabels[day.status] || day.status %></td>
+                            <td class="py-space-sm px-space-md text-on-surface-variant"><%= day.note || "—" %></td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </section>
+<% } %>
+
+<% if (auditLogs.length) { %>
+    <section class="bg-surface-container-lowest rounded-xl shadow-sm p-space-xl">
+        <h3 class="font-headline-sm text-headline-sm text-primary font-semibold mb-space-lg">Lịch sử thao tác</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-body-sm text-body-sm">
+                <thead>
+                    <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+                        <th class="py-space-sm px-space-md font-semibold">Thời gian</th>
+                        <th class="py-space-sm px-space-md font-semibold">Hành động</th>
+                        <th class="py-space-sm px-space-md font-semibold">Người thực hiện</th>
+                        <th class="py-space-sm px-space-md font-semibold">Kết quả</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-surface-container-low">
+                    <% auditLogs.forEach((log) => { %>
+                        <tr>
+                            <td class="py-space-sm px-space-md font-data-mono text-[11px] text-on-surface-variant"><%= log.at %></td>
+                            <td class="py-space-sm px-space-md text-on-surface"><%= log.action %><% if (log.reason) { %><span class="block text-[11px] text-on-surface-variant"><%= log.reason %></span><% } %></td>
+                            <td class="py-space-sm px-space-md text-on-surface"><%= log.actor?.username || "Hệ thống" %></td>
+                            <td class="py-space-sm px-space-md"><span class="inline-flex px-space-sm py-0.5 rounded-full text-[11px] font-semibold <%= log.result === "success" ? "bg-green-50 text-green-700" : "bg-error-container text-on-error-container" %>"><%= log.result %></span></td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </section>
+<% } %>
+
+<% if (request.canReview) { %>
+    <section id="detail-review" class="bg-surface-container-lowest rounded-xl shadow-sm p-space-xl">
+        <h3 class="font-headline-sm text-headline-sm text-primary font-semibold mb-space-xs">Phê duyệt đơn</h3>
+        <p class="font-body-sm text-body-sm text-on-surface-variant mb-space-lg">Ghi chú được lưu cùng quyết định và hiển thị cho nhân viên. Từ chối bắt buộc từ 10 đến 500 ký tự.</p>
+        <form id="detail-review-form" method="POST" action="/admin/requests/<%= request.id %>/approve?<%= backQuery %>" class="flex flex-col gap-space-md">
+            <label for="detail-review-note" class="flex flex-col gap-space-xs">
+                <span class="font-label-sm text-label-sm text-on-surface">Ghi chú</span>
+                <textarea id="detail-review-note" name="review_note" maxlength="500" rows="4" class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container resize-y" placeholder="Ghi chú để nhân viên nắm rõ quyết định..."></textarea>
+            </label>
+            <div class="flex flex-wrap justify-end gap-space-sm">
+                <button id="detail-approve-submit" type="submit" class="px-space-lg py-space-sm rounded-xl bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md transition-colors">Xác nhận duyệt</button>
+                <button type="submit" data-decision="reject" formaction="/admin/requests/<%= request.id %>/reject?<%= backQuery %>" class="px-space-lg py-space-sm rounded-xl bg-error-container hover:bg-red-100 text-error font-label-md text-label-md transition-colors">Từ chối đơn</button>
+            </div>
+        </form>
+    </section>
+<% } %>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('detail-print')?.addEventListener('click', () => window.print());
+        document.getElementById('detail-refresh')?.addEventListener('click', () => window.location.reload());
+
+        const note = document.getElementById('detail-review-note');
+        const form = document.getElementById('detail-review-form');
+        note?.addEventListener('input', () => note.setCustomValidity(''));
+        form?.addEventListener('submit', (event) => {
+            const rejecting = event.submitter?.dataset.decision === 'reject';
+            if (!rejecting) return;
+            if (note.value.trim().length < 10) {
+                event.preventDefault();
+                note.setCustomValidity('Lý do từ chối cần từ 10 đến 500 ký tự.');
+                note.reportValidity();
+            }
+        });
+
+        if (typeof EventSource !== 'undefined') {
+            try {
+                const stream = new EventSource('/api/overview/stream');
+                const showBanner = () => {
+                    const banner = document.getElementById('detail-update-banner');
+                    if (!banner) return;
+                    banner.classList.remove('hidden');
+                    banner.classList.add('flex');
+                };
+                stream.addEventListener('requests', showBanner);
+                stream.addEventListener('attendance', showBanner);
+            } catch {
+                // Realtime không ảnh hưởng đến khả năng xem chi tiết.
+            }
+        }
+    });
+</script>
+
+<%- include("../partials/adminFoot") %>

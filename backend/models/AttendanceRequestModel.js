@@ -48,6 +48,41 @@ export const findById = async (id) => {
     return rows[0];
 };
 
+// Đầy đủ thông tin để hiển thị trang chi tiết (cùng cột với findAll nhưng lọc theo id).
+export const findDetailById = async (id) => {
+    const [rows] = await db.execute(`
+        SELECT r.id, r.request_code, r.request_type, r.category,
+               DATE_FORMAT(r.from_date, '%Y-%m-%d') AS from_date,
+               DATE_FORMAT(r.to_date, '%Y-%m-%d') AS to_date,
+               r.reason, r.destination, r.created_by,
+               TIME_FORMAT(r.overtime_start_time, '%H:%i') AS overtime_start_time,
+               TIME_FORMAT(r.overtime_end_time, '%H:%i') AS overtime_end_time,
+               r.status, r.created_at, r.reviewed_by, DATE_FORMAT(r.reviewed_at, '%Y-%m-%d %H:%i') AS reviewed_date, r.review_note,
+               r.employee_response, r.employee_responded_at,
+               DATE_FORMAT(r.employee_responded_at, '%Y-%m-%d %H:%i') AS employee_responded_date,
+               r.employee_response_note,
+               e.id AS employee_id, e.employee_code, e.full_name AS employee_name,
+               e.department, DATE_FORMAT(r.created_at, '%Y-%m-%d %H:%i') AS created_date, u.username AS reviewer_name
+          FROM attendance_requests r
+          JOIN employees e ON e.id = r.employee_id
+          LEFT JOIN users u ON u.id = r.reviewed_by
+         WHERE r.id = ? LIMIT 1
+    `, [id]);
+    return rows[0] || null;
+};
+
+// Các ngày công bị ảnh hưởng bởi đơn đã duyệt (dùng cho đơn nghỉ/công tác/tăng ca).
+export const getRequestDayStatuses = async ({ employeeId, fromDate, toDate, requestId, requestCode }) => {
+    const [rows] = await db.execute(`
+        SELECT DATE_FORMAT(work_date, '%Y-%m-%d') AS work_date, status, note, request_id
+          FROM attendance_day_statuses
+         WHERE employee_id = ? AND work_date BETWEEN ? AND ?
+           AND (request_id = ? OR note LIKE ?)
+         ORDER BY work_date ASC
+    `, [employeeId, fromDate, toDate, requestId, `%${requestCode || ""}%`]);
+    return rows;
+};
+
 export const findEmployeeForUser = async (user) => {
     if (!user) return null;
     const accountId = String(user.employee_id ?? "").trim();

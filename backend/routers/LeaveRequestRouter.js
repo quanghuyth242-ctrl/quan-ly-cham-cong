@@ -4,6 +4,7 @@ import * as LeaveRequestController from "../controllers/LeaveRequestController.j
 const router = express.Router();
 
 router.get("/", LeaveRequestController.index);
+router.get("/:id", LeaveRequestController.detail);
 router.post("/explanation", LeaveRequestController.createExplanation);
 router.post("/business-trip", LeaveRequestController.createBusinessTrip);
 router.post("/overtime", LeaveRequestController.createOvertime);
