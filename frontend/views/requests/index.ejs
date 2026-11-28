@@ -224,7 +224,7 @@
                             data-from-date="<%= item.fromDate %>"
                             data-created-date="<%= String(item.createdAt || '').slice(0, 10) %>"
                             data-detail="<%= JSON.stringify({
-                                id: item.id, code: item.code, typeLabel: item.typeLabel, createdBy: item.createdBy, returnTab: 'leave',
+                                id: item.id, code: item.code, typeLabel: item.typeLabel, category: item.category, createdBy: item.createdBy, returnTab: 'leave',
                                 employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
                                 fromDate: item.fromDate, toDate: item.toDate, subject: item.subject,
                                 time: item.timeLabel, reason: item.reason, destination: item.destination,
@@ -467,7 +467,7 @@
                             data-from-date="<%= item.fromDate %>"
                             data-created-date="<%= String(item.createdAt || '').slice(0, 10) %>"
                             data-detail="<%= JSON.stringify({
-                                id: item.id, code: item.code, typeLabel: item.typeLabel, createdBy: item.createdBy, returnTab: 'explanation',
+                                id: item.id, code: item.code, typeLabel: item.typeLabel, category: item.category, createdBy: item.createdBy, returnTab: 'explanation',
                                 employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
                                 fromDate: item.fromDate, toDate: item.toDate, subject: item.subject,
                                 time: item.timeLabel, reason: item.reason, destination: "",
@@ -606,7 +606,7 @@
                             data-from-date="<%= item.fromDate %>"
                             data-created-date="<%= String(item.createdAt || '').slice(0, 10) %>"
                             data-detail="<%= JSON.stringify({
-                                id: item.id, code: item.code, typeLabel: item.typeLabel, createdBy: item.createdBy, returnTab: categoryExplanation.returnTab,
+                                id: item.id, code: item.code, typeLabel: item.typeLabel, category: item.category, createdBy: item.createdBy, returnTab: categoryExplanation.returnTab,
                                 employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
                                 fromDate: item.fromDate, toDate: item.toDate, subject: item.subject,
                                 time: item.timeLabel, reason: item.reason, destination: "",
@@ -761,7 +761,7 @@
                             data-created-date="<%= String(item.createdAt || '').slice(0, 10) %>"
                             data-search="<%= [item.code, item.typeLabel, item.employeeName, item.employeeId, item.reason, item.destination, item.department].join(' ').toLowerCase() %>"
                             data-detail="<%= JSON.stringify({
-                                id: item.id, code: item.code, typeLabel: item.typeLabel, createdBy: item.createdBy, categoryLabel: item.categoryLabel, returnTab: 'list',
+                                id: item.id, code: item.code, typeLabel: item.typeLabel, category: item.category, createdBy: item.createdBy, categoryLabel: item.categoryLabel, returnTab: 'list',
                                 employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
                                 fromDate: item.fromDate, toDate: item.toDate, reason: item.reason,
                                 destination: item.destination, subject: item.subject, time: item.timeLabel,
@@ -907,20 +907,38 @@
         <div id="review-modal-detail" class="px-space-xl py-space-lg flex flex-col gap-space-sm"></div>
 
         <form id="review-form" method="POST" class="hidden px-space-xl pb-space-xl flex flex-col gap-space-md border-t border-surface-container-high pt-space-lg">
+            <div id="review-reason-suggestions" class="hidden flex flex-wrap items-center gap-space-xs">
+                <span class="font-label-sm text-label-sm text-on-surface-variant">Gợi ý nhanh:</span>
+            </div>
             <label for="review-note" class="flex flex-col gap-space-xs">
                 <span id="review-note-label" class="font-label-sm text-label-sm text-on-surface">Ghi chú phê duyệt</span>
                 <textarea id="review-note" name="review_note" maxlength="500" rows="4" class="bg-surface-container-low text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded-xl outline-none focus:ring-2 focus:ring-primary-container resize-y" placeholder="Ghi chú để nhân viên nắm rõ quyết định..."></textarea>
-                <span id="review-note-hint" class="font-body-sm text-body-sm text-on-surface-variant"></span>
+                <span class="flex items-start justify-between gap-space-md">
+                    <span id="review-note-hint" class="font-body-sm text-body-sm text-on-surface-variant"></span>
+                    <span id="review-note-counter" class="font-data-mono text-[11px] text-on-surface-variant shrink-0">0 / 500</span>
+                </span>
             </label>
-            <div class="flex justify-end gap-space-sm">
+            <div id="review-form-actions" class="flex justify-end gap-space-sm">
                 <button type="button" data-close-review-modal class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md rounded-xl transition-colors">Hủy</button>
                 <button id="review-submit" type="submit" class="px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl transition-colors">Xác nhận</button>
+            </div>
+            <div id="review-confirm" class="hidden rounded-xl border border-outline-variant bg-surface-container-low p-space-md flex flex-col gap-space-xs">
+                <span id="review-confirm-title" class="font-label-md text-label-md text-on-surface font-semibold">Xác nhận từ chối đơn này?</span>
+                <span id="review-confirm-code" class="font-data-mono text-[11px] text-on-surface-variant"></span>
+                <span id="review-confirm-note-label" class="font-body-sm text-body-sm text-on-surface-variant">Lý do từ chối</span>
+                <span id="review-confirm-reason" class="font-body-sm text-body-sm text-on-surface whitespace-pre-wrap break-words"></span>
+                <div class="flex justify-end gap-space-sm mt-space-xs">
+                    <button id="review-confirm-back" type="button" class="px-space-lg py-space-sm bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md rounded-xl transition-colors">Quay lại chỉnh sửa</button>
+                    <button id="review-confirm-submit" type="submit" class="px-space-lg py-space-sm bg-error hover:bg-error/90 text-white font-label-md text-label-md rounded-xl transition-colors">Xác nhận từ chối</button>
+                </div>
             </div>
         </form>
     </div>
 </div>
 
 <script>
+    const REJECT_REASON_TEMPLATES = <%- JSON.stringify(rejectReasonTemplates || {}) %>;
+
     document.addEventListener('DOMContentLoaded', () => {
         const showInlineError = (boxId, textId, message) => {
             const box = document.getElementById(boxId);
@@ -1351,8 +1369,86 @@
         const reviewNoteLabel = document.getElementById('review-note-label');
         const reviewNoteHint = document.getElementById('review-note-hint');
         const reviewSubmit = document.getElementById('review-submit');
+        const reviewFormActions = document.getElementById('review-form-actions');
+        const reviewReasonSuggestions = document.getElementById('review-reason-suggestions');
+        const reviewNoteCounter = document.getElementById('review-note-counter');
+        const reviewConfirm = document.getElementById('review-confirm');
+        const reviewConfirmTitle = document.getElementById('review-confirm-title');
+        const reviewConfirmCode = document.getElementById('review-confirm-code');
+        const reviewConfirmNoteLabel = document.getElementById('review-confirm-note-label');
+        const reviewConfirmReason = document.getElementById('review-confirm-reason');
+        const reviewConfirmBack = document.getElementById('review-confirm-back');
+        const reviewConfirmSubmit = document.getElementById('review-confirm-submit');
         const reviewTableBodies = Array.from(document.querySelectorAll('[data-review-table-body]'));
         let reviewMode = 'view';
+        let reviewConfirming = false;
+
+        const updateReviewNoteCounter = () => {
+            if (!reviewNoteCounter || !reviewNote) return;
+            const length = reviewNote.value.trim().length;
+            reviewNoteCounter.textContent = `${length} / 500`;
+            reviewNoteCounter.classList.toggle('text-error', reviewMode === 'reject' && length > 0 && length < 10);
+        };
+
+        const hideReviewConfirm = () => {
+            reviewConfirming = false;
+            reviewConfirm?.classList.add('hidden');
+            reviewFormActions?.classList.remove('hidden');
+        };
+
+        const showReviewConfirm = (reason) => {
+            const rejecting = reviewMode === 'reject';
+            if (reviewConfirmTitle) reviewConfirmTitle.textContent = rejecting ? 'Xác nhận từ chối đơn này?' : 'Xác nhận phê duyệt đơn này?';
+            if (reviewConfirmNoteLabel) reviewConfirmNoteLabel.textContent = rejecting ? 'Lý do từ chối' : 'Ghi chú phê duyệt';
+            if (reviewConfirmCode) reviewConfirmCode.textContent = reviewSubtitle.textContent || '';
+            if (reviewConfirmReason) reviewConfirmReason.textContent = reason || '(Không có ghi chú)';
+            if (reviewConfirmSubmit) {
+                reviewConfirmSubmit.textContent = rejecting ? 'Xác nhận từ chối' : 'Xác nhận duyệt';
+                reviewConfirmSubmit.className = rejecting
+                    ? 'px-space-lg py-space-sm bg-error hover:bg-error/90 text-white font-label-md text-label-md rounded-xl transition-colors'
+                    : 'px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl transition-colors';
+            }
+            reviewConfirming = true;
+            reviewConfirm?.classList.remove('hidden');
+            reviewFormActions?.classList.add('hidden');
+        };
+
+        const renderReasonSuggestions = (detail) => {
+            if (!reviewReasonSuggestions) return;
+            reviewReasonSuggestions.replaceChildren();
+            const label = document.createElement('span');
+            label.className = 'font-label-sm text-label-sm text-on-surface-variant';
+            label.textContent = 'Gợi ý nhanh:';
+            reviewReasonSuggestions.appendChild(label);
+            if (reviewMode !== 'reject') {
+                reviewReasonSuggestions.classList.add('hidden');
+                return;
+            }
+            const key = detail?.category === 'late' ? 'late_explanation'
+                : detail?.category === 'early_leave' ? 'early_leave_explanation'
+                : detail?.returnTab === 'leave' ? 'leave'
+                : detail?.returnTab === 'explanation' ? 'explanation'
+                : detail?.returnTab === 'business_trip' ? 'business_trip'
+                : detail?.returnTab === 'overtime' ? 'overtime'
+                : 'default';
+            (REJECT_REASON_TEMPLATES[key] || REJECT_REASON_TEMPLATES.default || []).forEach((reason) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.title = reason;
+                button.textContent = reason.length > 42 ? `${reason.slice(0, 42)}…` : reason;
+                button.className = 'px-space-sm py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-body-sm text-body-sm transition-colors';
+                button.addEventListener('click', () => {
+                    if (!reviewNote) return;
+                    reviewNote.value = reason;
+                    reviewNote.setCustomValidity('');
+                    hideReviewConfirm();
+                    updateReviewNoteCounter();
+                    reviewNote.focus();
+                });
+                reviewReasonSuggestions.appendChild(button);
+            });
+            reviewReasonSuggestions.classList.remove('hidden');
+        };
 
         const appendDetailField = (label, value, tone) => {
             if (!value) return;
@@ -1525,6 +1621,9 @@
                     ? 'px-space-lg py-space-sm bg-error hover:bg-error/90 text-white font-label-md text-label-md rounded-xl transition-colors'
                     : 'px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-xl transition-colors';
             }
+            hideReviewConfirm();
+            renderReasonSuggestions(detail);
+            updateReviewNoteCounter();
             reviewModal.classList.remove('hidden');
             document.body.classList.add('overflow-hidden');
             if (mode !== 'view' && !isTracking) window.setTimeout(() => reviewNote.focus(), 0);
@@ -1532,6 +1631,7 @@
 
         const closeReviewModal = () => {
             if (!reviewModal || reviewModal.classList.contains('hidden')) return;
+            hideReviewConfirm();
             reviewModal.classList.add('hidden');
             document.body.classList.remove('overflow-hidden');
         };
@@ -1549,14 +1649,36 @@
             el.addEventListener('click', closeReviewModal);
         });
 
-        reviewNote?.addEventListener('input', () => reviewNote.setCustomValidity(''));
+        reviewNote?.addEventListener('input', () => {
+            reviewNote.setCustomValidity('');
+            hideReviewConfirm();
+            updateReviewNoteCounter();
+        });
         reviewForm?.addEventListener('submit', (event) => {
-            if (reviewMode !== 'reject') return;
-            if (reviewNote.value.trim().length < 10) {
+            if (reviewConfirming || (reviewMode !== 'reject' && reviewMode !== 'approve')) return;
+            const reason = (reviewNote?.value || '').trim();
+            if (reason.length > 500) {
                 event.preventDefault();
-                reviewNote.setCustomValidity('Lý do từ chối cần từ 10 đến 500 ký tự.');
-                reviewNote.reportValidity();
+                reviewNote?.setCustomValidity(reviewMode === 'reject'
+                    ? 'Lý do từ chối không được quá 500 ký tự.'
+                    : 'Ghi chú phê duyệt không được quá 500 ký tự.');
+                reviewNote?.reportValidity();
+                updateReviewNoteCounter();
+                return;
             }
+            if (reviewMode === 'reject' && reason.length < 10) {
+                event.preventDefault();
+                reviewNote?.setCustomValidity('Lý do từ chối cần từ 10 đến 500 ký tự.');
+                reviewNote?.reportValidity();
+                updateReviewNoteCounter();
+                return;
+            }
+            event.preventDefault();
+            showReviewConfirm(reason);
+        });
+        reviewConfirmBack?.addEventListener('click', () => {
+            hideReviewConfirm();
+            reviewNote?.focus();
         });
 
         // Realtime: danh sách và lịch sử trạng thái tự cập nhật khi có đơn thay đổi.
