@@ -707,9 +707,14 @@
                 <input id="request-date-to" type="date" aria-label="Đến ngày" class="w-full sm:w-36 bg-surface-container-low text-on-surface font-label-sm text-label-sm px-space-md py-space-sm rounded-xl outline-none">
             </div>
         </div>
-        <span class="font-body-sm text-body-sm text-on-surface-variant">
-            Hiển thị <strong id="request-visible-count" class="text-on-surface"><%= requests.length %></strong> / <strong class="text-on-surface"><%= requests.length %></strong> đơn
-        </span>
+        <div class="flex items-center gap-space-md">
+            <button type="button" id="request-export-csv" title="Xuất các đơn đang khớp bộ lọc ra file CSV" class="inline-flex items-center gap-1 px-space-md py-space-sm rounded-xl bg-primary-fixed/70 hover:bg-primary-fixed text-primary font-label-sm text-label-sm transition-colors">
+                <span class="material-symbols-outlined text-[18px]">download</span>Xuất CSV
+            </button>
+            <span class="font-body-sm text-body-sm text-on-surface-variant whitespace-nowrap">
+                Tìm thấy <strong id="request-visible-count" class="text-on-surface"><%= requests.length %></strong> / <strong class="text-on-surface"><%= requests.length %></strong> đơn
+            </span>
+        </div>
     </div>
 
     <div class="px-space-lg py-space-sm bg-primary-fixed/30 text-primary text-body-sm border-b border-primary/10 flex items-start gap-space-sm">
@@ -721,13 +726,13 @@
         <table class="w-full text-left border-collapse min-w-[980px]">
             <thead>
                 <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
-                    <th class="py-space-md px-space-lg font-semibold">Mã đơn</th>
-                    <th class="py-space-md px-space-md font-semibold">Loại đơn</th>
-                    <th class="py-space-md px-space-md font-semibold">Nhân viên</th>
-                    <th class="py-space-md px-space-md font-semibold">Thời gian</th>
+                    <th class="py-space-md px-space-lg font-semibold" aria-sort="none"><button type="button" data-sort-column="code" class="inline-flex items-center gap-space-xs font-semibold hover:text-primary transition-colors">Mã đơn <span class="material-symbols-outlined text-[14px]" data-sort-icon="code">unfold_more</span></button></th>
+                    <th class="py-space-md px-space-md font-semibold" aria-sort="none"><button type="button" data-sort-column="type" class="inline-flex items-center gap-space-xs font-semibold hover:text-primary transition-colors">Loại đơn <span class="material-symbols-outlined text-[14px]" data-sort-icon="type">unfold_more</span></button></th>
+                    <th class="py-space-md px-space-md font-semibold" aria-sort="none"><button type="button" data-sort-column="employee" class="inline-flex items-center gap-space-xs font-semibold hover:text-primary transition-colors">Nhân viên <span class="material-symbols-outlined text-[14px]" data-sort-icon="employee">unfold_more</span></button></th>
+                    <th class="py-space-md px-space-md font-semibold" aria-sort="none"><button type="button" data-sort-column="fromDate" class="inline-flex items-center gap-space-xs font-semibold hover:text-primary transition-colors">Thời gian <span class="material-symbols-outlined text-[14px]" data-sort-icon="fromDate">unfold_more</span></button></th>
                     <th class="py-space-md px-space-md font-semibold">Lý do / nội dung</th>
-                    <th class="py-space-md px-space-md font-semibold">Trạng thái</th>
-                    <th class="py-space-md px-space-lg font-semibold text-right">Ngày tạo</th>
+                    <th class="py-space-md px-space-md font-semibold" aria-sort="none"><button type="button" data-sort-column="status" class="inline-flex items-center gap-space-xs font-semibold hover:text-primary transition-colors">Trạng thái <span class="material-symbols-outlined text-[14px]" data-sort-icon="status">unfold_more</span></button></th>
+                    <th class="py-space-md px-space-lg font-semibold text-right" aria-sort="none"><button type="button" data-sort-column="createdAt" class="inline-flex items-center gap-space-xs font-semibold hover:text-primary transition-colors">Ngày tạo <span class="material-symbols-outlined text-[14px]" data-sort-icon="createdAt">unfold_more</span></button></th>
                     <th class="py-space-md px-space-lg font-semibold text-right">Xử lý</th>
                 </tr>
             </thead>
@@ -751,7 +756,7 @@
                             data-created-date="<%= String(item.createdAt || '').slice(0, 10) %>"
                             data-search="<%= [item.code, item.typeLabel, item.employeeName, item.employeeId, item.reason, item.destination, item.department].join(' ').toLowerCase() %>"
                             data-detail="<%= JSON.stringify({
-                                id: item.id, code: item.code, typeLabel: item.typeLabel, returnTab: 'list',
+                                id: item.id, code: item.code, typeLabel: item.typeLabel, categoryLabel: item.categoryLabel, returnTab: 'list',
                                 employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
                                 fromDate: item.fromDate, toDate: item.toDate, reason: item.reason,
                                 destination: item.destination, subject: item.subject, time: item.timeLabel,
@@ -850,6 +855,26 @@
                 <% } %>
             </tbody>
         </table>
+    </div>
+
+    <div class="px-space-lg py-space-md border-t border-surface-container-high flex flex-col sm:flex-row sm:items-center justify-between gap-space-md">
+        <div class="flex items-center gap-space-md">
+            <span id="request-range-label" class="font-body-sm text-body-sm text-on-surface-variant"></span>
+            <label class="inline-flex items-center gap-space-xs font-body-sm text-body-sm text-on-surface-variant">
+                Hiển thị
+                <select id="request-page-size" aria-label="Số đơn mỗi trang" class="bg-surface-container-low text-on-surface font-label-sm text-label-sm py-1 pl-space-sm pr-space-md rounded-lg outline-none cursor-pointer">
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                </select>
+                đơn/trang
+            </label>
+        </div>
+        <div class="flex items-center gap-space-xs">
+            <button type="button" id="request-page-prev" class="inline-flex items-center gap-1 px-space-md py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm disabled:opacity-40 disabled:cursor-not-allowed"><span class="material-symbols-outlined text-[16px]">chevron_left</span>Trước</button>
+            <span id="request-page-indicator" class="px-space-sm font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap"></span>
+            <button type="button" id="request-page-next" class="inline-flex items-center gap-1 px-space-md py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm disabled:opacity-40 disabled:cursor-not-allowed">Sau<span class="material-symbols-outlined text-[16px]">chevron_right</span></button>
+        </div>
     </div>
 </section>
 <% } %>
@@ -988,7 +1013,7 @@
         const syncFilterParams = (pairs) => {
             const params = new URLSearchParams(window.location.search);
             pairs.forEach(([key, el]) => {
-                const value = (el?.value || '').trim();
+                const value = typeof el === 'string' ? el.trim() : (el?.value || '').trim();
                 if (value) params.set(key, value);
                 else params.delete(key);
             });
@@ -1011,9 +1036,21 @@
         const requestDateField = document.getElementById('request-date-field');
         const requestDateFrom = document.getElementById('request-date-from');
         const requestDateTo = document.getElementById('request-date-to');
+        const listTableBody = document.getElementById('request-table-body');
         const rows = Array.from(document.querySelectorAll('#request-table-body .request-row'));
         const emptyFilterRow = document.getElementById('request-empty-filter');
         const visibleCount = document.getElementById('request-visible-count');
+        const rangeLabel = document.getElementById('request-range-label');
+        const pageIndicator = document.getElementById('request-page-indicator');
+        const pagePrev = document.getElementById('request-page-prev');
+        const pageNext = document.getElementById('request-page-next');
+        const pageSizeSelect = document.getElementById('request-page-size');
+        const exportButton = document.getElementById('request-export-csv');
+        const sortButtons = Array.from(document.querySelectorAll('[data-sort-column]'));
+        const sortKeys = ['code', 'type', 'employee', 'fromDate', 'status', 'createdAt'];
+        const defaultSortKey = 'createdAt';
+        const defaultPageSize = 10;
+        const detailCache = new Map();
 
         if (searchInput) searchInput.value = filterParams.get('q') || '';
         if (statusFilter) statusFilter.value = filterParams.get('status') || '';
@@ -1022,31 +1059,88 @@
         if (requestDateFrom) requestDateFrom.value = filterParams.get('dateFrom') || '';
         if (requestDateTo) requestDateTo.value = filterParams.get('dateTo') || '';
 
-        const applyFilters = () => {
+        const parsedPageSize = Number.parseInt(filterParams.get('perPage'), 10);
+        let pageSize = [10, 20, 50].includes(parsedPageSize) ? parsedPageSize : defaultPageSize;
+        if (pageSizeSelect) pageSizeSelect.value = String(pageSize);
+        let sortKey = sortKeys.includes(filterParams.get('sort')) ? filterParams.get('sort') : defaultSortKey;
+        let sortOrder = filterParams.get('order') === 'asc' ? 'asc' : 'desc';
+        const parsedPage = Number.parseInt(filterParams.get('page'), 10);
+        let currentPage = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+        let filteredRows = rows;
+
+        const detailOf = (row) => {
+            if (!detailCache.has(row)) {
+                let detail = {};
+                try { detail = JSON.parse(row.dataset.detail || '{}'); } catch { detail = {}; }
+                detailCache.set(row, detail);
+            }
+            return detailCache.get(row);
+        };
+        const sortValueOf = (row, key) => {
+            const detail = detailOf(row);
+            if (key === 'code') return detail.code || '';
+            if (key === 'type') return detail.typeLabel || '';
+            if (key === 'employee') return detail.employeeName || '';
+            if (key === 'status') return detail.statusLabel || '';
+            if (key === 'fromDate') return row.dataset.fromDate || '';
+            if (key === 'createdAt') return row.dataset.createdDate || '';
+            return '';
+        };
+        const syncSortIndicators = () => {
+            sortButtons.forEach((button) => {
+                const key = button.dataset.sortColumn;
+                const icon = document.querySelector(`[data-sort-icon="${key}"]`);
+                if (icon) icon.textContent = key === sortKey ? (sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more';
+                const header = button.closest('th');
+                if (header) header.setAttribute('aria-sort', key === sortKey ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none');
+            });
+        };
+
+        const renderList = () => {
             const query = (searchInput?.value || '').trim().toLowerCase();
             const status = statusFilter?.value || '';
             const type = typeFilter?.value || '';
             const dateField = requestDateField?.value || 'fromDate';
             const dateFrom = requestDateFrom?.value || '';
             const dateTo = requestDateTo?.value || '';
-            let count = 0;
 
-            rows.forEach((row) => {
-                const matchSearch = !query || (row.dataset.search || '').includes(query);
-                const matchStatus = !status || row.dataset.status === status;
-                const matchType = !type || row.dataset.type === type;
-                const matchDate = matchesDateFilter(row, dateField, dateFrom, dateTo);
-                const visible = matchSearch && matchStatus && matchType && matchDate;
-
-                row.classList.toggle('hidden', !visible);
-                if (visible) count += 1;
+            filteredRows = rows.filter((row) => (!query || (row.dataset.search || '').includes(query))
+                && (!status || row.dataset.status === status)
+                && (!type || row.dataset.type === type)
+                && matchesDateFilter(row, dateField, dateFrom, dateTo));
+            filteredRows.sort((a, b) => {
+                const compared = String(sortValueOf(a, sortKey)).localeCompare(
+                    String(sortValueOf(b, sortKey)), 'vi', { numeric: true, sensitivity: 'base' }
+                );
+                return sortOrder === 'asc' ? compared : -compared;
             });
 
-            if (visibleCount) visibleCount.textContent = String(count);
-            if (emptyFilterRow) emptyFilterRow.classList.toggle('hidden', count !== 0 || rows.length === 0);
+            const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+            currentPage = Math.min(Math.max(1, currentPage), pageCount);
+            const start = (currentPage - 1) * pageSize;
+            const pageRows = filteredRows.slice(start, start + pageSize);
+            const shownRows = new Set(pageRows);
+            rows.forEach((row) => row.classList.toggle('hidden', !shownRows.has(row)));
+            pageRows.forEach((row) => {
+                if (listTableBody) listTableBody.insertBefore(row, emptyFilterRow || null);
+            });
+
+            if (visibleCount) visibleCount.textContent = String(filteredRows.length);
+            if (emptyFilterRow) emptyFilterRow.classList.toggle('hidden', filteredRows.length !== 0);
+            if (rangeLabel) rangeLabel.textContent = filteredRows.length
+                ? `Hiển thị ${start + 1}–${start + pageRows.length} / ${filteredRows.length} đơn`
+                : 'Không có đơn nào khớp bộ lọc';
+            if (pageIndicator) pageIndicator.textContent = `Trang ${currentPage} / ${pageCount}`;
+            if (pagePrev) pagePrev.disabled = currentPage <= 1;
+            if (pageNext) pageNext.disabled = currentPage >= pageCount;
+            syncSortIndicators();
             syncFilterParams([
                 ['q', searchInput], ['status', statusFilter], ['type', typeFilter],
-                ['dateField', requestDateField], ['dateFrom', requestDateFrom], ['dateTo', requestDateTo]
+                ['dateField', requestDateField], ['dateFrom', requestDateFrom], ['dateTo', requestDateTo],
+                ['page', currentPage > 1 ? String(currentPage) : ''],
+                ['perPage', pageSize !== defaultPageSize ? String(pageSize) : ''],
+                ['sort', sortKey !== defaultSortKey ? sortKey : ''],
+                ['order', sortOrder === 'asc' ? 'asc' : '']
             ]);
         };
 
@@ -1054,9 +1148,66 @@
         requestFilterInputs.forEach((el) => {
             if (!el) return;
             const eventName = el.tagName === 'INPUT' ? 'input' : 'change';
-            el.addEventListener(eventName, applyFilters);
+            el.addEventListener(eventName, () => { currentPage = 1; renderList(); });
         });
-        if (requestFilterInputs.some(Boolean)) applyFilters();
+        sortButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const key = button.dataset.sortColumn;
+                if (!sortKeys.includes(key)) return;
+                if (sortKey === key) {
+                    sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortKey = key;
+                    sortOrder = ['fromDate', 'createdAt'].includes(key) ? 'desc' : 'asc';
+                }
+                currentPage = 1;
+                renderList();
+            });
+        });
+        pagePrev?.addEventListener('click', () => {
+            if (currentPage <= 1) return;
+            currentPage -= 1;
+            renderList();
+        });
+        pageNext?.addEventListener('click', () => {
+            currentPage += 1;
+            renderList();
+        });
+        pageSizeSelect?.addEventListener('change', () => {
+            const nextSize = Number.parseInt(pageSizeSelect.value, 10);
+            pageSize = [10, 20, 50].includes(nextSize) ? nextSize : defaultPageSize;
+            currentPage = 1;
+            renderList();
+        });
+        exportButton?.addEventListener('click', () => {
+            const columns = ['Mã đơn', 'Loại đơn', 'Nhân viên', 'Mã nhân viên', 'Phòng ban', 'Từ ngày', 'Đến ngày', 'Khung giờ', 'Tiêu đề', 'Lý do / nội dung', 'Trạng thái', 'Người duyệt', 'Ngày duyệt', 'Ghi chú duyệt', 'Lý do từ chối', 'Ngày tạo'];
+            const escapeCsv = (value) => {
+                const text = String(value ?? '');
+                const safe = /^[=+\-@]/.test(text) ? `'${text}` : text;
+                return `"${safe.replace(/"/g, '""')}"`;
+            };
+            const lines = [columns, ...filteredRows.map((row) => {
+                const detail = detailOf(row);
+                return [
+                    detail.code, detail.typeLabel, detail.employeeName, detail.employeeId, detail.department,
+                    detail.fromDate, detail.toDate && detail.toDate !== detail.fromDate ? detail.toDate : '',
+                    detail.time, detail.subject, detail.reason, detail.statusLabel,
+                    detail.reviewedAt ? (detail.reviewerName || 'Admin') : '', detail.reviewedAt || '',
+                    detail.reviewNote,
+                    detail.employeeResponseNote || (detail.statusLabel === 'Từ chối' ? detail.reviewNote : ''),
+                    detail.createdAt
+                ];
+            })].map((cells) => cells.map(escapeCsv).join(','));
+            const url = URL.createObjectURL(new Blob(['\uFEFF', lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `danh-sach-don-${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 0);
+        });
+        if (listTableBody) renderList();
 
         const explanationFilter = document.getElementById('explanation-status-filter');
         const explanationDateField = document.getElementById('explanation-date-field');
@@ -1311,20 +1462,25 @@
             reviewSubtitle.textContent = [detail.code, detail.typeLabel, detail.statusLabel].filter(Boolean).join(' · ');
 
             if (isTracking) {
+                appendDetailField('Mã đơn', detail.code);
                 appendDetailField('Nhân viên', [detail.employeeName, detail.employeeId].filter(Boolean).join(' · '));
+                appendDetailField('Trạng thái hiện tại', [detail.statusLabel, detail.statusHint].filter(Boolean).join(' · '));
                 appendDetailField('Nội dung', detail.reason);
                 renderTimeline(detail);
             } else {
+                appendDetailField('Mã đơn', detail.code);
                 appendDetailField('Nhân viên', [detail.employeeName, detail.employeeId].filter(Boolean).join(' · '));
                 appendDetailField('Phòng ban', detail.department);
+                appendDetailField('Loại giải trình', detail.categoryLabel);
                 appendDetailField(detail.typeLabel && detail.typeLabel.startsWith('Giải trình') ? 'Ngày phát sinh' : 'Thời gian', [detail.fromDate, detail.toDate && detail.toDate !== detail.fromDate ? `→ ${detail.toDate}` : '', detail.time].filter(Boolean).join(' '));
                 appendDetailField('Tiêu đề', detail.subject);
                 appendDetailField('Nội dung', detail.reason);
                 appendDetailField('Địa điểm', detail.destination);
+                appendDetailField('Trạng thái', [detail.statusLabel, detail.statusHint].filter(Boolean).join(' · '));
                 appendDetailField('Ngày gửi', detail.createdAt);
                 appendDetailField(detail.statusLabel === 'Từ chối' ? 'Người từ chối' : 'Người duyệt', detail.reviewedAt ? `${detail.reviewerName || 'Admin'} · ${detail.reviewedAt}` : '');
-                appendDetailField('Ghi chú duyệt', detail.reviewNote, 'success');
-                appendDetailField('Lý do từ chối', detail.employeeResponseNote, 'error');
+                appendDetailField('Ghi chú duyệt', detail.statusLabel === 'Từ chối' && !detail.employeeResponseNote ? '' : detail.reviewNote, 'success');
+                appendDetailField('Lý do từ chối', detail.employeeResponseNote || (detail.statusLabel === 'Từ chối' ? detail.reviewNote : ''), 'error');
             }
 
             if (mode === 'view' || isTracking) {
