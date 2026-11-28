@@ -3,7 +3,7 @@ import {
     buildAttendanceSchedule,
     getShiftSchedulesForEmployeeRange
 } from "../services/shiftScheduleService.js";
-import { writeAttendanceAuditLog } from "../services/attendanceAuditService.js";
+import { writeAttendanceAuditLog, getRequestAuditLogs } from "../services/attendanceAuditService.js";
 import { notifyRequestsChanged } from "../services/realtimeService.js";
 
 const isValidDate = (value) => {
@@ -184,6 +184,7 @@ const mapRequestItem = (item) => {
         statusTone,
         durationLabel: buildDurationLabel(item.created_date, finishedAt),
         timeline: buildStatusTimeline(item, reviewerLabel),
+        createdBy: item.created_by || "",
         createdAt: item.created_date,
         reviewedAt: item.reviewed_date || null,
         reviewerName: reviewerLabel,
@@ -217,6 +218,7 @@ export const index = async (req, res) => {
             user: req.session.user,
             success: req.query.success || null,
             error: req.query.error || null,
+            query: req.query,
             activeTab,
             requests: mappedRequests,
             leaveRequests,
@@ -256,6 +258,7 @@ export const index = async (req, res) => {
             user: req.session.user,
             success: null,
             error: "Không thể tải dữ liệu đơn. Vui lòng thử lại.",
+            query: req.query,
             activeTab,
             requests: [],
             leaveRequests: [],
@@ -269,6 +272,44 @@ export const index = async (req, res) => {
             employees: [],
             stats: { total: 0, pending: 0, awaitingEmployee: 0, approved: 0, rejected: 0 }
         });
+    }
+};
+
+// Trang xem chi tiết một đơn: thông tin theo loại, timeline, ngày công ảnh hưởng và audit.
+export const detail = async (req, res) => {
+    const id = Number(req.params.id);
+    const returnQuery = getReturnQuery(req);
+    const fail = (message) => redirect(res, { ...returnQuery, error: message });
+    if (!Number.isSafeInteger(id) || id <= 0) return fail("Yêu cầu xem chi tiết không hợp lệ.");
+
+    try {
+        const raw = await AttendanceRequestModel.findDetailById(id);
+        if (!raw) return fail("Không tìm thấy đơn cần xem.");
+
+        const request = mapRequestItem(raw);
+        const needsDayStatuses = ["business_trip", "leave", "overtime"].includes(request.type);
+        const [auditLogs, dayStatuses] = await Promise.all([
+            getRequestAuditLogs({ requestId: id, requestCode: request.code }),
+            needsDayStatuses
+                ? AttendanceRequestModel.getRequestDayStatuses({
+                    employeeId: raw.employee_id, fromDate: raw.from_date, toDate: raw.to_date,
+                    requestId: id, requestCode: request.code
+                })
+                : Promise.resolve([])
+        ]);
+
+        return res.render("requests/detail", {
+            user: req.session.user,
+            success: req.query.success || null,
+            error: req.query.error || null,
+            request,
+            auditLogs,
+            dayStatuses,
+            returnQuery
+        });
+    } catch (error) {
+        console.error("Lỗi xem chi tiết đơn nhân sự:", error);
+        return fail("Không thể xem chi tiết đơn. Vui lòng thử lại.");
     }
 };
 
