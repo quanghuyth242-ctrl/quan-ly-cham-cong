@@ -36,6 +36,10 @@
             <span class="material-symbols-outlined text-[18px]">schedule</span>
             <span>Duyệt giải trình đi muộn</span>
         </a>
+        <a href="/admin/requests?tab=early_leave_explanation" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors <%= activeTab === 'early_leave_explanation' ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high' %>">
+            <span class="material-symbols-outlined text-[18px]">logout</span>
+            <span>Duyệt giải trình về sớm</span>
+        </a>
         <a href="/admin/requests?tab=business_trip" class="flex items-center gap-space-xs px-space-md py-space-sm rounded-xl font-label-md text-label-md transition-colors <%= activeTab === 'business_trip' ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high' %>">
             <span class="material-symbols-outlined text-[18px]">luggage</span><span>Tạo đơn công tác</span>
         </a>
@@ -530,16 +534,19 @@
 </section>
 <% } %>
 
-<% if (activeTab === "late_explanation") { %>
+<% if (["late_explanation", "early_leave_explanation"].includes(activeTab)) { %>
+<% const categoryExplanation = activeTab === "late_explanation"
+    ? { label: "Đi muộn", requests: lateExplanationRequests, stats: lateExplanationStats, returnTab: "late_explanation", icon: "schedule", checkLabel: "giờ vào thực tế" }
+    : { label: "Về sớm", requests: earlyLeaveExplanationRequests, stats: earlyLeaveExplanationStats, returnTab: "early_leave_explanation", icon: "logout", checkLabel: "giờ về thực tế" }; %>
 <section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
     <div class="p-space-lg border-b border-surface-container-high flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
         <div>
-            <h3 class="font-headline-md text-headline-md text-primary font-semibold">Giải trình đi muộn chờ phê duyệt</h3>
-            <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs"><%= lateExplanationStats.pending %> đơn chờ xử lý · <%= lateExplanationStats.approved %> đã duyệt · <%= lateExplanationStats.rejected %> từ chối</p>
+            <h3 class="font-headline-md text-headline-md text-primary font-semibold">Giải trình <%= categoryExplanation.label %> chờ phê duyệt</h3>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs"><%= categoryExplanation.stats.pending %> đơn chờ xử lý · <%= categoryExplanation.stats.approved %> đã duyệt · <%= categoryExplanation.stats.rejected %> từ chối</p>
         </div>
         <div class="flex flex-col sm:flex-row sm:items-center gap-space-sm">
             <div class="relative sm:w-44">
-                <select id="late-explanation-status-filter" aria-label="Lọc theo trạng thái giải trình đi muộn" class="w-full appearance-none bg-surface-container-low text-on-surface font-label-sm text-label-sm py-space-sm pl-space-md pr-space-xl rounded-xl outline-none cursor-pointer">
+                <select id="category-explanation-status-filter" aria-label="Lọc theo trạng thái giải trình <%= categoryExplanation.label %>" class="w-full appearance-none bg-surface-container-low text-on-surface font-label-sm text-label-sm py-space-sm pl-space-md pr-space-xl rounded-xl outline-none cursor-pointer">
                     <option value="">Tất cả trạng thái</option>
                     <option value="pending">Chờ duyệt</option>
                     <option value="approved">Đã duyệt</option>
@@ -548,20 +555,20 @@
                 <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
             </div>
             <div class="relative sm:w-40">
-                <select id="late-explanation-date-field" aria-label="Trường ngày để lọc giải trình đi muộn" class="w-full appearance-none bg-surface-container-low text-on-surface font-label-sm text-label-sm py-space-sm pl-space-md pr-space-xl rounded-xl outline-none cursor-pointer">
+                <select id="category-explanation-date-field" aria-label="Trường ngày để lọc giải trình <%= categoryExplanation.label %>" class="w-full appearance-none bg-surface-container-low text-on-surface font-label-sm text-label-sm py-space-sm pl-space-md pr-space-xl rounded-xl outline-none cursor-pointer">
                     <option value="fromDate">Ngày phát sinh</option>
                     <option value="createdAt">Ngày gửi</option>
                 </select>
                 <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
             </div>
-            <input id="late-explanation-date-from" type="date" aria-label="Từ ngày" class="w-full sm:w-36 bg-surface-container-low text-on-surface font-label-sm text-label-sm px-space-md py-space-sm rounded-xl outline-none">
-            <input id="late-explanation-date-to" type="date" aria-label="Đến ngày" class="w-full sm:w-36 bg-surface-container-low text-on-surface font-label-sm text-label-sm px-space-md py-space-sm rounded-xl outline-none">
+            <input id="category-explanation-date-from" type="date" aria-label="Từ ngày" class="w-full sm:w-36 bg-surface-container-low text-on-surface font-label-sm text-label-sm px-space-md py-space-sm rounded-xl outline-none">
+            <input id="category-explanation-date-to" type="date" aria-label="Đến ngày" class="w-full sm:w-36 bg-surface-container-low text-on-surface font-label-sm text-label-sm px-space-md py-space-sm rounded-xl outline-none">
         </div>
     </div>
 
     <div class="px-space-lg py-space-sm bg-primary-fixed/30 text-primary text-body-sm border-b border-primary/10 flex items-start gap-space-sm">
-        <span class="material-symbols-outlined text-[18px] shrink-0">schedule</span>
-        <span>Chỉ các giải trình loại <strong>Đi muộn</strong> hiển thị tại đây. Đối chiếu giờ vào thực tế trước khi quyết định; phê duyệt chỉ lưu quyết định và ghi chú, không tự động chỉnh bản ghi chấm công.</span>
+        <span class="material-symbols-outlined text-[18px] shrink-0"><%= categoryExplanation.icon %></span>
+        <span>Chỉ các giải trình loại <strong><%= categoryExplanation.label %></strong> hiển thị tại đây. Đối chiếu <%= categoryExplanation.checkLabel %> trước khi quyết định; phê duyệt chỉ lưu quyết định và ghi chú, không tự động chỉnh bản ghi chấm công.</span>
     </div>
 
     <div class="overflow-x-auto">
@@ -570,32 +577,32 @@
                 <tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
                     <th class="py-space-md px-space-lg font-semibold">Mã đơn</th>
                     <th class="py-space-md px-space-md font-semibold">Nhân viên</th>
-                    <th class="py-space-md px-space-md font-semibold">Ngày đi muộn</th>
+                    <th class="py-space-md px-space-md font-semibold">Ngày <%= categoryExplanation.label %></th>
                     <th class="py-space-md px-space-md font-semibold">Khung giờ</th>
                     <th class="py-space-md px-space-md font-semibold">Tiêu đề / nội dung</th>
                     <th class="py-space-md px-space-md font-semibold">Trạng thái</th>
                     <th class="py-space-md px-space-lg font-semibold text-right">Xử lý</th>
                 </tr>
             </thead>
-            <tbody id="late-explanation-table-body" data-review-table-body class="divide-y divide-surface-container-low text-body-sm text-on-surface">
-                <% if (lateExplanationRequests.length === 0) { %>
+            <tbody id="category-explanation-table-body" data-review-table-body class="divide-y divide-surface-container-low text-body-sm text-on-surface">
+                <% if (categoryExplanation.requests.length === 0) { %>
                     <tr>
                         <td colspan="7" class="py-space-2xl px-space-lg text-center">
                             <div class="flex flex-col items-center gap-space-sm text-on-surface-variant">
-                                <span class="material-symbols-outlined text-[40px] text-outline">schedule</span>
-                                <span class="font-label-md text-label-md">Chưa có giải trình đi muộn nào</span>
-                                <span class="font-body-sm text-body-sm">Chọn loại “Đi muộn” khi tạo giải trình để đơn xuất hiện tại đây.</span>
+                                <span class="material-symbols-outlined text-[40px] text-outline"><%= categoryExplanation.icon %></span>
+                                <span class="font-label-md text-label-md">Chưa có giải trình <%= categoryExplanation.label %> nào</span>
+                                <span class="font-body-sm text-body-sm">Chọn loại “<%= categoryExplanation.label %>” khi tạo giải trình để đơn xuất hiện tại đây.</span>
                             </div>
                         </td>
                     </tr>
                 <% } else { %>
-                    <% lateExplanationRequests.forEach((item) => { %>
-                        <tr class="request-row late-explanation-row hover:bg-surface-container-low/70 transition-colors align-top"
+                    <% categoryExplanation.requests.forEach((item) => { %>
+                        <tr class="request-row category-explanation-row hover:bg-surface-container-low/70 transition-colors align-top"
                             data-status="<%= item.status %>"
                             data-from-date="<%= item.fromDate %>"
                             data-created-date="<%= String(item.createdAt || '').slice(0, 10) %>"
                             data-detail="<%= JSON.stringify({
-                                id: item.id, code: item.code, typeLabel: item.typeLabel, returnTab: 'late_explanation',
+                                id: item.id, code: item.code, typeLabel: item.typeLabel, returnTab: categoryExplanation.returnTab,
                                 employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
                                 fromDate: item.fromDate, toDate: item.toDate, subject: item.subject,
                                 time: item.timeLabel, reason: item.reason, destination: "",
@@ -639,18 +646,18 @@
                             </td>
                             <td class="py-space-md px-space-lg">
                                 <div class="flex justify-end gap-space-xs">
-                                    <button type="button" data-review-action="track" title="Theo dõi trạng thái giải trình đi muộn" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-primary-fixed/60 hover:bg-primary-fixed text-primary font-label-sm"><span class="material-symbols-outlined text-[16px]">timeline</span>Theo dõi</button>
-                                    <button type="button" data-review-action="view" title="Xem chi tiết giải trình đi muộn" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm"><span class="material-symbols-outlined text-[16px]">visibility</span>Xem</button>
+                                    <button type="button" data-review-action="track" title="Theo dõi trạng thái giải trình <%= categoryExplanation.label %>" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-primary-fixed/60 hover:bg-primary-fixed text-primary font-label-sm"><span class="material-symbols-outlined text-[16px]">timeline</span>Theo dõi</button>
+                                    <button type="button" data-review-action="view" title="Xem chi tiết giải trình <%= categoryExplanation.label %>" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm"><span class="material-symbols-outlined text-[16px]">visibility</span>Xem</button>
                                     <% if (item.canReview) { %>
-                                        <button type="button" data-review-action="approve" title="Phê duyệt giải trình đi muộn" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 font-label-sm"><span class="material-symbols-outlined text-[16px]">check</span>Duyệt</button>
-                                        <button type="button" data-review-action="reject" title="Từ chối giải trình đi muộn" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-error-container hover:bg-red-100 text-error font-label-sm"><span class="material-symbols-outlined text-[16px]">close</span>Từ chối</button>
+                                        <button type="button" data-review-action="approve" title="Phê duyệt giải trình <%= categoryExplanation.label %>" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 font-label-sm"><span class="material-symbols-outlined text-[16px]">check</span>Duyệt</button>
+                                        <button type="button" data-review-action="reject" title="Từ chối giải trình <%= categoryExplanation.label %>" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-error-container hover:bg-red-100 text-error font-label-sm"><span class="material-symbols-outlined text-[16px]">close</span>Từ chối</button>
                                     <% } %>
                                 </div>
                             </td>
                         </tr>
                     <% }) %>
-                    <tr id="late-explanation-empty-filter" class="hidden">
-                        <td colspan="7" class="py-space-2xl px-space-lg text-center text-body-sm text-on-surface-variant">Không có giải trình đi muộn nào khớp bộ lọc.</td>
+                    <tr id="category-explanation-empty-filter" class="hidden">
+                        <td colspan="7" class="py-space-2xl px-space-lg text-center text-body-sm text-on-surface-variant">Không có giải trình <%= categoryExplanation.label %> nào khớp bộ lọc.</td>
                     </tr>
                 <% } %>
             </tbody>
@@ -1133,44 +1140,44 @@
         });
         if (leaveFilterInputs.some(Boolean)) applyLeaveFilter();
 
-        const lateStatusFilter = document.getElementById('late-explanation-status-filter');
-        const lateDateField = document.getElementById('late-explanation-date-field');
-        const lateDateFrom = document.getElementById('late-explanation-date-from');
-        const lateDateTo = document.getElementById('late-explanation-date-to');
-        const lateRows = Array.from(document.querySelectorAll('.late-explanation-row'));
-        const lateEmpty = document.getElementById('late-explanation-empty-filter');
+        const categoryStatusFilter = document.getElementById('category-explanation-status-filter');
+        const categoryDateField = document.getElementById('category-explanation-date-field');
+        const categoryDateFrom = document.getElementById('category-explanation-date-from');
+        const categoryDateTo = document.getElementById('category-explanation-date-to');
+        const categoryRows = Array.from(document.querySelectorAll('.category-explanation-row'));
+        const categoryEmpty = document.getElementById('category-explanation-empty-filter');
 
-        if (lateStatusFilter) lateStatusFilter.value = filterParams.get('status') || '';
-        if (lateDateField) lateDateField.value = initialDateField;
-        if (lateDateFrom) lateDateFrom.value = filterParams.get('dateFrom') || '';
-        if (lateDateTo) lateDateTo.value = filterParams.get('dateTo') || '';
+        if (categoryStatusFilter) categoryStatusFilter.value = filterParams.get('status') || '';
+        if (categoryDateField) categoryDateField.value = initialDateField;
+        if (categoryDateFrom) categoryDateFrom.value = filterParams.get('dateFrom') || '';
+        if (categoryDateTo) categoryDateTo.value = filterParams.get('dateTo') || '';
 
-        const applyLateFilter = () => {
-            const status = lateStatusFilter?.value || '';
-            const dateField = lateDateField?.value || 'fromDate';
-            const dateFrom = lateDateFrom?.value || '';
-            const dateTo = lateDateTo?.value || '';
+        const applyCategoryFilter = () => {
+            const status = categoryStatusFilter?.value || '';
+            const dateField = categoryDateField?.value || 'fromDate';
+            const dateFrom = categoryDateFrom?.value || '';
+            const dateTo = categoryDateTo?.value || '';
             let count = 0;
-            lateRows.forEach((row) => {
+            categoryRows.forEach((row) => {
                 const visible = (!status || row.dataset.status === status)
                     && matchesDateFilter(row, dateField, dateFrom, dateTo);
                 row.classList.toggle('hidden', !visible);
                 if (visible) count += 1;
             });
-            if (lateEmpty) lateEmpty.classList.toggle('hidden', count !== 0 || lateRows.length === 0);
+            if (categoryEmpty) categoryEmpty.classList.toggle('hidden', count !== 0 || categoryRows.length === 0);
             syncFilterParams([
-                ['status', lateStatusFilter], ['dateField', lateDateField],
-                ['dateFrom', lateDateFrom], ['dateTo', lateDateTo]
+                ['status', categoryStatusFilter], ['dateField', categoryDateField],
+                ['dateFrom', categoryDateFrom], ['dateTo', categoryDateTo]
             ]);
         };
 
-        const lateFilterInputs = [lateStatusFilter, lateDateField, lateDateFrom, lateDateTo];
-        lateFilterInputs.forEach((el) => {
+        const categoryFilterInputs = [categoryStatusFilter, categoryDateField, categoryDateFrom, categoryDateTo];
+        categoryFilterInputs.forEach((el) => {
             if (!el) return;
             const eventName = el.tagName === 'INPUT' ? 'input' : 'change';
-            el.addEventListener(eventName, applyLateFilter);
+            el.addEventListener(eventName, applyCategoryFilter);
         });
-        if (lateFilterInputs.some(Boolean)) applyLateFilter();
+        if (categoryFilterInputs.some(Boolean)) applyCategoryFilter();
 
         // Xem chi tiết / phê duyệt / từ chối trong cùng một modal.
         const reviewModal = document.getElementById('review-modal');
@@ -1288,7 +1295,10 @@
             const isExplanation = Boolean(detail.typeLabel && detail.typeLabel.startsWith('Giải trình'));
             const isLateExplanation = isExplanation
                 && (detail.returnTab === 'late_explanation' || detail.typeLabel.includes('Đi muộn'));
-            const explanationName = isLateExplanation ? 'giải trình đi muộn' : 'giải trình';
+            const isEarlyLeaveExplanation = isExplanation
+                && (detail.returnTab === 'early_leave_explanation' || detail.typeLabel.includes('Về sớm'));
+            const explanationName = isLateExplanation ? 'giải trình đi muộn'
+                : isEarlyLeaveExplanation ? 'giải trình về sớm' : 'giải trình';
             const isLeave = detail.returnTab === 'leave';
             const isTracking = mode === 'track';
             reviewTitle.textContent = isTracking
@@ -1321,7 +1331,7 @@
                 reviewForm.classList.add('hidden');
             } else {
                 reviewForm.classList.remove('hidden');
-                const returnTab = detail.returnTab === 'explanation' ? 'explanation' : 'list';
+                const returnTab = detail.returnTab || 'list';
                 const actionParams = new URLSearchParams(window.location.search);
                 actionParams.set('tab', returnTab);
                 actionParams.delete('success');
