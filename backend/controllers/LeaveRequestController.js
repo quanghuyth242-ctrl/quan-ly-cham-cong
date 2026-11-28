@@ -19,6 +19,21 @@ const redirect = (res, values) => {
     return res.redirect(`/admin/requests?${query.toString()}`);
 };
 
+const FILTER_QUERY_KEYS = ["q", "status", "type", "dateField", "dateFrom", "dateTo"];
+const VALID_TABS = ["explanation", "business_trip", "overtime", "list"];
+
+// Giữ lại tab và các filter khi redirect sau khi tạo/duyệt đơn.
+const getReturnQuery = (req) => {
+    const query = { tab: VALID_TABS.includes(req.query?.tab) ? req.query.tab : "list" };
+    for (const key of FILTER_QUERY_KEYS) {
+        const value = req.query?.[key];
+        if (typeof value === "string" && value.trim() && value.length <= 50) {
+            query[key] = value.trim();
+        }
+    }
+    return query;
+};
+
 const toWorkdays = (request, schedules) => {
     const byDate = [];
     const current = new Date(`${request.from_date}T00:00:00Z`);
@@ -89,9 +104,7 @@ const mapRequestItem = (item) => {
 };
 
 export const index = async (req, res) => {
-    const activeTab = ["explanation", "business_trip", "overtime", "list"].includes(req.query.tab)
-        ? req.query.tab
-        : "list";
+    const activeTab = VALID_TABS.includes(req.query.tab) ? req.query.tab : "list";
     try {
         const [requests, employees] = await Promise.all([
             AttendanceRequestModel.findAll(),
@@ -424,10 +437,8 @@ export const reviewRequest = async (req, res) => {
     const id = Number(req.params.id);
     const decision = req.params.decision === "approve" ? "approved" : req.params.decision === "reject" ? "rejected" : null;
     const reviewNote = String(req.body.review_note || "").trim();
-    const returnTab = ["explanation", "business_trip", "overtime", "list"].includes(req.query.tab)
-        ? req.query.tab
-        : "list";
-    const fail = (message) => redirect(res, { tab: returnTab, error: message });
+    const returnQuery = getReturnQuery(req);
+    const fail = (message) => redirect(res, { ...returnQuery, error: message });
     if (!Number.isSafeInteger(id) || id <= 0 || !decision) {
         return fail("Yêu cầu duyệt đơn không hợp lệ.");
     }
@@ -498,7 +509,7 @@ export const reviewRequest = async (req, res) => {
             ? `Đã phê duyệt giải trình ${request.request_code}; quyết định và ghi chú đã được lưu.`
             : decision === "approved" ? "Đã duyệt đơn."
             : request.request_type === "explanation" ? `Đã từ chối giải trình ${request.request_code}.` : "Đã từ chối đơn.";
-        return redirect(res, { tab: returnTab, success: message });
+        return redirect(res, { ...returnQuery, success: message });
     } catch (error) {
         console.error("Lỗi duyệt đơn nhân sự:", error);
         return fail("Không thể xử lý đơn. Vui lòng thử lại.");
@@ -509,7 +520,8 @@ export const reviewRequest = async (req, res) => {
 export const reviewBusinessTrip = reviewRequest;
 
 export const createExplanation = async (req, res) => {
-    const fail = (message) => redirect(res, { tab: "explanation", error: message });
+    const returnQuery = { ...getReturnQuery(req), tab: "explanation" };
+    const fail = (message) => redirect(res, { ...returnQuery, error: message });
     const employeeId = Number(req.body.employee_id);
     const category = String(req.body.explanation_type || "").trim();
     const incidentDate = String(req.body.incident_date || "").trim();
@@ -545,7 +557,7 @@ export const createExplanation = async (req, res) => {
         });
         notifyRequestsChanged();
         return redirect(res, {
-            tab: "explanation",
+            ...returnQuery,
             success: `Đã gửi đơn giải trình ${result.requestCode}, đang chờ phê duyệt.`
         });
     } catch (error) {

@@ -239,14 +239,25 @@
             <h3 class="font-headline-md text-headline-md text-primary font-semibold">Giải trình chờ phê duyệt</h3>
             <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs"><%= explanationStats.pending %> đơn chờ xử lý · <%= explanationStats.approved %> đã duyệt · <%= explanationStats.rejected %> từ chối</p>
         </div>
-        <div class="relative sm:w-52">
-            <select id="explanation-status-filter" class="w-full appearance-none bg-surface-container-low text-on-surface font-label-sm text-label-sm py-space-sm pl-space-md pr-space-xl rounded-xl outline-none cursor-pointer">
-                <option value="">Tất cả trạng thái</option>
-                <option value="pending">Chờ duyệt</option>
-                <option value="approved">Đã duyệt</option>
-                <option value="rejected">Từ chối</option>
-            </select>
-            <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
+        <div class="flex flex-col sm:flex-row sm:items-center gap-space-sm">
+            <div class="relative sm:w-44">
+                <select id="explanation-status-filter" aria-label="Lọc theo trạng thái giải trình" class="w-full appearance-none bg-surface-container-low text-on-surface font-label-sm text-label-sm py-space-sm pl-space-md pr-space-xl rounded-xl outline-none cursor-pointer">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="pending">Chờ duyệt</option>
+                    <option value="approved">Đã duyệt</option>
+                    <option value="rejected">Từ chối</option>
+                </select>
+                <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
+            </div>
+            <div class="relative sm:w-40">
+                <select id="explanation-date-field" aria-label="Trường ngày để lọc giải trình" class="w-full appearance-none bg-surface-container-low text-on-surface font-label-sm text-label-sm py-space-sm pl-space-md pr-space-xl rounded-xl outline-none cursor-pointer">
+                    <option value="fromDate">Ngày phát sinh</option>
+                    <option value="createdAt">Ngày gửi</option>
+                </select>
+                <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
+            </div>
+            <input id="explanation-date-from" type="date" aria-label="Từ ngày" placeholder="Từ ngày" class="w-full sm:w-36 bg-surface-container-low text-on-surface font-label-sm text-label-sm px-space-md py-space-sm rounded-xl outline-none">
+            <input id="explanation-date-to" type="date" aria-label="Đến ngày" placeholder="Đến ngày" class="w-full sm:w-36 bg-surface-container-low text-on-surface font-label-sm text-label-sm px-space-md py-space-sm rounded-xl outline-none">
         </div>
     </div>
 
@@ -283,6 +294,8 @@
                     <% explanationRequests.forEach((item) => { %>
                         <tr class="request-row explanation-row hover:bg-surface-container-low/70 transition-colors align-top"
                             data-status="<%= item.status %>"
+                            data-from-date="<%= item.fromDate %>"
+                            data-created-date="<%= String(item.createdAt || '').slice(0, 10) %>"
                             data-detail="<%= JSON.stringify({
                                 id: item.id, code: item.code, typeLabel: item.typeLabel, returnTab: 'explanation',
                                 employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
@@ -352,7 +365,7 @@
 <% if (activeTab === "list") { %>
 <section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
     <div class="p-space-lg border-b border-surface-container-high flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
-        <div class="flex flex-col sm:flex-row gap-space-sm flex-1">
+        <div class="flex flex-col sm:flex-row sm:flex-wrap gap-space-sm flex-1">
             <div class="relative flex-1 sm:max-w-xs">
                 <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
                 <input id="request-search" type="text" placeholder="Tìm theo mã đơn, tên, loại..." class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm pl-8 pr-space-md py-space-sm rounded-xl outline-none focus:bg-surface-container transition-all">
@@ -368,7 +381,7 @@
                 <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
             </div>
             <div class="relative sm:w-48">
-                <select id="request-type-filter" class="w-full appearance-none bg-surface-container-low text-on-surface font-label-sm text-label-sm py-space-sm pl-space-md pr-space-xl rounded-xl outline-none cursor-pointer">
+                <select id="request-type-filter" aria-label="Lọc theo loại đơn" class="w-full appearance-none bg-surface-container-low text-on-surface font-label-sm text-label-sm py-space-sm pl-space-md pr-space-xl rounded-xl outline-none cursor-pointer">
                     <option value="">Tất cả loại đơn</option>
                     <option value="leave">Nghỉ phép</option>
                     <option value="business_trip">Công tác</option>
@@ -377,6 +390,17 @@
                     <option value="explanation">Giải trình</option>
                 </select>
                 <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-space-sm">
+                <div class="relative sm:w-40">
+                    <select id="request-date-field" aria-label="Trường ngày để lọc đơn" class="w-full appearance-none bg-surface-container-low text-on-surface font-label-sm text-label-sm py-space-sm pl-space-md pr-space-xl rounded-xl outline-none cursor-pointer">
+                        <option value="fromDate">Ngày bắt đầu</option>
+                        <option value="createdAt">Ngày tạo</option>
+                    </select>
+                    <span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">expand_more</span>
+                </div>
+                <input id="request-date-from" type="date" aria-label="Từ ngày" class="w-full sm:w-36 bg-surface-container-low text-on-surface font-label-sm text-label-sm px-space-md py-space-sm rounded-xl outline-none">
+                <input id="request-date-to" type="date" aria-label="Đến ngày" class="w-full sm:w-36 bg-surface-container-low text-on-surface font-label-sm text-label-sm px-space-md py-space-sm rounded-xl outline-none">
             </div>
         </div>
         <span class="font-body-sm text-body-sm text-on-surface-variant">
@@ -419,6 +443,8 @@
                         <tr class="request-row hover:bg-surface-container-low/70 transition-colors align-top"
                             data-status="<%= item.status %>"
                             data-type="<%= item.type %>"
+                            data-from-date="<%= item.fromDate %>"
+                            data-created-date="<%= String(item.createdAt || '').slice(0, 10) %>"
                             data-search="<%= [item.code, item.typeLabel, item.employeeName, item.employeeId, item.reason, item.destination, item.department].join(' ').toLowerCase() %>"
                             data-detail="<%= JSON.stringify({
                                 id: item.id, code: item.code, typeLabel: item.typeLabel, returnTab: 'list',
@@ -600,6 +626,12 @@
 
         const explanationForm = document.getElementById('explanation-form');
         if (explanationForm) {
+            const explanationParams = new URLSearchParams(window.location.search);
+            explanationParams.set('tab', 'explanation');
+            explanationParams.delete('success');
+            explanationParams.delete('error');
+            explanationForm.action = `/admin/requests/explanation?${explanationParams.toString()}`;
+
             explanationForm.addEventListener('submit', (event) => {
                 clearInlineError('explanation-form-error', 'explanation-form-error-text');
 
@@ -640,24 +672,62 @@
             });
         }
 
+        const filterParams = new URLSearchParams(window.location.search);
+        const initialDateField = ['fromDate', 'createdAt'].includes(filterParams.get('dateField'))
+            ? filterParams.get('dateField')
+            : 'fromDate';
+        const syncFilterParams = (pairs) => {
+            const params = new URLSearchParams(window.location.search);
+            pairs.forEach(([key, el]) => {
+                const value = (el?.value || '').trim();
+                if (value) params.set(key, value);
+                else params.delete(key);
+            });
+            const query = params.toString();
+            window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+        };
+        const matchesDateFilter = (row, field, from, to) => {
+            if (!from && !to) return true;
+            const raw = field === 'createdAt' ? row.dataset.createdDate : row.dataset.fromDate;
+            const value = (raw || '').slice(0, 10);
+            if (!value) return false;
+            if (from && value < from) return false;
+            if (to && value > to) return false;
+            return true;
+        };
+
         const searchInput = document.getElementById('request-search');
         const statusFilter = document.getElementById('request-status-filter');
         const typeFilter = document.getElementById('request-type-filter');
-        const rows = Array.from(document.querySelectorAll('.request-row'));
+        const requestDateField = document.getElementById('request-date-field');
+        const requestDateFrom = document.getElementById('request-date-from');
+        const requestDateTo = document.getElementById('request-date-to');
+        const rows = Array.from(document.querySelectorAll('#request-table-body .request-row'));
         const emptyFilterRow = document.getElementById('request-empty-filter');
         const visibleCount = document.getElementById('request-visible-count');
+
+        if (searchInput) searchInput.value = filterParams.get('q') || '';
+        if (statusFilter) statusFilter.value = filterParams.get('status') || '';
+        if (typeFilter) typeFilter.value = filterParams.get('type') || '';
+        if (requestDateField) requestDateField.value = initialDateField;
+        if (requestDateFrom) requestDateFrom.value = filterParams.get('dateFrom') || '';
+        if (requestDateTo) requestDateTo.value = filterParams.get('dateTo') || '';
 
         const applyFilters = () => {
             const query = (searchInput?.value || '').trim().toLowerCase();
             const status = statusFilter?.value || '';
             const type = typeFilter?.value || '';
+            const dateField = requestDateField?.value || 'fromDate';
+            const dateFrom = requestDateFrom?.value || '';
+            const dateTo = requestDateTo?.value || '';
             let count = 0;
 
             rows.forEach((row) => {
                 const matchSearch = !query || (row.dataset.search || '').includes(query);
                 const matchStatus = !status || row.dataset.status === status;
                 const matchType = !type || row.dataset.type === type;
-                const visible = matchSearch && matchStatus && matchType;
+                const matchDate = matchesDateFilter(row, dateField, dateFrom, dateTo);
+                const visible = matchSearch && matchStatus && matchType && matchDate;
 
                 row.classList.toggle('hidden', !visible);
                 if (visible) count += 1;
@@ -665,28 +735,58 @@
 
             if (visibleCount) visibleCount.textContent = String(count);
             if (emptyFilterRow) emptyFilterRow.classList.toggle('hidden', count !== 0 || rows.length === 0);
+            syncFilterParams([
+                ['q', searchInput], ['status', statusFilter], ['type', typeFilter],
+                ['dateField', requestDateField], ['dateFrom', requestDateFrom], ['dateTo', requestDateTo]
+            ]);
         };
 
-        [searchInput, statusFilter, typeFilter].forEach((el) => {
+        const requestFilterInputs = [searchInput, statusFilter, typeFilter, requestDateField, requestDateFrom, requestDateTo];
+        requestFilterInputs.forEach((el) => {
             if (!el) return;
             const eventName = el.tagName === 'INPUT' ? 'input' : 'change';
             el.addEventListener(eventName, applyFilters);
         });
+        if (requestFilterInputs.some(Boolean)) applyFilters();
 
         const explanationFilter = document.getElementById('explanation-status-filter');
+        const explanationDateField = document.getElementById('explanation-date-field');
+        const explanationDateFrom = document.getElementById('explanation-date-from');
+        const explanationDateTo = document.getElementById('explanation-date-to');
         const explanationRows = Array.from(document.querySelectorAll('.explanation-row'));
         const explanationEmpty = document.getElementById('explanation-empty-filter');
+
+        if (explanationFilter) explanationFilter.value = filterParams.get('status') || '';
+        if (explanationDateField) explanationDateField.value = initialDateField;
+        if (explanationDateFrom) explanationDateFrom.value = filterParams.get('dateFrom') || '';
+        if (explanationDateTo) explanationDateTo.value = filterParams.get('dateTo') || '';
+
         const applyExplanationFilter = () => {
             const status = explanationFilter?.value || '';
+            const dateField = explanationDateField?.value || 'fromDate';
+            const dateFrom = explanationDateFrom?.value || '';
+            const dateTo = explanationDateTo?.value || '';
             let count = 0;
             explanationRows.forEach((row) => {
-                const visible = !status || row.dataset.status === status;
+                const visible = (!status || row.dataset.status === status)
+                    && matchesDateFilter(row, dateField, dateFrom, dateTo);
                 row.classList.toggle('hidden', !visible);
                 if (visible) count += 1;
             });
             if (explanationEmpty) explanationEmpty.classList.toggle('hidden', count !== 0 || explanationRows.length === 0);
+            syncFilterParams([
+                ['status', explanationFilter], ['dateField', explanationDateField],
+                ['dateFrom', explanationDateFrom], ['dateTo', explanationDateTo]
+            ]);
         };
-        explanationFilter?.addEventListener('change', applyExplanationFilter);
+
+        const explanationFilterInputs = [explanationFilter, explanationDateField, explanationDateFrom, explanationDateTo];
+        explanationFilterInputs.forEach((el) => {
+            if (!el) return;
+            const eventName = el.tagName === 'INPUT' ? 'input' : 'change';
+            el.addEventListener(eventName, applyExplanationFilter);
+        });
+        if (explanationFilterInputs.some(Boolean)) applyExplanationFilter();
 
         // Xem chi tiết / phê duyệt / từ chối trong cùng một modal.
         const reviewModal = document.getElementById('review-modal');
@@ -744,7 +844,11 @@
             } else {
                 reviewForm.classList.remove('hidden');
                 const returnTab = detail.returnTab === 'explanation' ? 'explanation' : 'list';
-                reviewForm.action = `/admin/requests/${detail.id}/${mode}?tab=${returnTab}`;
+                const actionParams = new URLSearchParams(window.location.search);
+                actionParams.set('tab', returnTab);
+                actionParams.delete('success');
+                actionParams.delete('error');
+                reviewForm.action = `/admin/requests/${detail.id}/${mode}?${actionParams.toString()}`;
                 reviewNote.value = '';
                 reviewNote.setCustomValidity('');
                 const rejecting = mode === 'reject';
