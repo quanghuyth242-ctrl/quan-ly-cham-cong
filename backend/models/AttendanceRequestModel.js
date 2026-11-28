@@ -18,8 +18,10 @@ export const findAll = async () => {
                r.reason, r.destination,
                TIME_FORMAT(r.overtime_start_time, '%H:%i') AS overtime_start_time,
                TIME_FORMAT(r.overtime_end_time, '%H:%i') AS overtime_end_time,
-               r.status, r.created_at, r.reviewed_by, DATE_FORMAT(r.reviewed_at, '%Y-%m-%d %H:%i') AS reviewed_date, r.review_note,
-               r.employee_response, r.employee_responded_at, r.employee_response_note,
+               r.status, r.created_at, r.created_by, r.reviewed_by, DATE_FORMAT(r.reviewed_at, '%Y-%m-%d %H:%i') AS reviewed_date, r.review_note,
+               r.employee_response, r.employee_responded_at,
+               DATE_FORMAT(r.employee_responded_at, '%Y-%m-%d %H:%i') AS employee_responded_date,
+               r.employee_response_note,
                e.id AS employee_id, e.employee_code, e.full_name AS employee_name,
                e.department, DATE_FORMAT(r.created_at, '%Y-%m-%d %H:%i') AS created_date, u.username AS reviewer_name
           FROM attendance_requests r

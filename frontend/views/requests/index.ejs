@@ -2,6 +2,15 @@
 
 <%- include("../partials/alerts", { success: success, error: error }) %>
 
+<div id="requests-update-banner" class="hidden fixed top-4 right-4 z-[60] max-w-sm items-center gap-space-md rounded-xl border border-primary-container bg-surface-container-lowest px-space-lg py-space-md shadow-lg">
+    <span class="material-symbols-outlined text-primary text-[22px]">sync</span>
+    <div class="flex flex-col">
+        <span class="font-label-md text-label-md text-on-surface font-semibold">Trạng thái đơn vừa thay đổi</span>
+        <span class="font-body-sm text-body-sm text-on-surface-variant">Nhấn để tải danh sách mới nhất.</span>
+    </div>
+    <button id="requests-refresh" type="button" class="ml-auto px-space-md py-1 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm hover:bg-primary-container">Làm mới</button>
+</div>
+
 <section class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg bg-surface-container-lowest p-space-xl rounded-xl shadow-sm">
     <div class="flex flex-col gap-space-xs">
         <div class="flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
@@ -10,7 +19,7 @@
         </div>
         <h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Đơn nghỉ &amp; Giải trình</h2>
         <p class="font-body-md text-body-md text-on-surface-variant">
-            Nhân viên gửi đơn nghỉ phép và nghỉ việc; admin theo dõi, duyệt hoặc từ chối tại danh sách đơn.
+            Nhân viên gửi đơn nghỉ phép và giải trình; admin theo dõi tiến trình, duyệt hoặc từ chối. Danh sách tự cập nhật theo thời gian thực.
         </p>
     </div>
 
@@ -47,6 +56,7 @@
         <div class="flex flex-col">
             <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Chờ xử lý</span>
             <span class="font-headline-xl text-headline-xl text-on-surface font-bold mt-space-xs"><%= stats.pending %></span>
+            <% if (stats.awaitingEmployee) { %><span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5"><%= stats.awaitingEmployee %> chờ nhân viên xác nhận</span><% } %>
         </div>
         <div class="w-11 h-11 rounded-xl bg-secondary-fixed text-secondary flex items-center justify-center">
             <span class="material-symbols-outlined text-[24px]">hourglass_top</span>
@@ -301,7 +311,9 @@
                                 employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
                                 fromDate: item.fromDate, toDate: item.toDate, subject: item.subject,
                                 time: item.timeLabel, reason: item.reason, destination: "",
-                                statusLabel: item.statusLabel, createdAt: item.createdAt,
+                                statusLabel: item.statusLabel, statusTone: item.statusTone,
+                                statusHint: item.statusHint, durationLabel: item.durationLabel, timeline: item.timeline,
+                                createdAt: item.createdAt,
                                 reviewerName: item.reviewerName, reviewedAt: item.reviewedAt,
                                 reviewNote: item.reviewNote, employeeResponseNote: item.employeeResponseNote
                             }) %>">
@@ -340,9 +352,12 @@
                                 <% } else { %>
                                     <span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[11px] font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span><%= item.statusLabel %></span>
                                 <% } %>
+                                <% if (item.statusHint) { %><p class="mt-1 text-[11px] text-on-surface-variant"><%= item.statusHint %></p><% } %>
+                                <% if (item.durationLabel) { %><p class="mt-0.5 text-[11px] text-on-surface-variant"><%= item.durationLabel %></p><% } %>
                             </td>
                             <td class="py-space-md px-space-lg">
                                 <div class="flex justify-end gap-space-xs">
+                                    <button type="button" data-review-action="track" title="Theo dõi trạng thái giải trình" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-primary-fixed/60 hover:bg-primary-fixed text-primary font-label-sm"><span class="material-symbols-outlined text-[16px]">timeline</span>Theo dõi</button>
                                     <button type="button" data-review-action="view" title="Xem chi tiết giải trình" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm"><span class="material-symbols-outlined text-[16px]">visibility</span>Xem</button>
                                     <% if (item.canReview) { %>
                                         <button type="button" data-review-action="approve" title="Phê duyệt giải trình" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 font-label-sm"><span class="material-symbols-outlined text-[16px]">check</span>Duyệt</button>
@@ -451,7 +466,9 @@
                                 employeeName: item.employeeName, employeeId: item.employeeId, department: item.department,
                                 fromDate: item.fromDate, toDate: item.toDate, reason: item.reason,
                                 destination: item.destination, subject: item.subject, time: item.timeLabel,
-                                statusLabel: item.statusLabel, createdAt: item.createdAt,
+                                statusLabel: item.statusLabel, statusTone: item.statusTone,
+                                statusHint: item.statusHint, durationLabel: item.durationLabel, timeline: item.timeline,
+                                createdAt: item.createdAt,
                                 reviewerName: item.reviewerName, reviewedAt: item.reviewedAt,
                                 reviewNote: item.reviewNote, employeeResponseNote: item.employeeResponseNote
                             }) %>">
@@ -514,12 +531,15 @@
                                         <%= item.statusLabel %>
                                     </span>
                                 <% } %>
-                            </td>
-                            <td class="py-space-md px-space-lg text-right">
+                                 <% if (item.statusHint) { %><p class="mt-1 text-[11px] text-on-surface-variant"><%= item.statusHint %></p><% } %>
+                                 <% if (item.durationLabel) { %><p class="mt-0.5 text-[11px] text-on-surface-variant"><%= item.durationLabel %></p><% } %>
+                             </td>
+                             <td class="py-space-md px-space-lg text-right">
                                 <span class="font-data-mono text-[11px] text-on-surface-variant whitespace-nowrap"><%= item.createdAt %></span>
                             </td>
                             <td class="py-space-md px-space-lg">
                                 <div class="flex justify-end gap-space-xs">
+                                    <button type="button" data-review-action="track" title="Theo dõi trạng thái đơn" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-primary-fixed/60 hover:bg-primary-fixed text-primary font-label-sm"><span class="material-symbols-outlined text-[16px]">timeline</span>Theo dõi</button>
                                     <button type="button" data-review-action="view" title="Xem chi tiết đơn" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm"><span class="material-symbols-outlined text-[16px]">visibility</span>Xem</button>
                                     <% if (item.canReview) { %>
                                         <button type="button" data-review-action="approve" title="Phê duyệt đơn" class="inline-flex items-center gap-1 px-space-sm py-1 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 font-label-sm"><span class="material-symbols-outlined text-[16px]">check</span>Duyệt</button>
@@ -817,29 +837,117 @@
             reviewDetail.appendChild(row);
         };
 
+        const renderTimeline = (detail) => {
+            const summary = document.createElement('div');
+            summary.className = 'flex flex-col gap-space-xs rounded-xl bg-surface-container-low p-space-md';
+            const statusLine = document.createElement('div');
+            statusLine.className = 'flex items-center gap-space-sm';
+            const dot = document.createElement('span');
+            dot.className = 'w-2.5 h-2.5 rounded-full '
+                + (detail.statusTone === 'success' ? 'bg-green-500' : detail.statusTone === 'error' ? 'bg-error' : 'bg-secondary');
+            const label = document.createElement('span');
+            label.className = 'font-label-md text-label-md text-on-surface font-semibold';
+            label.textContent = detail.statusLabel || 'Đang cập nhật';
+            statusLine.append(dot, label);
+            summary.appendChild(statusLine);
+            [detail.statusHint, detail.durationLabel].forEach((text) => {
+                if (!text) return;
+                const line = document.createElement('p');
+                line.className = 'font-body-sm text-body-sm text-on-surface-variant';
+                line.textContent = text;
+                summary.appendChild(line);
+            });
+            reviewDetail.appendChild(summary);
+
+            const steps = Array.isArray(detail.timeline) ? detail.timeline : [];
+            if (steps.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'font-body-sm text-body-sm text-on-surface-variant mt-space-md';
+                empty.textContent = 'Chưa có lịch sử trạng thái.';
+                reviewDetail.appendChild(empty);
+                return;
+            }
+
+            const heading = document.createElement('p');
+            heading.className = 'font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-space-sm';
+            heading.textContent = 'Lịch sử trạng thái';
+            reviewDetail.appendChild(heading);
+
+            const list = document.createElement('ol');
+            list.className = 'relative flex flex-col gap-space-md mt-space-xs';
+            steps.forEach((step, index) => {
+                const item = document.createElement('li');
+                item.className = 'relative pl-space-xl';
+                if (index < steps.length - 1) {
+                    const connector = document.createElement('span');
+                    connector.className = 'absolute left-[9px] top-5 bottom-[-16px] w-px bg-surface-container-high';
+                    item.appendChild(connector);
+                }
+                const marker = document.createElement('span');
+                marker.className = 'absolute left-0 top-1 w-[19px] h-[19px] rounded-full flex items-center justify-center text-white '
+                    + (step.state === 'error' ? 'bg-error' : step.state === 'current' ? 'bg-secondary' : 'bg-primary');
+                const icon = document.createElement('span');
+                icon.className = 'material-symbols-outlined text-[13px] leading-none';
+                icon.textContent = step.state === 'error' ? 'close' : step.state === 'current' ? 'schedule' : 'check';
+                marker.appendChild(icon);
+
+                const body = document.createElement('div');
+                body.className = 'flex flex-col gap-0.5 pb-space-md';
+                const title = document.createElement('p');
+                title.className = 'font-label-md text-label-md text-on-surface font-semibold';
+                title.textContent = step.label || '';
+                body.appendChild(title);
+                const meta = [step.time, step.actor].filter(Boolean).join(' · ');
+                if (meta) {
+                    const metaEl = document.createElement('p');
+                    metaEl.className = 'font-body-sm text-body-sm text-on-surface-variant';
+                    metaEl.textContent = meta;
+                    body.appendChild(metaEl);
+                }
+                if (step.note) {
+                    const note = document.createElement('p');
+                    note.className = 'font-body-sm text-body-sm text-on-surface-variant whitespace-pre-wrap break-words';
+                    note.textContent = step.note;
+                    body.appendChild(note);
+                }
+                item.append(marker, body);
+                list.appendChild(item);
+            });
+            reviewDetail.appendChild(list);
+        };
+
         const openReviewModal = (row, mode) => {
             let detail = {};
             try { detail = JSON.parse(row.dataset.detail || '{}'); } catch { detail = {}; }
             reviewMode = mode;
             reviewDetail.replaceChildren();
             const isExplanation = Boolean(detail.typeLabel && detail.typeLabel.startsWith('Giải trình'));
-            reviewTitle.textContent = isExplanation
-                ? (mode === 'approve' ? 'Phê duyệt giải trình' : mode === 'reject' ? 'Từ chối giải trình' : 'Chi tiết giải trình')
-                : (mode === 'approve' ? 'Phê duyệt đơn' : mode === 'reject' ? 'Từ chối đơn' : 'Chi tiết đơn');
+            const isTracking = mode === 'track';
+            reviewTitle.textContent = isTracking
+                ? 'Theo dõi trạng thái'
+                : isExplanation
+                    ? (mode === 'approve' ? 'Phê duyệt giải trình' : mode === 'reject' ? 'Từ chối giải trình' : 'Chi tiết giải trình')
+                    : (mode === 'approve' ? 'Phê duyệt đơn' : mode === 'reject' ? 'Từ chối đơn' : 'Chi tiết đơn');
             reviewSubtitle.textContent = [detail.code, detail.typeLabel, detail.statusLabel].filter(Boolean).join(' · ');
 
-            appendDetailField('Nhân viên', [detail.employeeName, detail.employeeId].filter(Boolean).join(' · '));
-            appendDetailField('Phòng ban', detail.department);
-            appendDetailField(detail.typeLabel && detail.typeLabel.startsWith('Giải trình') ? 'Ngày phát sinh' : 'Thời gian', [detail.fromDate, detail.toDate && detail.toDate !== detail.fromDate ? `→ ${detail.toDate}` : '', detail.time].filter(Boolean).join(' '));
-            appendDetailField('Tiêu đề', detail.subject);
-            appendDetailField('Nội dung', detail.reason);
-            appendDetailField('Địa điểm', detail.destination);
-            appendDetailField('Ngày gửi', detail.createdAt);
-            appendDetailField(detail.statusLabel === 'Từ chối' ? 'Người từ chối' : 'Người duyệt', detail.reviewedAt ? `${detail.reviewerName || 'Admin'} · ${detail.reviewedAt}` : '');
-            appendDetailField('Ghi chú duyệt', detail.reviewNote, 'success');
-            appendDetailField('Lý do từ chối', detail.employeeResponseNote, 'error');
+            if (isTracking) {
+                appendDetailField('Nhân viên', [detail.employeeName, detail.employeeId].filter(Boolean).join(' · '));
+                appendDetailField('Nội dung', detail.reason);
+                renderTimeline(detail);
+            } else {
+                appendDetailField('Nhân viên', [detail.employeeName, detail.employeeId].filter(Boolean).join(' · '));
+                appendDetailField('Phòng ban', detail.department);
+                appendDetailField(detail.typeLabel && detail.typeLabel.startsWith('Giải trình') ? 'Ngày phát sinh' : 'Thời gian', [detail.fromDate, detail.toDate && detail.toDate !== detail.fromDate ? `→ ${detail.toDate}` : '', detail.time].filter(Boolean).join(' '));
+                appendDetailField('Tiêu đề', detail.subject);
+                appendDetailField('Nội dung', detail.reason);
+                appendDetailField('Địa điểm', detail.destination);
+                appendDetailField('Ngày gửi', detail.createdAt);
+                appendDetailField(detail.statusLabel === 'Từ chối' ? 'Người từ chối' : 'Người duyệt', detail.reviewedAt ? `${detail.reviewerName || 'Admin'} · ${detail.reviewedAt}` : '');
+                appendDetailField('Ghi chú duyệt', detail.reviewNote, 'success');
+                appendDetailField('Lý do từ chối', detail.employeeResponseNote, 'error');
+            }
 
-            if (mode === 'view') {
+            if (mode === 'view' || isTracking) {
                 reviewForm.classList.add('hidden');
             } else {
                 reviewForm.classList.remove('hidden');
@@ -865,7 +973,7 @@
             }
             reviewModal.classList.remove('hidden');
             document.body.classList.add('overflow-hidden');
-            if (mode !== 'view') window.setTimeout(() => reviewNote.focus(), 0);
+            if (mode !== 'view' && !isTracking) window.setTimeout(() => reviewNote.focus(), 0);
         };
 
         const closeReviewModal = () => {
@@ -896,6 +1004,31 @@
                 reviewNote.reportValidity();
             }
         });
+
+        // Realtime: danh sách và lịch sử trạng thái tự cập nhật khi có đơn thay đổi.
+        const updateBanner = document.getElementById('requests-update-banner');
+        const refreshButton = document.getElementById('requests-refresh');
+        const showUpdateBanner = () => {
+            if (!updateBanner) return;
+            updateBanner.classList.remove('hidden');
+            updateBanner.classList.add('flex');
+        };
+        refreshButton?.addEventListener('click', () => window.location.reload());
+        if (typeof EventSource !== 'undefined') {
+            try {
+                const stream = new EventSource('/api/overview/stream');
+                const hasOpenModal = () => reviewModal && !reviewModal.classList.contains('hidden');
+                stream.addEventListener('requests', () => {
+                    if (hasOpenModal()) return showUpdateBanner();
+                    window.location.reload();
+                });
+                stream.addEventListener('attendance', () => {
+                    if (hasOpenModal()) showUpdateBanner();
+                });
+            } catch (error) {
+                // Không hỗ trợ SSE thì người dùng vẫn có thể tải lại trang bằng tay.
+            }
+        }
 
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') closeReviewModal();
