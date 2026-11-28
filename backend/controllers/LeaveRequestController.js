@@ -19,7 +19,7 @@ const redirect = (res, values) => {
     return res.redirect(`/admin/requests?${query.toString()}`);
 };
 
-const FILTER_QUERY_KEYS = ["q", "status", "type", "category", "dateField", "dateFrom", "dateTo"];
+const FILTER_QUERY_KEYS = ["q", "status", "type", "category", "dateField", "dateFrom", "dateTo", "page", "perPage", "sort", "order"];
 const VALID_TABS = ["leave", "explanation", "late_explanation", "early_leave_explanation", "business_trip", "overtime", "list"];
 
 // Giữ lại tab và các filter khi redirect sau khi tạo/duyệt đơn.
