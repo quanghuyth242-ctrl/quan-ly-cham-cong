@@ -19,8 +19,8 @@ const redirect = (res, values) => {
     return res.redirect(`/admin/requests?${query.toString()}`);
 };
 
-const FILTER_QUERY_KEYS = ["q", "status", "type", "dateField", "dateFrom", "dateTo"];
-const VALID_TABS = ["explanation", "business_trip", "overtime", "list"];
+const FILTER_QUERY_KEYS = ["q", "status", "type", "category", "dateField", "dateFrom", "dateTo"];
+const VALID_TABS = ["leave", "explanation", "business_trip", "overtime", "list"];
 
 // Giữ lại tab và các filter khi redirect sau khi tạo/duyệt đơn.
 const getReturnQuery = (req) => {
@@ -209,12 +209,21 @@ export const index = async (req, res) => {
         };
         const mappedRequests = requests.map(mapRequestItem);
         const explanationRequests = mappedRequests.filter((item) => item.type === "explanation");
+        // Đơn nghỉ và nghỉ việc đều được nhân viên gửi từ form đăng ký nghỉ.
+        const leaveRequests = mappedRequests.filter((item) => ["leave", "resignation"].includes(item.type));
         return res.render("requests/index", {
             user: req.session.user,
             success: req.query.success || null,
             error: req.query.error || null,
             activeTab,
             requests: mappedRequests,
+            leaveRequests,
+            leaveStats: {
+                total: leaveRequests.length,
+                pending: leaveRequests.filter((item) => item.status === "pending").length,
+                approved: leaveRequests.filter((item) => item.status === "approved").length,
+                rejected: leaveRequests.filter((item) => item.status === "rejected").length
+            },
             explanationRequests,
             explanationStats: {
                 total: explanationRequests.length,
@@ -233,6 +242,8 @@ export const index = async (req, res) => {
             error: "Không thể tải dữ liệu đơn. Vui lòng thử lại.",
             activeTab,
             requests: [],
+            leaveRequests: [],
+            leaveStats: { total: 0, pending: 0, approved: 0, rejected: 0 },
             explanationRequests: [],
             explanationStats: { total: 0, pending: 0, approved: 0, rejected: 0 },
             employees: [],
